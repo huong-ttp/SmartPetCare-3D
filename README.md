@@ -15,5 +15,5 @@ Veterinary Healthcare Management Platform on Interactive Web 3D.
 - React Three Fiber
 - Node.js
 - Express.js
-- MySQL
+- PostgreSQL
 - Docker
