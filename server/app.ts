@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
+import routes from "./src/routes";
 const app = express();
 
 // Security
@@ -18,7 +19,11 @@ app.use(morgan("dev"));
 
 // Routes
 app.get("/", (req, res) => {
-  res.send("SmartPetCare Backend Running");
+  res.json({
+    success: true,
+    message: "Welcome to SmartPetCare API",
+  });
 });
+app.use("/api", routes);
 
 export default app;
