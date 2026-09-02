@@ -6,8 +6,8 @@ import pool from "./src/config/database.config";
 async function connectDatabase() {
   try {
     const result = await pool.query("SELECT NOW()");
-    console.log("PostgreSQL connected");
-    console.log(result.rows[0]);
+    console.log("PostgreSQL connected successfully");
+    console.log(`🕒 Database time: ${result.rows[0].now}`);
   } catch (error) {
     console.error("Database connection failed:", error);
     process.exit(1);
