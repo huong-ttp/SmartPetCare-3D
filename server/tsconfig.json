@@ -1,0 +1,34 @@
+{
+  "compilerOptions": {
+    /* Project */
+    "target": "ES2022",
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+
+    /* Directory */
+    "rootDir": ".",
+    "outDir": "./dist",
+
+    /* Type Checking */
+    "strict": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+
+    /* Source Map */
+    "sourceMap": true,
+
+    /* Types */
+    "types": ["node"]
+  },
+
+  "include": [
+    "server.ts",
+    "src/**/*.ts"
+  ],
+
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
+}
