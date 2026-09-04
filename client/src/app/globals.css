@@ -1,0 +1,205 @@
+@import "tailwindcss";
+
+/* ============================================
+   SmartPetCare 3D — Design System Tokens
+   ============================================ */
+
+/* Google Fonts — Inter + Plus Jakarta Sans */
+
+:root {
+  /* Brand colors */
+  --color-primary:    #0EA5B7;
+  --color-primary-dark: #0b8fa0;
+  --color-secondary:  #22C55E;
+  --color-accent:     #FB923C;
+  --color-navy:       #0F172A;
+  --color-bg:         #F8FAFC;
+
+  /* Semantic */
+  --color-success:    #22C55E;
+  --color-warning:    #F59E0B;
+  --color-error:      #EF4444;
+  --color-info:       #0EA5B7;
+
+  /* Glass morphism */
+  --glass-bg:         rgba(255, 255, 255, 0.06);
+  --glass-bg-strong:  rgba(255, 255, 255, 0.10);
+  --glass-border:     rgba(255, 255, 255, 0.14);
+  --glass-border-strong: rgba(255, 255, 255, 0.20);
+
+  /* Dark glass (for 3D canvas overlays) */
+  --glass-dark-bg:    rgba(15, 23, 42, 0.55);
+  --glass-dark-border: rgba(14, 165, 183, 0.25);
+
+  /* Typography */
+  --font-body:    "Inter", "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+  --font-heading: "Plus Jakarta Sans", "Inter", system-ui, sans-serif;
+
+  /* Shadows */
+  --shadow-sm:    0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+  --shadow-md:    0 4px 16px rgba(0,0,0,.08);
+  --shadow-lg:    0 10px 40px rgba(0,0,0,.12);
+  --shadow-glow:  0 0 20px rgba(14,165,183,.35);
+  --shadow-glow-accent: 0 0 20px rgba(251,146,60,.35);
+}
+
+html, body {
+  height: 100%;
+}
+
+body {
+  font-family: var(--font-body);
+  color: #0f172a;
+  background: var(--color-bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+}
+
+/* ============================================
+   Glass Morphism Utilities
+   ============================================ */
+.glass {
+  background: linear-gradient(
+    135deg,
+    var(--glass-bg),
+    rgba(255, 255, 255, 0.02)
+  );
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.glass-strong {
+  background: linear-gradient(
+    135deg,
+    var(--glass-bg-strong),
+    rgba(255, 255, 255, 0.03)
+  );
+  border: 1px solid var(--glass-border-strong);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.glass-dark {
+  background: var(--glass-dark-bg);
+  border: 1px solid var(--glass-dark-border);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+/* ============================================
+   Gradient Utilities
+   ============================================ */
+.gradient-primary {
+  background: linear-gradient(135deg, #0EA5B7, #22C55E);
+}
+
+.gradient-primary-hr {
+  background: linear-gradient(90deg, #0EA5B7, #22d4aa);
+}
+
+.gradient-accent {
+  background: linear-gradient(135deg, #0EA5B7, #FB923C);
+}
+
+.gradient-dark {
+  background: linear-gradient(135deg, #0F172A, #1e293b);
+}
+
+.gradient-hero {
+  background: linear-gradient(
+    135deg,
+    #0F172A 0%,
+    #0c2340 40%,
+    #0a3040 100%
+  );
+}
+
+/* ============================================
+   Text Gradients
+   ============================================ */
+.text-gradient-primary {
+  background: linear-gradient(90deg, #0EA5B7, #22C55E);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.text-gradient-accent {
+  background: linear-gradient(90deg, #0EA5B7, #FB923C);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ============================================
+   Nav Underline Animation
+   ============================================ */
+.underline-anim {
+  position: relative;
+}
+.underline-anim::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -3px;
+  height: 2px;
+  width: 0%;
+  background: linear-gradient(90deg, #0EA5B7, #22C55E);
+  transition: width 0.28s ease;
+  border-radius: 2px;
+}
+.underline-anim:hover::after {
+  width: 100%;
+}
+
+/* ============================================
+   Scrollbar Styling
+   ============================================ */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(14, 165, 183, 0.35);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(14, 165, 183, 0.6);
+}
+
+/* ============================================
+   Skeleton Loading
+   ============================================ */
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(255,255,255,0.04) 25%,
+    rgba(255,255,255,0.12) 50%,
+    rgba(255,255,255,0.04) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 6px;
+}
+
+/* ============================================
+   Focus Ring (accessibility)
+   ============================================ */
+:focus-visible {
+  outline: 2px solid #0EA5B7;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
