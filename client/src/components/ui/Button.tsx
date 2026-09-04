@@ -22,7 +22,7 @@ export const Button: React.FC<ButtonProps> = ({
   const styles =
     variant === "primary"
       ? "bg-gradient-to-r from-[#3B82F6] to-[#06b6d4] text-white shadow-lg hover:scale-105"
-      : "bg-white/6 text-white border border-white/10 glass hover:scale-102";
+      : "bg-white/6 text-black border border-white/10 glass hover:scale-102";
 
   return (
     <motion.button
