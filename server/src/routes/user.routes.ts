@@ -1,11 +1,11 @@
 import { Router } from "express";
 import validate from "../middleware/validate.middleware";
 import { createUserSchema } from "../validations/user.validation";
-
+import userController from "../controllers/user.controller";
 const router = Router();
 
 router.post(
-  "/test",
+  "/",
   validate(createUserSchema),
   (req, res) => {
     res.json({
