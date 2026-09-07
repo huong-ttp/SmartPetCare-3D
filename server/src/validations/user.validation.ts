@@ -1,27 +1,23 @@
 import { z } from "zod";
 
 export const createUserSchema = z.object({
-  full_name: z.string().min(3).max(100),
+  full_name: z.string().trim().min(2).max(100),
 
-  email: z.string().email(),
+  email: z.string().trim().toLowerCase().email("Email không hợp lệ"),
 
-  password: z.string().min(6),
+  password: z.string().min(8, "Mật khẩu tối thiểu 8 ký tự").max(50, "Mật khẩu tối đa 50 ký tự"),
 
-  phone: z.string().optional(),
+  phone: z.string().regex(/^0\d{9}$/, "Số điện thoại không hợp lệ").optional(),
 
-  address: z.string().optional(),
+  address: z.string().trim().max(255).optional(),
 
-  avatar_url: z.string().optional(),
 
-  role: z.enum(["owner", "doctor", "admin"]),
-
-  is_active: z.boolean().optional()
 });
 
-export const updateUserSchema = createUserSchema.partial();
+export const registerSchema = createUserSchema;
 
 export const loginSchema = z.object({
   email: z.string().email(),
 
-  password: z.string().min(6)
+  password: z.string().min(8)
 });
