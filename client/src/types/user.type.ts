@@ -23,6 +23,8 @@ export interface RegisterDTO {
   full_name: string;
   email: string;
   phone?: string;
+  address?: string;
+  avatar_url?: string;
   password: string;
 }
 
