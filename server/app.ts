@@ -3,6 +3,7 @@ import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
 import routes from "./src/routes";
+import errorHandler from "./src/middleware/error.middleware";
 const app = express();
 
 // Security
@@ -25,6 +26,8 @@ app.get("/", (req, res) => {
   });
 });
 app.use("/api", routes);
+
+app.use(errorHandler);
 
 
 export default app;

@@ -1,5 +1,6 @@
 import bcrypt from "bcrypt";
 import pool from "../config/database.config";
+import AppError from "../utils/AppError";
 interface RegisterData {
   full_name: string;
   email: string;
@@ -17,8 +18,8 @@ class AuthService {
   `,
   [data.email]
 );
-        if (existingUser.rows.length > 0) {
-  throw new Error("Email already exists");
+ if (existingUser.rows.length > 0) {
+    throw new AppError("Email already exists", 409);
 }
 const hashedPassword = await bcrypt.hash(data.password, 10);
 const result = await pool.query(
