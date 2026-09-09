@@ -1,6 +1,7 @@
 import bcrypt from "bcrypt";
 import pool from "../config/database.config";
 import AppError from "../utils/AppError";
+import { generateAccessToken } from "../utils/jwt";
 interface RegisterData {
   full_name: string;
   email: string;
@@ -90,8 +91,13 @@ if (!isMatch) {
     401
   );
 }
+const accessToken = generateAccessToken({
+  user_id: user.user_id,
+  role: user.role,
+});
 return {
   message: "Login successful",
+  access_token: accessToken,
   user: {
     user_id: user.user_id,
     full_name: user.full_name,

@@ -4,10 +4,10 @@
   "description": "",
   "main": "server.ts",
   "scripts": {
-  "dev": "nodemon --watch . --exec tsx server.ts",
-  "start": "tsx server.ts",
-  "build": "tsc"
-},
+    "dev": "nodemon --watch . --exec tsx server.ts",
+    "start": "tsx server.ts",
+    "build": "tsc"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
