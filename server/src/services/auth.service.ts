@@ -8,6 +8,10 @@ interface RegisterData {
   phone?: string;
   address?: string;
 }
+interface LoginData {
+  email: string;
+  password: string;
+}
 class AuthService {
   async register(data: RegisterData) {
     const existingUser = await pool.query(
@@ -58,6 +62,44 @@ const result = await pool.query(
 return {
   message: "Register successfully",
   user: result.rows[0],
+};
+}
+async login(data: LoginData) {
+  const result = await pool.query(
+    `
+      SELECT *
+      FROM users
+      WHERE email = $1
+    `,
+    [data.email]
+  );
+  if (result.rows.length === 0) {
+  throw new AppError(
+    "Email hoặc mật khẩu không đúng",
+    401
+  );
+}
+const user = result.rows[0];
+const isMatch = await bcrypt.compare(
+  data.password,
+  user.password_hash
+);
+if (!isMatch) {
+  throw new AppError(
+    "Email hoặc mật khẩu không đúng",
+    401
+  );
+}
+return {
+  message: "Login successful",
+  user: {
+    user_id: user.user_id,
+    full_name: user.full_name,
+    email: user.email,
+    phone: user.phone,
+    address: user.address,
+    role: user.role,
+  },
 };
 }
 }
