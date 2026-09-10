@@ -28,3 +28,18 @@ export const createUserSchema = z.object({
 
 export const updateUserSchema =
   createUserSchema.partial();
+
+  export const updateProfileSchema = z.object({
+  full_name: z.string().trim().min(2).max(100),
+
+  phone: z
+    .string()
+    .regex(/^0\d{9}$/, "Số điện thoại không hợp lệ")
+    .optional(),
+
+  address: z
+    .string()
+    .trim()
+    .max(255)
+    .optional(),
+});

@@ -1,5 +1,25 @@
-import { Request, Response } from "express";
+import { Request, Response, NextFunction } from "express";
+import userService from "../services/user.service"
+class UserController {
+    async updateProfile(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const user = await userService.updateProfile(
+      req.user.user_id,
+      req.body
+    );
 
-class UserController {}
+    return res.json({
+      success: true,
+      data: user,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+}
 
 export default new UserController();

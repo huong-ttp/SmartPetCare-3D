@@ -1,7 +1,11 @@
 import { Router } from "express";
 import validate from "../middleware/validate.middleware";
-import { createUserSchema } from "../validations/user.validation";
 import userController from "../controllers/user.controller";
+import authMiddleware from "../middleware/auth.middleware"
+import {
+  createUserSchema,
+  updateProfileSchema,
+} from "../validations/user.validation";
 const router = Router();
 
 router.post(
@@ -15,4 +19,10 @@ router.post(
   }
 );
 
+router.put(
+  "/profile",
+  authMiddleware,
+  validate(updateProfileSchema),
+  userController.updateProfile
+);
 export default router;
