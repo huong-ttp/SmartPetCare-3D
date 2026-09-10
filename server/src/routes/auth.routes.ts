@@ -39,4 +39,10 @@ router.get(
     });
   }
 );
+
+router.get(
+  "/profile",
+  authMiddleware,
+  authController.profile
+);
 export default router;

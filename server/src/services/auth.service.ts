@@ -108,5 +108,30 @@ return {
   },
 };
 }
+async getProfile(userId: number) {
+  const result = await pool.query(
+    `
+      SELECT
+        user_id,
+        full_name,
+        email,
+        phone,
+        address,
+        role,
+        is_active,
+        created_at
+      FROM users
+      WHERE user_id = $1
+    `,
+    [userId]
+  );
+
+  if (result.rows.length === 0) {
+    throw new AppError("User not found", 404);
+  }
+
+  return result.rows[0];
 }
+}
+
 export default new AuthService();

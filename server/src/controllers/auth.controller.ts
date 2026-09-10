@@ -43,6 +43,24 @@ async me(
     data: (req as any).user,
   });
 }
+async profile(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const user = await authService.getProfile(
+      req.user.user_id
+    );
+
+    return res.json({
+      success: true,
+      data: user,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
 }
 
 export default new AuthController();
