@@ -43,3 +43,13 @@ export const updateUserSchema =
     .max(255)
     .optional(),
 });
+
+export const changePasswordSchema = z.object({
+  current_password: z
+    .string()
+    .min(8, "Mật khẩu hiện tại phải có ít nhất 8 ký tự"),
+
+  new_password: z
+    .string()
+    .min(8, "Mật khẩu mới phải có ít nhất 8 ký tự"),
+});

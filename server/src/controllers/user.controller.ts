@@ -20,6 +20,25 @@ class UserController {
     next(error);
   }
 }
+async changePassword(
+    req: Request,
+    res: Response,
+    next: NextFunction
+) {
+  try {
+    const result = await userService.changePassword(
+      req.user.user_id,
+      req.body
+    );
+
+    res.json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
 }
 
 export default new UserController();

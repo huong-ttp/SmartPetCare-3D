@@ -6,6 +6,7 @@ import {
   createUserSchema,
   updateProfileSchema,
 } from "../validations/user.validation";
+import { changePasswordSchema } from "../validations/user.validation";
 const router = Router();
 
 router.post(
@@ -25,4 +26,12 @@ router.put(
   validate(updateProfileSchema),
   userController.updateProfile
 );
+
+router.put(
+  "/change-password",
+  authMiddleware,
+  validate(changePasswordSchema),
+  userController.changePassword
+);
+
 export default router;
