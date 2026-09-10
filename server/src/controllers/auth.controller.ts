@@ -34,6 +34,15 @@ class AuthController {
     next(error);
   }
 }
+async me(
+  req: Request,
+  res: Response
+) {
+  return res.json({
+    success: true,
+    data: (req as any).user,
+  });
+}
 }
 
 export default new AuthController();

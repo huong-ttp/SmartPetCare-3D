@@ -5,7 +5,7 @@ import {
   registerSchema,
   loginSchema,
 } from "../validations/auth.validation";
-
+import authMiddleware from "../middleware/auth.middleware";
 const router = Router();
 
 router.post(
@@ -20,4 +20,9 @@ router.post(
   authController.login
 );
 
+router.get(
+  "/me",
+  authMiddleware,
+  authController.me
+);
 export default router;
