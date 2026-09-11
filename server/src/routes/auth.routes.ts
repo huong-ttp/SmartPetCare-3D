@@ -52,4 +52,10 @@ router.post(
   authController.refresh
 );
 
+router.post(
+  "/logout",
+  authMiddleware,
+  authController.logout
+);
+
 export default router;

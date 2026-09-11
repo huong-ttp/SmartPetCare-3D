@@ -164,6 +164,11 @@ async getProfile(userId: number) {
 
   return result.rows[0];
 }
+async logout() {
+  return {
+    message: "Logout successful",
+  };
+}
 }
 
 export default new AuthService();
