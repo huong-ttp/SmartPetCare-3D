@@ -4,10 +4,10 @@ import validate from "../middleware/validate.middleware";
 import {
   registerSchema,
   loginSchema,
+  refreshTokenSchema,
 } from "../validations/auth.validation";
 import authMiddleware from "../middleware/auth.middleware";
 import authorize from "../middleware/role.middleware";
-
 const router = Router();
 
 router.post(
@@ -45,4 +45,11 @@ router.get(
   authMiddleware,
   authController.profile
 );
+
+router.post(
+  "/refresh",
+  validate(refreshTokenSchema),
+  authController.refresh
+);
+
 export default router;

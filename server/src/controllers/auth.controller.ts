@@ -34,6 +34,24 @@ class AuthController {
     next(error);
   }
 }
+async refresh(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const result = await authService.refreshToken(
+      req.body.refresh_token
+    );
+
+    return res.json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
 async me(
   req: Request,
   res: Response

@@ -35,3 +35,7 @@ export const loginSchema = z.object({
 
   password: z.string().min(8, "Mật khẩu tối thiểu 8 ký tự"),
 });
+
+export const refreshTokenSchema = z.object({
+  refresh_token: z.string().min(1, "Refresh token là bắt buộc"),
+});

@@ -1,7 +1,11 @@
 import bcrypt from "bcrypt";
 import pool from "../config/database.config";
 import AppError from "../utils/AppError";
-import { generateAccessToken } from "../utils/jwt";
+import {
+  generateAccessToken,
+  generateRefreshToken,
+} from "../utils/jwt";
+import jwt, { JwtPayload } from "jsonwebtoken";
 interface RegisterData {
   full_name: string;
   email: string;
@@ -80,6 +84,7 @@ async login(data: LoginData) {
     401
   );
 }
+
 const user = result.rows[0];
 const isMatch = await bcrypt.compare(
   data.password,
@@ -95,9 +100,14 @@ const accessToken = generateAccessToken({
   user_id: user.user_id,
   role: user.role,
 });
+const refreshToken = generateRefreshToken({
+  user_id: user.user_id,
+  role: user.role,
+});
 return {
   message: "Login successful",
   access_token: accessToken,
+  refresh_token: refreshToken,
   user: {
     user_id: user.user_id,
     full_name: user.full_name,
@@ -107,6 +117,28 @@ return {
     role: user.role,
   },
 };
+}
+async refreshToken(refreshToken: string) {
+  try {
+    const decoded = jwt.verify(
+      refreshToken,
+      process.env.JWT_REFRESH_SECRET!
+    ) as JwtPayload & {
+      user_id: number;
+      role: string;
+    };
+
+    const accessToken = generateAccessToken({
+      user_id: decoded.user_id,
+      role: decoded.role,
+    });
+
+    return {
+      access_token: accessToken,
+    };
+  } catch {
+    throw new AppError("Invalid refresh token", 401);
+  }
 }
 async getProfile(userId: number) {
   const result = await pool.query(
