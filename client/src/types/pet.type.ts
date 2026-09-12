@@ -23,6 +23,10 @@ export interface Pet {
    */
   readonly weight_kg?: number;
   is_neutered?: boolean;
+  /** Danh sách dị ứng — string hoặc mảng string */
+  allergies?: string | string[];
+  /** Bệnh mãn tính đã biết */
+  chronic_conditions?: string | string[];
   notes?: string;
   created_at: string;
   updated_at: string;
