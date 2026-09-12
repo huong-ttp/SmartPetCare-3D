@@ -39,3 +39,28 @@ export const loginSchema = z.object({
 export const refreshTokenSchema = z.object({
   refresh_token: z.string().min(1, "Refresh token là bắt buộc"),
 });
+
+export const forgotPasswordSchema = z.object({
+  email: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .email("Email không hợp lệ"),
+});
+
+export const resetPasswordSchema = z.object({
+  email: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .email("Email không hợp lệ"),
+
+  otp: z
+    .string()
+    .length(6, "OTP phải gồm 6 số"),
+
+  new_password: z
+    .string()
+    .min(8, "Mật khẩu tối thiểu 8 ký tự")
+    .max(50),
+});

@@ -5,9 +5,12 @@ import {
   registerSchema,
   loginSchema,
   refreshTokenSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
 } from "../validations/auth.validation";
 import authMiddleware from "../middleware/auth.middleware";
 import authorize from "../middleware/role.middleware";
+
 const router = Router();
 
 router.post(
@@ -47,6 +50,12 @@ router.get(
 );
 
 router.post(
+  "/forgot-password",
+  validate(forgotPasswordSchema),
+  authController.forgotPassword
+);
+
+router.post(
   "/refresh",
   validate(refreshTokenSchema),
   authController.refresh
@@ -56,6 +65,11 @@ router.post(
   "/logout",
   authMiddleware,
   authController.logout
+);
+
+router.post(
+  "/reset-password",
+  authController.resetPassword
 );
 
 export default router;

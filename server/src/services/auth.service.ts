@@ -6,6 +6,8 @@ import {
   generateRefreshToken,
 } from "../utils/jwt";
 import jwt, { JwtPayload } from "jsonwebtoken";
+import { generateOTP } from "../utils/otp";
+import { sendOTPEmail } from "../utils/mail";
 interface RegisterData {
   full_name: string;
   email: string;
@@ -16,6 +18,15 @@ interface RegisterData {
 interface LoginData {
   email: string;
   password: string;
+}
+
+interface ResetPasswordData {
+  email: string;
+  otp: string;
+  new_password: string;
+}
+interface ForgotPasswordData {
+  email: string;
 }
 class AuthService {
   async register(data: RegisterData) {
@@ -167,6 +178,161 @@ async getProfile(userId: number) {
 async logout() {
   return {
     message: "Logout successful",
+  };
+}
+async forgotPassword(
+  data: ForgotPasswordData
+) {
+  // Kiểm tra email có tồn tại
+  const userResult = await pool.query(
+    `
+      SELECT user_id, email
+      FROM users
+      WHERE email = $1
+    `,
+    [data.email]
+  );
+
+  if (userResult.rows.length === 0) {
+    throw new AppError(
+      "Email không tồn tại",
+      404
+    );
+  }
+
+  const user = userResult.rows[0];
+
+  // Sinh OTP
+  const otp = generateOTP();
+
+  // OTP hết hạn sau 5 phút
+  const expiresAt = new Date(
+    Date.now() + 5 * 60 * 1000
+  );
+
+  // Xóa OTP cũ nếu có
+  await pool.query(
+    `
+      DELETE FROM password_resets
+      WHERE user_id = $1
+    `,
+    [user.user_id]
+  );
+
+  // Lưu OTP mới
+  await pool.query(
+    `
+      INSERT INTO password_resets (
+        user_id,
+        otp,
+        expires_at
+      )
+      VALUES ($1, $2, $3)
+    `,
+    [
+      user.user_id,
+      otp,
+      expiresAt,
+    ]
+  );
+
+  // Gửi email
+  await sendOTPEmail(
+    user.email,
+    otp
+  );
+
+  return {
+    message:
+      "OTP đã được gửi tới email của bạn",
+  };
+}
+
+async resetPassword(
+  data: ResetPasswordData
+) {
+  // 1. Kiểm tra email
+  const userResult = await pool.query(
+    `
+      SELECT user_id
+      FROM users
+      WHERE email = $1
+    `,
+    [data.email]
+  );
+
+  if (userResult.rows.length === 0) {
+    throw new AppError(
+      "Email không tồn tại",
+      404
+    );
+  }
+
+  const user = userResult.rows[0];
+
+  // 2. Lấy OTP
+  const otpResult = await pool.query(
+    `
+      SELECT *
+      FROM password_resets
+      WHERE user_id = $1
+    `,
+    [user.user_id]
+  );
+
+  if (otpResult.rows.length === 0) {
+    throw new AppError(
+      "OTP không hợp lệ",
+      400
+    );
+  }
+
+  const otpData = otpResult.rows[0];
+
+  // 3. Kiểm tra OTP
+  if (otpData.otp !== data.otp) {
+    throw new AppError(
+      "OTP không đúng",
+      400
+    );
+  }
+
+  // 4. Kiểm tra hết hạn
+  if (new Date() > otpData.expires_at) {
+    throw new AppError(
+      "OTP đã hết hạn",
+      400
+    );
+  }
+
+  // 5. Hash password mới
+  const hashedPassword =
+    await bcrypt.hash(data.new_password, 10);
+
+  // 6. Update password
+  await pool.query(
+    `
+      UPDATE users
+      SET password_hash = $1
+      WHERE user_id = $2
+    `,
+    [
+      hashedPassword,
+      user.user_id,
+    ]
+  );
+
+  // 7. Xóa OTP
+  await pool.query(
+    `
+      DELETE FROM password_resets
+      WHERE user_id = $1
+    `,
+    [user.user_id]
+  );
+
+  return {
+    message: "Đặt lại mật khẩu thành công",
   };
 }
 }
