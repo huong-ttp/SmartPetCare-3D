@@ -69,4 +69,23 @@ export const vaccinationService = {
     const res = await axiosClient.post<PetVaccination>("/vaccinations", dto);
     return res.data;
   },
+
+  /** Lấy các vắc xin sắp đến hạn (Mock: trả về các bản ghi có next_due_date trong tương lai gần) */
+  async getDueSoonVaccinations(): Promise<PetVaccination[]> {
+    if (USE_MOCK) {
+      // Giả lập trả về 1-2 vắc xin sắp đến hạn
+      const today = new Date();
+      const in30Days = new Date(today);
+      in30Days.setDate(today.getDate() + 30);
+      
+      const dueSoon = MOCK_PET_VACCINATIONS.filter(v => {
+        if (!v.next_due_date) return false;
+        const dueDate = new Date(v.next_due_date);
+        return dueDate >= today && dueDate <= in30Days;
+      });
+      return mockDelay(dueSoon);
+    }
+    const res = await axiosClient.get<PetVaccination[]>("/vaccinations/due-soon");
+    return res.data;
+  },
 };

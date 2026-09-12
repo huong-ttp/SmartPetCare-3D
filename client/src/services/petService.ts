@@ -14,23 +14,36 @@ function mockDelay<T>(data: T, ms = 400): Promise<T> {
   return new Promise((resolve) => setTimeout(() => resolve(data), ms));
 }
 
+// Mutable mock store (phản ánh thay đổi trong runtime)
+let _mockPets: Pet[] = [...MOCK_PETS];
+
 export const petService = {
   /** Lấy tất cả thú cưng của owner hiện tại */
   async getMyPets(): Promise<Pet[]> {
-    if (USE_MOCK) return mockDelay(MOCK_PETS);
+    if (USE_MOCK) return mockDelay([..._mockPets]);
     const res = await axiosClient.get<Pet[]>("/pets");
     return res.data;
+  },
+
+  /** Alias: getMyPets (cho phép gọi petService.list()) */
+  async list(): Promise<Pet[]> {
+    return petService.getMyPets();
   },
 
   /** Lấy chi tiết một thú cưng */
   async getPetById(id: string): Promise<Pet> {
     if (USE_MOCK) {
-      const pet = MOCK_PETS.find((p) => p.id === id);
-      if (!pet) throw new Error("Thú cưng không tồn tại.");
-      return mockDelay(pet);
+      const pet = _mockPets.find((p) => p.id === id);
+      if (!pet) throw new Error("NOT_FOUND");
+      return mockDelay({ ...pet });
     }
     const res = await axiosClient.get<Pet>(`/pets/${id}`);
     return res.data;
+  },
+
+  /** Alias: getPetById (cho phép gọi petService.getById(id)) */
+  async getById(id: string): Promise<Pet> {
+    return petService.getPetById(id);
   },
 
   /** Tạo thú cưng mới */
@@ -43,10 +56,16 @@ export const petService = {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
+      _mockPets = [..._mockPets, newPet];
       return mockDelay(newPet);
     }
     const res = await axiosClient.post<Pet>("/pets", dto);
     return res.data;
+  },
+
+  /** Alias: createPet */
+  async create(dto: CreatePetDTO): Promise<Pet> {
+    return petService.createPet(dto);
   },
 
   /**
@@ -55,17 +74,32 @@ export const petService = {
    */
   async updatePet(id: string, dto: UpdatePetDTO): Promise<Pet> {
     if (USE_MOCK) {
-      const pet = MOCK_PETS.find((p) => p.id === id);
-      if (!pet) throw new Error("Thú cưng không tồn tại.");
-      return mockDelay({ ...pet, ...dto, updated_at: new Date().toISOString() });
+      const idx = _mockPets.findIndex((p) => p.id === id);
+      if (idx === -1) throw new Error("NOT_FOUND");
+      const updated = { ..._mockPets[idx], ...dto, updated_at: new Date().toISOString() };
+      _mockPets = _mockPets.map((p) => (p.id === id ? updated : p));
+      return mockDelay(updated);
     }
     const res = await axiosClient.patch<Pet>(`/pets/${id}`, dto);
     return res.data;
   },
 
+  /** Alias: updatePet */
+  async update(id: string, dto: UpdatePetDTO): Promise<Pet> {
+    return petService.updatePet(id, dto);
+  },
+
   /** Xóa thú cưng */
   async deletePet(id: string): Promise<void> {
-    if (USE_MOCK) return mockDelay(undefined);
+    if (USE_MOCK) {
+      _mockPets = _mockPets.filter((p) => p.id !== id);
+      return mockDelay(undefined);
+    }
     await axiosClient.delete(`/pets/${id}`);
+  },
+
+  /** Alias: deletePet (cho phép gọi petService.delete(id)) */
+  async delete(id: string): Promise<void> {
+    return petService.deletePet(id);
   },
 };
