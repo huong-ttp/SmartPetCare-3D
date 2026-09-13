@@ -4,6 +4,7 @@ import helmet from "helmet";
 import morgan from "morgan";
 import routes from "./src/routes";
 import errorHandler from "./src/middleware/error.middleware";
+import petRoute from "./src/routes/pet.routes";
 const app = express();
 
 // Security
@@ -29,5 +30,6 @@ app.use("/api", routes);
 
 app.use(errorHandler);
 
+app.use("/api/pets", petRoute);
 
 export default app;
