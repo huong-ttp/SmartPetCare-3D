@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import { Request, Response, NextFunction } from "express";
 import petService from "../services/pet.service";
 
 class PetController {
@@ -18,6 +18,44 @@ class PetController {
     });
   }
 
+  async getMyPets(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
+  try {
+    const pets = await petService.getPetsByOwner(
+      req.user.user_id
+    );
+
+    return res.json({
+      success: true,
+      data: pets,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async getPetById(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const pet = await petService.getPetById(
+      Number(req.params.id),
+      req.user.user_id
+    );
+
+    return res.json({
+      success: true,
+      data: pet,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
 }
 
 export default new PetController();

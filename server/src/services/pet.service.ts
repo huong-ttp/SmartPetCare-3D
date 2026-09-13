@@ -108,6 +108,52 @@ class PetService {
 
   return result.rows[0];
 }
+
+async getPetsByOwner(ownerId: number) {
+  const result = await pool.query(
+    `
+    SELECT *
+    FROM pets
+    WHERE owner_id = $1
+    ORDER BY created_at DESC;
+    `,
+    [ownerId]
+  );
+
+  return result.rows;
+}
+
+async getPetById(
+  petId: number,
+  ownerId: number
+) {
+  const result = await pool.query(
+    `
+    SELECT *
+    FROM pets
+    WHERE pet_id = $1
+    `,
+    [petId]
+  );
+
+  if (result.rows.length === 0) {
+    throw new AppError(
+      "Pet not found",
+      404
+    );
+  }
+
+  const pet = result.rows[0];
+
+  if (pet.owner_id !== ownerId) {
+    throw new AppError(
+      "You do not have permission to access this pet",
+      403
+    );
+  }
+
+  return pet;
+}
 }
 
 export default new PetService();

@@ -10,4 +10,16 @@ router.post(
   petController.createPet
 );
 
+router.get(
+  "/",
+  authMiddleware,
+  petController.getMyPets
+);
+
+router.get(
+  "/:id",
+  authMiddleware,
+  petController.getPetById
+);
+
 export default router;
