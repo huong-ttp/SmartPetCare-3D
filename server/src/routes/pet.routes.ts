@@ -32,4 +32,10 @@ router.put(
   validate(updatePetSchema),
   petController.updatePet
 );
+
+router.delete(
+  "/:id",
+  authMiddleware,
+  petController.deletePet
+);
 export default router;

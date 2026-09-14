@@ -219,6 +219,28 @@ async updatePet(
 
   return result.rows[0];
 }
+
+async deletePet(
+  petId: number,
+  ownerId: number
+) {
+  await this.getPetById(
+    petId,
+    ownerId
+  );
+
+  await pool.query(
+    `
+    DELETE FROM pets
+    WHERE pet_id = $1
+    `,
+    [petId]
+  );
+
+  return {
+    message: "Pet deleted successfully",
+  };
+}
 }
 
 export default new PetService();
