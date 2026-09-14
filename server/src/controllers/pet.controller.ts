@@ -56,6 +56,27 @@ async getPetById(
     next(error);
   }
 }
+
+async updatePet(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const pet = await petService.updatePet(
+      Number(req.params.id),
+      req.user.user_id,
+      req.body
+    );
+
+    return res.json({
+      success: true,
+      data: pet,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
 }
 
 export default new PetController();

@@ -1,7 +1,11 @@
 import { Router } from "express";
 import petController from "../controllers/pet.controller";
 import authMiddleware from "../middleware/auth.middleware";
+import validate from "../middleware/validate.middleware";
 
+import {
+  updatePetSchema,
+} from "../validations/pet.validation";
 const router = Router();
 
 router.post(
@@ -22,4 +26,10 @@ router.get(
   petController.getPetById
 );
 
+router.put(
+  "/:id",
+  authMiddleware,
+  validate(updatePetSchema),
+  petController.updatePet
+);
 export default router;
