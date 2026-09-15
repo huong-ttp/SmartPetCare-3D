@@ -7,6 +7,7 @@ import errorHandler from "./src/middleware/error.middleware";
 import petRoute from "./src/routes/pet.routes";
 import medicalRecordRoutes from "./src/routes/medicalRecord.route";
 import healthLogRoutes from "./src/routes/healthLog.routes";
+import appointmentRoutes from "./src/routes/appointment.routes";
 const app = express();
 
 // Security
@@ -40,6 +41,11 @@ app.use(
 app.use(
   "/api/health-logs",
   healthLogRoutes
+);
+
+app.use(
+  "/api/appointments",
+  appointmentRoutes
 );
 
 app.use(errorHandler);
