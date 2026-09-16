@@ -17,6 +17,12 @@ router.get(
 );
 
 router.get(
+  "/available-slots",
+  authMiddleware,
+  appointmentController.getAvailableSlots
+);
+
+router.get(
   "/:id",
   authMiddleware,
   appointmentController.getAppointmentById

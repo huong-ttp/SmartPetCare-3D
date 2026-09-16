@@ -38,9 +38,14 @@ export const getAppointmentsByOwner = async (
     const ownerId = req.user!.user_id;
 
     const appointments =
-      await appointmentService.getAppointmentsByOwner(
-        ownerId
-      );
+  await appointmentService.getAppointmentsByOwner(
+    ownerId,
+    {
+      status: req.query.status as string,
+      from: req.query.from as string,
+      to: req.query.to as string,
+    }
+  );
 
     res.json({
       success: true,
@@ -112,12 +117,49 @@ export const cancelAppointment = async (
   } catch (error) {
     next(error);
   }
+
+  
+};
+
+export const getAvailableSlots = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+
+) => {
+
+  try {
+    
+    const ownerId = req.user!.user_id;
+
+    const slots =
+      await appointmentService.getAvailableSlots(
+        ownerId,
+        {
+          pet_id: Number(req.query.pet_id),
+          date: String(req.query.date)
+        }
+      );
+
+    res.json({
+      success: true,
+      data: slots
+    });
+
+  } catch (error) {
+    next(error);
+  }
+
+
 };
 export default {
   createAppointment,
    getAppointmentsByOwner,
    getAppointmentById,
    cancelAppointment,
+   getAvailableSlots
 
 };
+
+
 

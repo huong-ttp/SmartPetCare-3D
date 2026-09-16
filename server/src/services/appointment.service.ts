@@ -14,6 +14,16 @@ interface CancelAppointmentData {
   cancel_reason: string;
 }
 
+interface AvailableSlotQuery {
+  pet_id: number;
+  date: string;
+}
+
+interface AppointmentFilter {
+  status?: string;
+  from?: string;
+  to?: string;
+}
 class AppointmentService {
     async createAppointment(
   ownerId: number,
@@ -55,13 +65,16 @@ const existed = await pool.query(
 `
 SELECT *
 FROM appointments
-WHERE appointment_date = $1
-AND start_time = $2
-AND status <> 'cancelled';
+WHERE
+    pet_id = $1
+    AND appointment_date = $2
+    AND start_time = $3
+    AND status <> 'cancelled';
 `,
 [
-    data.appointment_date,
-    data.start_time
+  data.pet_id,
+  data.appointment_date,
+  data.start_time
 ]
 );
 if (existed.rowCount! > 0) {
@@ -111,11 +124,11 @@ return result.rows[0];
 }
 
 async getAppointmentsByOwner(
-  ownerId: number
+  ownerId: number,
+  filter: AppointmentFilter
 ) {
 
-  const result = await pool.query(
-    `
+  let query = `
     SELECT
       a.*,
       p.name AS pet_name,
@@ -126,12 +139,36 @@ async getAppointmentsByOwner(
     JOIN services s
       ON a.service_id = s.service_id
     WHERE p.owner_id = $1
+  `;
+
+  const values: any[] = [ownerId];
+  let index = 2;
+
+  if (filter.status) {
+    query += ` AND a.status = $${index}`;
+    values.push(filter.status);
+    index++;
+  }
+
+  if (filter.from) {
+    query += ` AND a.appointment_date >= $${index}`;
+    values.push(filter.from);
+    index++;
+  }
+
+  if (filter.to) {
+    query += ` AND a.appointment_date <= $${index}`;
+    values.push(filter.to);
+    index++;
+  }
+
+  query += `
     ORDER BY
       a.appointment_date DESC,
       a.start_time DESC;
-    `,
-    [ownerId]
-  );
+  `;
+
+  const result = await pool.query(query, values);
 
   return result.rows;
 }
@@ -164,10 +201,10 @@ async getAppointmentById(
 
   if (result.rowCount === 0) {
     throw new AppError(
-        "Appointment not found",
-        404
+      "Appointment not found",
+      404
     );
-}
+  }
 
   return result.rows[0];
 }
@@ -237,6 +274,60 @@ const updateResult = await pool.query(
 );
 
 return updateResult.rows[0];
+}
+
+async getAvailableSlots(
+  ownerId: number,
+  query: AvailableSlotQuery
+) {
+
+  // Kiểm tra pet thuộc owner
+  await petService.getPetById(
+    query.pet_id,
+    ownerId
+  );
+
+  // Lấy các slot đã đặt của pet trong ngày
+  const booked = await pool.query(
+    `
+    SELECT start_time
+    FROM appointments
+    WHERE
+      pet_id = $1
+      AND appointment_date = $2
+      AND status <> 'cancelled';
+    `,
+    [
+      query.pet_id,
+      query.date
+    ]
+  );
+
+  const bookedTimes = booked.rows.map(
+    row => row.start_time.slice(0, 5)
+  );
+
+  const allSlots = [
+    "08:00",
+    "08:30",
+    "09:00",
+    "09:30",
+    "10:00",
+    "10:30",
+    "13:00",
+    "13:30",
+    "14:00",
+    "14:30",
+    "15:00",
+    "15:30",
+    "16:00",
+    "16:30"
+  ];
+
+  return allSlots.map(slot => ({
+    time: slot,
+    available: !bookedTimes.includes(slot)
+  }));
 }
 }
 export default new AppointmentService();
