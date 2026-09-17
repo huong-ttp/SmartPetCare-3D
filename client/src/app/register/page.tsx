@@ -81,8 +81,8 @@ export default function RegisterPage() {
 
     if (!formData.password) {
       newErrors.password = "Mật khẩu không được để trống";
-    } else if (formData.password.length < 6) {
-      newErrors.password = "Mật khẩu phải có ít nhất 6 ký tự";
+    } else if (formData.password.length < 8) {
+      newErrors.password = "Mật khẩu phải có ít nhất 8 ký tự";
     }
 
     if (formData.password !== formData.confirmPassword) {
@@ -112,11 +112,11 @@ export default function RegisterPage() {
         // avatar_url: avatarUrl 
       });
       
-      setSuccessMsg("Đăng ký thành công! Đang chuyển hướng đến trang xác thực...");
+      setSuccessMsg("Đăng ký thành công! Đang chuyển hướng đến trang đăng nhập...");
       
-      // Chuyển hướng sang trang verify-otp kèm email
+      // Chuyển hướng sang trang login (tài khoản được kích hoạt ngay)
       setTimeout(() => {
-        router.push(`/verify-otp?email=${encodeURIComponent(formData.email)}`);
+        router.push(`/login`);
       }, 1500);
       
     } catch (error: any) {

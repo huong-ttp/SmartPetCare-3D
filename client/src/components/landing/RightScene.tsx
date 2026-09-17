@@ -2,7 +2,7 @@
 
 import React, { useRef, useEffect } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { Environment, SoftShadows } from "@react-three/drei";
+import { Environment, ContactShadows } from "@react-three/drei";
 import { EffectComposer, Bloom } from "@react-three/postprocessing";
 import * as THREE from "three";
 import { useFloat } from "@/hooks/useFloat";
@@ -138,7 +138,7 @@ function ClinicScene() {
 export const RightScene: React.FC = () => {
   return (
     <Canvas
-      shadows
+       shadows="percentage"
       camera={DEFAULT_CAMERA}
       dpr={RESPONSIVE_DPR}
       gl={{ 
@@ -167,7 +167,8 @@ export const RightScene: React.FC = () => {
       />
 
       <Environment preset="city" />
-      <SoftShadows size={20} samples={16} focus={0.5} />
+      {/* Replaced SoftShadows with ContactShadows - fixes shader compatibility issue */}
+      <ContactShadows position={[0, -1.2, 0]} opacity={0.35} scale={30} blur={1.5} far={8} />
       
       <ClinicScene />
       <CameraController />

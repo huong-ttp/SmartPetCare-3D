@@ -1,6 +1,6 @@
 import pool from "../config/database.config";
 import AppError from "../utils/AppError";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 
 interface ChangePasswordData {
   current_password: string;

@@ -30,8 +30,8 @@ export const authService = {
   /** Owner tự đăng ký — sau đó cần xác thực OTP */
   async register(dto: RegisterDTO): Promise<{ message: string }> {
     if (USE_MOCK) return mockDelay({ message: "OTP đã gửi đến email của bạn." });
-    const res = await axiosClient.post<{ message: string }>("/auth/register", dto);
-    return res.data;
+    const res = await axiosClient.post<{ success: boolean; data: { message: string } }>("/auth/register", dto);
+    return res.data.data;
   },
 
   /** Xác thực OTP để kích hoạt tài khoản (is_active: false → true) */
@@ -48,8 +48,11 @@ export const authService = {
       if (!user) throw new Error("Email không tồn tại hoặc tài khoản chưa được kích hoạt.");
       return mockDelay({ access_token: "mock_token_" + user.id, user });
     }
-    const res = await axiosClient.post<AuthResponse>("/auth/login", dto);
-    return res.data;
+    const res = await axiosClient.post<{ success: boolean; data: AuthResponse }>(
+      "/auth/login",
+      dto
+    );
+    return res.data.data;
   },
 
   /** Lấy profile của user hiện tại */
