@@ -59,12 +59,76 @@ export const markAsRead = async (
     next(error);
   }
 
+};
 
+export const getNotifications = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+
+  try {
+
+    const userId = req.user!.user_id;
+
+    const notifications =
+      await notificationService.getNotifications(
+        userId,
+        {
+          unread:
+            req.query.unread === "true",
+
+          type:
+            req.query.type as string,
+
+          limit:
+            req.query.limit
+              ? Number(req.query.limit)
+              : undefined
+        }
+      );
+
+    res.json({
+      success: true,
+      data: notifications
+    });
+
+  } catch (error) {
+    next(error);
+  }
+
+};
+
+export const markAllAsRead = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+
+  try {
+
+    const userId = req.user!.user_id;
+
+    const result =
+      await notificationService.markAllAsRead(
+        userId
+      );
+
+    res.json({
+      success: true,
+      ...result
+    });
+
+  } catch (error) {
+    next(error);
+  }
 
 };
 
 export default {
   getReminderNotifications,
-  markAsRead
+  getNotifications,
+  markAsRead,
+  markAllAsRead
 
 };

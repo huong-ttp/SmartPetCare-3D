@@ -11,11 +11,21 @@ router.get(
 );
 
 router.put(
+  "/read-all",
+  authMiddleware,
+  notificationController.markAllAsRead
+);
+
+router.put(
   "/:id/read",
   authMiddleware,
   notificationController.markAsRead
 );
 
-
+router.get(
+  "/",
+  authMiddleware,
+  notificationController.getNotifications
+);
 
 export default router;
