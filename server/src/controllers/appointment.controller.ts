@@ -1,14 +1,165 @@
 import { Request, Response, NextFunction } from "express";
+import appointmentService from "../services/appointment.service";
 
-class AppointmentController {
-    async getMyAppointments(req: Request, res: Response, next: NextFunction) {
-        try {
-            // TODO: Query appointments từ database theo req.user.user_id
-            return res.json([]);
-        } catch (error) {
-            next(error);
-        }
+export const createAppointment = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+
+    const ownerId = req.user!.user_id;
+
+    const appointment =
+      await appointmentService.createAppointment(
+        ownerId,
+        req.body
+      );
+
+    res.status(201).json({
+      success: true,
+      data: appointment,
+    });
+
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+export const getAppointmentsByOwner = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+
+  try {
+
+    const ownerId = req.user!.user_id;
+
+    const appointments =
+  await appointmentService.getAppointmentsByOwner(
+    ownerId,
+    {
+      status: req.query.status as string,
+      from: req.query.from as string,
+      to: req.query.to as string,
     }
-}
+  );
 
-export default new AppointmentController();
+    res.json({
+      success: true,
+      data: appointments
+    });
+
+  } catch (error) {
+    next(error);
+  }
+
+};
+
+export const getAppointmentById = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+
+  try {
+
+    const ownerId = req.user!.user_id;
+
+    const appointmentId = Number(
+      req.params.id
+    );
+
+    const appointment =
+      await appointmentService.getAppointmentById(
+        ownerId,
+        appointmentId
+      );
+
+    res.json({
+      success: true,
+      data: appointment
+    });
+
+  } catch (error) {
+    next(error);
+  }
+
+};
+
+export const cancelAppointment = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+
+    const ownerId = req.user!.user_id;
+
+    const appointmentId = Number(
+      req.params.id
+    );
+
+    const appointment =
+      await appointmentService.cancelAppointment(
+        ownerId,
+        appointmentId,
+        req.body
+      );
+
+    res.json({
+      success: true,
+      data: appointment,
+    });
+
+  } catch (error) {
+    next(error);
+  }
+
+  
+};
+
+export const getAvailableSlots = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+
+) => {
+
+  try {
+    
+    const ownerId = req.user!.user_id;
+
+    const slots =
+      await appointmentService.getAvailableSlots(
+        ownerId,
+        {
+          pet_id: Number(req.query.pet_id),
+          date: String(req.query.date)
+        }
+      );
+
+    res.json({
+      success: true,
+      data: slots
+    });
+
+  } catch (error) {
+    next(error);
+  }
+
+
+};
+export default {
+  createAppointment,
+   getAppointmentsByOwner,
+   getAppointmentById,
+   cancelAppointment,
+   getAvailableSlots
+
+};
+
+
+

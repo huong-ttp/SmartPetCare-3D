@@ -56,6 +56,47 @@ async getPetById(
     next(error);
   }
 }
+
+async updatePet(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const pet = await petService.updatePet(
+      Number(req.params.id),
+      req.user.user_id,
+      req.body
+    );
+
+    return res.json({
+      success: true,
+      data: pet,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async deletePet(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const result = await petService.deletePet(
+      Number(req.params.id),
+      req.user.user_id
+    );
+
+    return res.json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
 }
 
 export default new PetController();

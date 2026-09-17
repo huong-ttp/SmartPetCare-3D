@@ -3,6 +3,10 @@ dotenv.config();
 import app from "./app";
 import pool from "./src/config/database.config";
 import { sendTestEmail } from "./src/utils/mail";
+import medicalRecordRoutes from "./src/routes/medicalRecord.route";
+import serviceRoutes from "./src/routes/service.routes";
+import invoiceRoutes from "./src/routes/invoice.routes";
+
 async function connectDatabase() {
   
   try {
@@ -25,6 +29,20 @@ connectDatabase().then(() => {
     
     console.log(`Server running at http://localhost:${PORT}`);
   });
+
+  app.use(
+  "/api/medical-records",
+  medicalRecordRoutes
+);
   
+app.use(
+  "/api/services",
+  serviceRoutes
+);
+
+app.use(
+  "/api/invoices",
+  invoiceRoutes
+);
 });
 

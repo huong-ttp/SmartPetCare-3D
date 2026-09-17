@@ -4,7 +4,7 @@ import healthRoutes from "./health.routes";
 import authRoutes from "./auth.routes";
 import petRoutes from "./pet.routes";
 import appointmentRoutes from "./appointment.routes";
-import medicalRecordRoutes from "./medical-record.routes";
+import medicalRecordRoutes from "./medicalRecord.route";
 import paymentRoutes from "./payment.routes";
 import dashboardRoutes from "./dashboard.routes";
 import userRoutes from "./user.routes";
