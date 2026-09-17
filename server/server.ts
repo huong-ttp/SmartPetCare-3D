@@ -6,6 +6,7 @@ import { sendTestEmail } from "./src/utils/mail";
 import medicalRecordRoutes from "./src/routes/medicalRecord.route";
 import serviceRoutes from "./src/routes/service.routes";
 import invoiceRoutes from "./src/routes/invoice.routes";
+import paymentRoutes from "./src/routes/payment.routes";
 
 async function connectDatabase() {
   
@@ -44,5 +45,10 @@ app.use(
   "/api/invoices",
   invoiceRoutes
 );
+
+app.use(
+  "/api/payments",
+  paymentRoutes
+  );
 });
 
