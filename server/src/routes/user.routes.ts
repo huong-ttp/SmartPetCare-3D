@@ -34,4 +34,9 @@ router.put(
   userController.changePassword
 );
 
+router.get(
+  "/profile",
+  authMiddleware,
+  userController.getProfile
+);
 export default router;
