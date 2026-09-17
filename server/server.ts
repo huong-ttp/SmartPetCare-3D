@@ -7,6 +7,7 @@ import medicalRecordRoutes from "./src/routes/medicalRecord.route";
 import serviceRoutes from "./src/routes/service.routes";
 import invoiceRoutes from "./src/routes/invoice.routes";
 import paymentRoutes from "./src/routes/payment.routes";
+import notificationRoutes from "./src/routes/notification.routes";
 
 async function connectDatabase() {
   
@@ -50,5 +51,12 @@ app.use(
   "/api/payments",
   paymentRoutes
   );
+
+  app.use(
+  "/api/notifications",
+   notificationRoutes
+  );
 });
+
+
 
