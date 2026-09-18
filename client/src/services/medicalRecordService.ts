@@ -17,21 +17,34 @@ function mockDelay<T>(data: T, ms = 400): Promise<T> {
 }
 
 export const medicalRecordService = {
-  async getByPetId(petId: string): Promise<MedicalRecord[]> {
-    if (USE_MOCK) return mockDelay(MOCK_MEDICAL_RECORDS.filter((r) => String(r.pet_id) === String(petId)));
+  async listByPet(petId: string | number): Promise<MedicalRecord[]> {
+    if (USE_MOCK) {
+      return mockDelay(
+        MOCK_MEDICAL_RECORDS.filter((r) => String(r.pet_id) === String(petId))
+      );
+    }
     const res = await axiosClient.get<any>(`/medical-records/pet/${petId}`);
     const rawList = Array.isArray(res.data) ? res.data : (res.data?.data ?? []);
     return rawList;
   },
 
-  async getById(id: string): Promise<MedicalRecord> {
+  // Alias for backward compatibility
+  async getByPetId(petId: string | number): Promise<MedicalRecord[]> {
+    return this.listByPet(petId);
+  },
+
+  async getById(id: string | number): Promise<MedicalRecord> {
     if (USE_MOCK) {
-      const r = MOCK_MEDICAL_RECORDS.find((r) => r.id === id);
+      const r = MOCK_MEDICAL_RECORDS.find(
+        (r) => String(r.id) === String(id) || String(r.record_id) === String(id)
+      );
       if (!r) throw new Error("Hồ sơ không tồn tại.");
       return mockDelay(r);
     }
-    const res = await axiosClient.get<MedicalRecord>(`/medical-records/${id}`);
-    return res.data;
+    const res = await axiosClient.get<any>(`/medical-records/${id}`);
+    const data = res.data?.data ?? res.data;
+    if (!data) throw new Error("Hồ sơ không tồn tại.");
+    return data;
   },
 
   async create(dto: CreateMedicalRecordDTO): Promise<MedicalRecord> {

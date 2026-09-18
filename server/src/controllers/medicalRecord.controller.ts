@@ -27,6 +27,30 @@ export const getMedicalRecordsByPet = async (
   }
 };
 
+export const getMedicalRecordById = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const ownerId = req.user!.user_id;
+    const recordId = Number(req.params.id);
+
+    const record = await medicalRecordService.getMedicalRecordById(
+      ownerId,
+      recordId
+    );
+
+    res.json({
+      success: true,
+      data: record,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export default {
   getMedicalRecordsByPet,
+  getMedicalRecordById,
 };

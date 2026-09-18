@@ -10,4 +10,10 @@ router.get(
   medicalRecordController.getMedicalRecordsByPet
 );
 
+router.get(
+  "/:id",
+  authMiddleware,
+  medicalRecordController.getMedicalRecordById
+);
+
 export default router;
