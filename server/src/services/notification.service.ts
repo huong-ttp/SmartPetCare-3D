@@ -3,7 +3,7 @@ import AppError from "../utils/AppError";
 
 interface NotificationFilter {
   unread?: boolean;
-  type?: string;
+  type?: string | string[];
   limit?: number;
 }
 
@@ -18,6 +18,8 @@ class notificationService {
       n.notification_id,
       n.pet_id,
       p.name AS pet_name,
+      p.species AS pet_species,
+      p.avatar_url AS pet_avatar,
       n.type,
       n.title,
       n.content,
@@ -44,13 +46,25 @@ class notificationService {
   let index = 2;
 
   if (filter.type) {
+    if (Array.isArray(filter.type)) {
+      query += `
+        AND n.type = ANY($${index})
+      `;
+      values.push(filter.type);
+      index++;
+    } else {
+      query += `
+        AND n.type = $${index}
+      `;
+      values.push(filter.type);
+      index++;
+    }
+  }
 
+  if (filter.unread) {
     query += `
-      AND n.type = $${index}
+      AND n.is_read = false
     `;
-
-    values.push(filter.type);
-    index++;
   }
 
   query += `

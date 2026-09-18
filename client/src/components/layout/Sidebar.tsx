@@ -13,7 +13,8 @@ import {
   Settings, 
   Users,
   Activity,
-  Sparkles
+  Sparkles,
+  BellRing
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 
@@ -28,6 +29,7 @@ const OWNER_NAV: NavItem[] = [
   { name: "Thú cưng", href: "/pets", icon: <Dog size={20} /> },
   { name: "Dịch vụ", href: "/services", icon: <Sparkles size={20} /> },
   { name: "Lịch hẹn", href: "/appointments", icon: <Calendar size={20} /> },
+  { name: "Nhắc lịch", href: "/reminders", icon: <BellRing size={20} /> },
   { name: "Hóa đơn", href: "/invoices", icon: <CreditCard size={20} /> },
 ];
 

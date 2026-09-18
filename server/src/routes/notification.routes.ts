@@ -16,7 +16,19 @@ router.put(
   notificationController.markAllAsRead
 );
 
+router.patch(
+  "/read-all",
+  authMiddleware,
+  notificationController.markAllAsRead
+);
+
 router.put(
+  "/:id/read",
+  authMiddleware,
+  notificationController.markAsRead
+);
+
+router.patch(
   "/:id/read",
   authMiddleware,
   notificationController.markAsRead

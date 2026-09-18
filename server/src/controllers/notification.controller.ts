@@ -11,11 +11,18 @@ export const getReminderNotifications = async (
 
     const userId = req.user!.user_id;
 
+    let typeParam = req.query.type as any;
+    if (typeof typeParam === "string" && typeParam.includes(",")) {
+      typeParam = typeParam.split(",").map((t: string) => t.trim());
+    }
+    const unread = req.query.unread === "true" ? true : undefined;
+
     const reminders =
       await notificationService.getReminderNotifications(
         userId,
         {
-          type: req.query.type as string
+          type: typeParam,
+          unread
         }
       );
 

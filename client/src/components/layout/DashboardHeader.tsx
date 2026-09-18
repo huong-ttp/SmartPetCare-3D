@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import { Bell, Search, LogOut, User as UserIcon } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import Avatar from "@/components/ui/Avatar";
@@ -41,10 +42,15 @@ export const DashboardHeader: React.FC = () => {
 
       <div className="flex items-center gap-4">
         {/* Notification Bell */}
-        <button className="relative p-2 text-slate-400 hover:text-slate-600 transition-colors rounded-full hover:bg-slate-50">
+        <Link
+          href="/reminders"
+          title="Trung tâm nhắc lịch"
+          aria-label="Xem nhắc lịch"
+          className="relative p-2 text-slate-500 hover:text-[#0EA5B7] transition-colors rounded-full hover:bg-slate-100"
+        >
           <Bell size={20} />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500 border-2 border-white" />
-        </button>
+          <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500 ring-2 ring-white animate-pulse" />
+        </Link>
 
         <div className="w-px h-6 bg-slate-200" />
 
