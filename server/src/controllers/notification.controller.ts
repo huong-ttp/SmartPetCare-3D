@@ -11,11 +11,18 @@ export const getReminderNotifications = async (
 
     const userId = req.user!.user_id;
 
+    let typeParam = req.query.type as any;
+    if (typeof typeParam === "string" && typeParam.includes(",")) {
+      typeParam = typeParam.split(",").map((t: string) => t.trim());
+    }
+    const unread = req.query.unread === "true" ? true : undefined;
+
     const reminders =
       await notificationService.getReminderNotifications(
         userId,
         {
-          type: req.query.type as string
+          type: typeParam,
+          unread
         }
       );
 
@@ -71,20 +78,34 @@ export const getNotifications = async (
 
     const userId = req.user!.user_id;
 
+    let typeParam = req.query.type as any;
+    if (typeof typeParam === "string" && typeParam.includes(",")) {
+      typeParam = typeParam.split(",").map((t: string) => t.trim());
+    }
+
+    const unread =
+      req.query.unread === "true"
+        ? true
+        : req.query.unread === "false"
+        ? false
+        : undefined;
+
+    const limit = req.query.limit ? Number(req.query.limit) : undefined;
+    const page = req.query.page ? Number(req.query.page) : undefined;
+    const offset = req.query.offset
+      ? Number(req.query.offset)
+      : page && limit
+      ? (page - 1) * limit
+      : undefined;
+
     const notifications =
       await notificationService.getNotifications(
         userId,
         {
-          unread:
-            req.query.unread === "true",
-
-          type:
-            req.query.type as string,
-
-          limit:
-            req.query.limit
-              ? Number(req.query.limit)
-              : undefined
+          unread,
+          type: typeParam,
+          limit,
+          offset,
         }
       );
 

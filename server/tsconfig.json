@@ -3,7 +3,7 @@
     /* Project */
     "target": "ES2022",
     "module": "CommonJS",
-    "moduleResolution": "Node",
+
 
     /* Directory */
     "rootDir": ".",

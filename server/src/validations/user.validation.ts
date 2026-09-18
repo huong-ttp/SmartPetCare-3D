@@ -29,19 +29,29 @@ export const createUserSchema = z.object({
 export const updateUserSchema =
   createUserSchema.partial();
 
-  export const updateProfileSchema = z.object({
-  full_name: z.string().trim().min(2).max(100),
+export const updateProfileSchema = z.object({
+  full_name: z.string().trim().min(2, "Họ và tên tối thiểu 2 ký tự").max(100).optional(),
 
   phone: z
     .string()
-    .regex(/^0\d{9}$/, "Số điện thoại không hợp lệ")
-    .optional(),
+    .regex(/^0\d{9}$/, "Số điện thoại không hợp lệ (10 chữ số bắt đầu bằng 0)")
+    .optional()
+    .nullable()
+    .or(z.literal("")),
 
   address: z
     .string()
     .trim()
     .max(255)
-    .optional(),
+    .optional()
+    .nullable()
+    .or(z.literal("")),
+
+  avatar_url: z
+    .string()
+    .optional()
+    .nullable()
+    .or(z.literal("")),
 });
 
 export const changePasswordSchema = z.object({

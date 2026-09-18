@@ -9,8 +9,9 @@ import { petService } from "@/services/petService";
 import { appointmentService } from "@/services/appointmentService";
 // TODO: Re-enable notificationService when the backend exposes /api/notifications.
 // import { notificationService } from "@/services/notificationService";
-// TODO: Re-enable invoiceService when the backend exposes /api/invoices.
-// import { invoiceService } from "@/services/invoiceService";
+// TODO: Re-enable notificationService when the backend exposes /api/notifications.
+// import { notificationService } from "@/services/notificationService";
+import { invoiceService } from "@/services/invoiceService";
 import { useAuth } from "@/lib/auth-context";
 
 // Dynamic import for 3D component to disable SSR
@@ -45,15 +46,15 @@ export default function OwnerDashboardPage() {
 
       try {
         // Fetch all in parallel for performance
-        const [pets, appts] = await Promise.all([
+        const [pets, appts, invs] = await Promise.all([
           petService.getMyPets(),
-          appointmentService.getMyAppointments()
+          appointmentService.getMyAppointments(),
+          invoiceService.getMyInvoices().catch(() => []),
         ]);
 
         // Notifications API is not available yet, so leave the counter at zero.
         const notifs: { is_read: boolean }[] = [];
-        // Invoices API is not available yet, so leave the counter at zero.
-        const invoices: { status: string }[] = [];
+        const invoices = Array.isArray(invs) ? invs : [];
 
         setTotalPets(Array.isArray(pets) ? pets.length : 0);
 

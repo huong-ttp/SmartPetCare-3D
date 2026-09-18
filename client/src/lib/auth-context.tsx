@@ -28,6 +28,7 @@ interface AuthState {
 interface AuthContextValue extends AuthState {
   login: (token: string, user: User) => void;
   logout: () => void;
+  updateUser: (updatedUser: Partial<User>) => void;
   /** Route guard — redirect nếu chưa login hoặc sai role */
   requireRole: (role: UserRole | UserRole[]) => boolean;
 }
@@ -129,8 +130,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [state.isLoading, state.isAuthenticated, state.user, router]
   );
 
+  const updateUser = useCallback((updatedUser: Partial<User>) => {
+    setState((prev) => {
+      if (!prev.user) return prev;
+      const newUser: User = { ...prev.user, ...updatedUser };
+      localStorage.setItem(USER_KEY, JSON.stringify(newUser));
+      return { ...prev, user: newUser };
+    });
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ ...state, login, logout, requireRole }}>
+    <AuthContext.Provider value={{ ...state, login, logout, updateUser, requireRole }}>
       {children}
     </AuthContext.Provider>
   );

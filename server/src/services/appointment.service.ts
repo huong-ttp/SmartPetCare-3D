@@ -4,9 +4,10 @@ import AppError from "../utils/AppError";
 
 interface CreateAppointmentData {
   pet_id: number;
-  service_id: number;
+  service_id?: number | null;
   appointment_date: string;
   start_time: string;
+  end_time?: string;
   reason?: string;
   notes?: string;
 }
@@ -24,180 +25,234 @@ interface AppointmentFilter {
   from?: string;
   to?: string;
 }
+
+interface DoctorAppointmentFilter {
+  tab?: "today" | "upcoming" | "completed";
+}
+
+interface DoctorDashboard {
+  overview: {
+    todayAppointments: number;
+    upcomingAppointments: number;
+    completedAppointments: number;
+    patients: number;
+  };
+
+  todayAppointments: any[];
+}
 class AppointmentService {
-    async createAppointment(
-  ownerId: number,
-  data: CreateAppointmentData
-) {
+  async createAppointment(
+    ownerId: number,
+    data: CreateAppointmentData
+  ) {
     await petService.getPetById(
-  data.pet_id,
-  ownerId
-);
-const serviceResult = await pool.query(
-  `
-  SELECT *
-  FROM services
-  WHERE service_id = $1
-    AND is_active = true;
-  `,
-  [data.service_id]
-);
-if (serviceResult.rowCount === 0) {
-  throw new AppError(
-    "Service not found",
-    404
-);
-}
-const service = serviceResult.rows[0];
-const duration = service.duration_minutes;
-const start = new Date(
-  `1970-01-01T${data.start_time}`
-);
-
-start.setMinutes(
-  start.getMinutes() + duration
-);
-const endTime =
-  start
-    .toTimeString()
-    .slice(0,5);
-const existed = await pool.query(
-`
-SELECT *
-FROM appointments
-WHERE
-    pet_id = $1
-    AND appointment_date = $2
-    AND start_time = $3
-    AND status <> 'cancelled';
-`,
-[
-  data.pet_id,
-  data.appointment_date,
-  data.start_time
-]
-);
-if (existed.rowCount! > 0) {
-    throw new AppError(
-        "Appointment time is unavailable",
-        409
-    );
-}
-const result = await pool.query(
-  `
-  INSERT INTO appointments(
-      pet_id,
-      doctor_id,
-      service_id,
-      appointment_date,
-      start_time,
-      end_time,
-      status,
-      reason,
-      notes
-  )
-  VALUES(
-      $1,
-      NULL,
-      $2,
-      $3,
-      $4,
-      $5,
-      'confirmed',
-      $6,
-      $7
-  )
-  RETURNING *;
-  `,
-  [
       data.pet_id,
-      data.service_id,
-      data.appointment_date,
-      data.start_time,
-      endTime,
-      data.reason ?? null,
-      data.notes ?? null
-  ]
-);
-return result.rows[0];
-
-}
-
-async getAppointmentsByOwner(
-  ownerId: number,
-  filter: AppointmentFilter
-) {
-
-  let query = `
-    SELECT
-      a.*,
-      p.name AS pet_name,
-      s.name AS service_name
-    FROM appointments a
-    JOIN pets p
-      ON a.pet_id = p.pet_id
-    JOIN services s
-      ON a.service_id = s.service_id
-    WHERE p.owner_id = $1
-  `;
-
-  const values: any[] = [ownerId];
-  let index = 2;
-
-  if (filter.status) {
-    query += ` AND a.status = $${index}`;
-    values.push(filter.status);
-    index++;
-  }
-
-  if (filter.from) {
-    query += ` AND a.appointment_date >= $${index}`;
-    values.push(filter.from);
-    index++;
-  }
-
-  if (filter.to) {
-    query += ` AND a.appointment_date <= $${index}`;
-    values.push(filter.to);
-    index++;
-  }
-
-  query += `
-    ORDER BY
-      a.appointment_date DESC,
-      a.start_time DESC;
-  `;
-
-  const result = await pool.query(query, values);
-
-  return result.rows;
-}
-
-async getAppointmentById(
-  ownerId: number,
-  appointmentId: number
-) {
-
-  const result = await pool.query(
-    `
-    SELECT
-      a.*,
-      p.name AS pet_name,
-      s.name AS service_name
-    FROM appointments a
-    JOIN pets p
-      ON a.pet_id = p.pet_id
-    JOIN services s
-      ON a.service_id = s.service_id
-    WHERE
-      a.appointment_id = $1
-      AND p.owner_id = $2;
-    `,
-    [
-      appointmentId,
       ownerId
-    ]
-  );
+    );
+
+    let duration = 30;
+    let serviceId: number | null = null;
+
+    if (data.service_id) {
+      const serviceResult = await pool.query(
+        `
+        SELECT *
+        FROM services
+        WHERE service_id = $1
+          AND is_active = true;
+        `,
+        [data.service_id]
+      );
+      if (serviceResult.rowCount === 0) {
+        throw new AppError(
+          "Dịch vụ không tồn tại hoặc đã ngưng hoạt động",
+          404
+        );
+      }
+      const service = serviceResult.rows[0];
+      duration = Number(service.duration_minutes) || 30;
+      serviceId = Number(data.service_id);
+    }
+
+    const start = new Date(
+      `1970-01-01T${data.start_time}`
+    );
+
+    start.setMinutes(
+      start.getMinutes() + duration
+    );
+    const endTime = data.end_time || start.toTimeString().slice(0, 5);
+
+    const existed = await pool.query(
+      `
+      SELECT *
+      FROM appointments
+      WHERE
+          pet_id = $1
+          AND appointment_date = $2
+          AND start_time = $3
+          AND status <> 'cancelled';
+      `,
+      [
+        data.pet_id,
+        data.appointment_date,
+        data.start_time
+      ]
+    );
+
+    if (existed.rowCount! > 0) {
+      throw new AppError(
+        "Thú cưng đã có lịch hẹn vào khung giờ này.",
+        409
+      );
+    }
+
+    const result = await pool.query(
+      `
+      INSERT INTO appointments(
+          pet_id,
+          doctor_id,
+          service_id,
+          appointment_date,
+          start_time,
+          end_time,
+          status,
+          reason,
+          notes
+      )
+      VALUES(
+          $1,
+          NULL,
+          $2,
+          $3,
+          $4,
+          $5,
+          'confirmed',
+          $6,
+          $7
+      )
+      RETURNING *;
+      `,
+      [
+        data.pet_id,
+        serviceId,
+        data.appointment_date,
+        data.start_time,
+        endTime,
+        data.reason ?? null,
+        data.notes ?? null
+      ]
+    );
+    return result.rows[0];
+  }
+
+  async getAppointmentsByOwner(
+    ownerId: number,
+    filter: AppointmentFilter
+  ) {
+
+    let query = `
+      SELECT
+        a.*,
+        p.name AS pet_name,
+        p.species AS pet_species,
+        p.breed AS pet_breed,
+        p.weight_kg AS pet_weight,
+        s.name AS service_name,
+        s.description AS service_description,
+        s.price AS service_price,
+        s.duration_minutes AS service_duration,
+        u.full_name AS doctor_name,
+        u.phone AS doctor_phone,
+        mr.record_id AS medical_record_id,
+        inv.invoice_id AS invoice_id
+      FROM appointments a
+      JOIN pets p
+        ON a.pet_id = p.pet_id
+      LEFT JOIN services s
+        ON a.service_id = s.service_id
+      LEFT JOIN users u
+        ON a.doctor_id = u.user_id
+      LEFT JOIN medical_records mr
+        ON mr.appointment_id = a.appointment_id
+      LEFT JOIN invoices inv
+        ON inv.appointment_id = a.appointment_id
+      WHERE p.owner_id = $1
+    `;
+
+    const values: any[] = [ownerId];
+    let index = 2;
+
+    if (filter.status) {
+      query += ` AND a.status = $${index}`;
+      values.push(filter.status);
+      index++;
+    }
+
+    if (filter.from) {
+      query += ` AND a.appointment_date >= $${index}`;
+      values.push(filter.from);
+      index++;
+    }
+
+    if (filter.to) {
+      query += ` AND a.appointment_date <= $${index}`;
+      values.push(filter.to);
+      index++;
+    }
+
+    query += `
+      ORDER BY
+        a.appointment_date DESC,
+        a.start_time DESC;
+    `;
+
+    const result = await pool.query(query, values);
+
+    return result.rows;
+  }
+
+  async getAppointmentById(
+    ownerId: number,
+    appointmentId: number
+  ) {
+
+    const result = await pool.query(
+      `
+      SELECT
+        a.*,
+        p.name AS pet_name,
+        p.species AS pet_species,
+        p.breed AS pet_breed,
+        p.weight_kg AS pet_weight,
+        s.name AS service_name,
+        s.description AS service_description,
+        s.price AS service_price,
+        s.duration_minutes AS service_duration,
+        u.full_name AS doctor_name,
+        u.phone AS doctor_phone,
+        mr.record_id AS medical_record_id,
+        inv.invoice_id AS invoice_id
+      FROM appointments a
+      JOIN pets p
+        ON a.pet_id = p.pet_id
+      LEFT JOIN services s
+        ON a.service_id = s.service_id
+      LEFT JOIN users u
+        ON a.doctor_id = u.user_id
+      LEFT JOIN medical_records mr
+        ON mr.appointment_id = a.appointment_id
+      LEFT JOIN invoices inv
+        ON inv.appointment_id = a.appointment_id
+      WHERE
+        a.appointment_id = $1
+        AND p.owner_id = $2;
+      `,
+      [
+        appointmentId,
+        ownerId
+      ]
+    );
 
   if (result.rowCount === 0) {
     throw new AppError(
@@ -329,5 +384,268 @@ async getAvailableSlots(
     available: !bookedTimes.includes(slot)
   }));
 }
+
+async getDoctorAppointments(
+  doctorId: number,
+  filter: DoctorAppointmentFilter
+) {
+  if (!filter.tab) {
+    filter.tab = "today";
+  }
+
+  let query = `
+    SELECT
+      a.appointment_id,
+      a.appointment_date,
+      a.start_time,
+      a.end_time,
+      a.status,
+      a.reason,
+      a.notes,
+
+      p.pet_id,
+      p.name AS pet_name,
+
+      u.full_name AS owner_name,
+
+      s.service_id,
+      s.name AS service_name
+
+    FROM appointments a
+
+    JOIN pets p
+      ON a.pet_id = p.pet_id
+
+    JOIN users u
+      ON p.owner_id = u.user_id
+
+    JOIN services s
+      ON a.service_id = s.service_id
+
+    WHERE
+      a.doctor_id = $1
+  `;
+
+  const values: any[] = [doctorId];
+
+  if (filter.tab === "today") {
+
+    query += `
+      AND a.appointment_date = CURRENT_DATE
+    `;
+
+  }
+
+  if (filter.tab === "upcoming") {
+
+    query += `
+      AND a.appointment_date > CURRENT_DATE
+      AND a.status = 'confirmed'
+    `;
+
+  }
+
+  if (filter.tab === "completed") {
+
+    query += `
+      AND a.status = 'completed'
+    `;
+
+  }
+
+  query += `
+    ORDER BY
+      a.appointment_date,
+      a.start_time;
+  `;
+
+  const result = await pool.query(
+    query,
+    values
+  );
+
+  return result.rows;
 }
+
+async getDoctorAppointmentById(
+  doctorId: number,
+  appointmentId: number
+) {
+
+  const result = await pool.query(
+    `
+    SELECT
+      a.*,
+
+      p.pet_id,
+      p.name AS pet_name,
+      p.species,
+      p.breed,
+
+      u.user_id AS owner_id,
+      u.full_name AS owner_name,
+
+      s.service_id,
+      s.name AS service_name,
+      s.price
+
+    FROM appointments a
+
+    JOIN pets p
+      ON a.pet_id = p.pet_id
+
+    JOIN users u
+      ON p.owner_id = u.user_id
+
+    JOIN services s
+      ON a.service_id = s.service_id
+
+    WHERE
+      a.appointment_id = $1
+      AND a.doctor_id = $2;
+    `,
+    [
+      appointmentId,
+      doctorId
+    ]
+  );
+
+  if (result.rowCount === 0) {
+  throw new AppError(
+    "Appointment not found",
+    404
+  );
+}
+
+const appointment = result.rows[0];
+
+// Ghép ngày + giờ hẹn
+const appointmentDate = new Date(
+  appointment.appointment_date
+);
+
+const dateString =
+  appointmentDate
+    .toISOString()
+    .split("T")[0];
+
+const appointmentDateTime = new Date(
+  `${appointment.appointment_date}T${appointment.start_time}`
+);
+
+if (appointmentDateTime > new Date()) {
+  throw new AppError(
+    "Appointment has not started yet",
+    400
+  );
+}
+
+// Thời gian hiện tại
+const now = new Date();
+
+// Chỉ được tạo Medical Record
+// khi lịch hẹn đã đến hoặc đã qua
+appointment.canCreateMedicalRecord =
+  appointment.status === "confirmed" &&
+  appointmentDateTime <= now;
+
+return appointment;
+}
+async getDoctorDashboard(
+  doctorId: number
+): Promise<DoctorDashboard> {
+
+  const today = await pool.query(
+    `
+    SELECT COUNT(*) AS total
+    FROM appointments
+    WHERE
+      doctor_id = $1
+      AND appointment_date = CURRENT_DATE;
+    `,
+    [doctorId]
+  );
+
+  const upcoming = await pool.query(
+    `
+    SELECT COUNT(*) AS total
+    FROM appointments
+    WHERE
+      doctor_id = $1
+      AND appointment_date > CURRENT_DATE
+      AND status = 'confirmed';
+    `,
+    [doctorId]
+  );
+
+  const completed = await pool.query(
+    `
+    SELECT COUNT(*) AS total
+    FROM appointments
+    WHERE
+      doctor_id = $1
+      AND status = 'completed';
+    `,
+    [doctorId]
+  );
+
+  const patients = await pool.query(
+    `
+    SELECT COUNT(DISTINCT pet_id) AS total
+    FROM medical_records
+    WHERE doctor_id = $1;
+    `,
+    [doctorId]
+  );
+
+  const todayList = await pool.query(
+    `
+    SELECT
+      a.appointment_id,
+      a.start_time,
+      a.status,
+
+      p.pet_id,
+      p.name AS pet_name,
+
+      u.full_name AS owner_name,
+
+      s.name AS service_name
+
+    FROM appointments a
+
+    JOIN pets p
+      ON a.pet_id = p.pet_id
+
+    JOIN users u
+      ON p.owner_id = u.user_id
+
+    JOIN services s
+      ON a.service_id = s.service_id
+
+    WHERE
+      a.doctor_id = $1
+      AND a.appointment_date = CURRENT_DATE
+
+    ORDER BY a.start_time;
+    `,
+    [doctorId]
+  );
+
+  return {
+    overview: {
+      todayAppointments: Number(today.rows[0].total),
+      upcomingAppointments: Number(upcoming.rows[0].total),
+      completedAppointments: Number(completed.rows[0].total),
+      patients: Number(patients.rows[0].total),
+    },
+
+    todayAppointments: todayList.rows,
+  };
+}
+}
+
+
+
+
 export default new AppointmentService();

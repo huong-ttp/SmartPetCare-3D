@@ -3,8 +3,9 @@ import AppError from "../utils/AppError";
 
 interface NotificationFilter {
   unread?: boolean;
-  type?: string;
+  type?: string | string[];
   limit?: number;
+  offset?: number;
 }
 
 class notificationService {
@@ -18,6 +19,8 @@ class notificationService {
       n.notification_id,
       n.pet_id,
       p.name AS pet_name,
+      p.species AS pet_species,
+      p.avatar_url AS pet_avatar,
       n.type,
       n.title,
       n.content,
@@ -44,13 +47,25 @@ class notificationService {
   let index = 2;
 
   if (filter.type) {
+    if (Array.isArray(filter.type)) {
+      query += `
+        AND n.type = ANY($${index})
+      `;
+      values.push(filter.type);
+      index++;
+    } else {
+      query += `
+        AND n.type = $${index}
+      `;
+      values.push(filter.type);
+      index++;
+    }
+  }
 
+  if (filter.unread) {
     query += `
-      AND n.type = $${index}
+      AND n.is_read = false
     `;
-
-    values.push(filter.type);
-    index++;
   }
 
   query += `
@@ -111,6 +126,8 @@ async getNotifications(
         n.notification_id,
         n.pet_id,
         p.name AS pet_name,
+        p.species AS pet_species,
+        p.avatar_url AS pet_avatar,
         n.type,
         n.title,
         n.content,
@@ -131,24 +148,30 @@ async getNotifications(
     const values: any[] = [userId];
     let index = 2;
 
-    if (filter.unread) {
-
+    if (filter.unread === true) {
         query += `
         AND n.is_read = false
         `;
-
+    } else if (filter.unread === false) {
+        query += `
+        AND n.is_read = true
+        `;
     }
 
     if (filter.type) {
-
-        query += `
-        AND n.type = $${index}
-        `;
-
-        values.push(filter.type);
-
-        index++;
-
+        if (Array.isArray(filter.type)) {
+            query += `
+            AND n.type = ANY($${index})
+            `;
+            values.push(filter.type);
+            index++;
+        } else {
+            query += `
+            AND n.type = $${index}
+            `;
+            values.push(filter.type);
+            index++;
+        }
     }
 
     query += `
@@ -157,13 +180,19 @@ async getNotifications(
     `;
 
     if (filter.limit) {
-
         query += `
         LIMIT $${index}
         `;
-
         values.push(filter.limit);
+        index++;
+    }
 
+    if (filter.offset) {
+        query += `
+        OFFSET $${index}
+        `;
+        values.push(filter.offset);
+        index++;
     }
 
     const result = await pool.query(

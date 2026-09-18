@@ -10,29 +10,74 @@
  */
 export type InvoiceStatus = "unpaid" | "paid" | "cancelled";
 
-export interface Invoice {
-  id: string;
-  appointment_id: string; // FK → Appointment.id (1-1)
-  owner_id: string;       // FK → User.id (role: owner)
-  status: InvoiceStatus;
-  total_amount: number;   // VND — tổng từ InvoiceItem[]
-  issued_at: string;      // ISO 8601 — tự sinh khi appointment completed
-  due_date?: string;      // ISO date
-  notes?: string;
-  created_at: string;
-  updated_at: string;
+export interface InvoicePaymentInfo {
+  payment_id: number | string;
+  invoice_id: number | string;
+  amount: number;
+  payment_method: "cash" | "bank_transfer" | string;
+  payment_date: string;
+  transaction_ref?: string | null;
+  status: "pending" | "success" | "failed" | string;
 }
 
 export interface InvoiceItem {
-  id: string;
-  invoice_id: string;   // FK → Invoice.id
-  service_id?: string;  // FK → Service.id (nếu là dịch vụ)
-  description: string;
+  id?: string;
+  item_id?: number | string;
+  invoice_id: string | number;
+  service_id?: string | number;
+  service_name?: string;
+  service_description?: string;
+  description?: string;
   quantity: number;
-  unit_price: number;   // VND
-  subtotal: number;     // = quantity * unit_price
+  unit_price: number; // VND
+  subtotal: number;   // = quantity * unit_price
+}
+
+export interface Invoice {
+  id: string;
+  invoice_id?: number | string;
+  appointment_id: string | number;
+  owner_id: string | number;
+  status: InvoiceStatus;
+  total_amount: number; // VND
+  issued_at?: string;
+  issued_date?: string;
+  due_date?: string;
+  notes?: string;
+
+  // Joined Pet details
+  pet_id?: number | string;
+  pet_name?: string;
+  pet_species?: string;
+  pet_breed?: string;
+  pet_weight?: number;
+
+  // Joined Appointment & Service details
+  appointment_date?: string;
+  start_time?: string;
+  end_time?: string;
+  reason?: string;
+  service_name?: string;
+
+  // Joined Owner details
+  owner_name?: string;
+  owner_phone?: string;
+  owner_email?: string;
+
+  // Items & Payment
+  items?: InvoiceItem[];
+  payment?: InvoicePaymentInfo | null;
+
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface InvoiceFilterDTO {
+  status?: InvoiceStatus | "all" | string;
+  owner?: string;
 }
 
 export interface UpdateInvoiceStatusDTO {
   status: InvoiceStatus;
 }
+

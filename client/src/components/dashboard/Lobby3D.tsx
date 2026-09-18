@@ -456,11 +456,41 @@ const CanvasLoader = () => {
 };
 
 
+// --- Camera Controller for station focus ---
+function CameraFocusController({ 
+  target, 
+  isFocusing 
+}: { 
+  target: THREE.Vector3 | null; 
+  isFocusing: boolean 
+}) {
+  useFrame(({ camera }) => {
+    if (isFocusing && target) {
+      const desiredCamPos = new THREE.Vector3(target.x, target.y + 2.5, target.z + 5.5);
+      camera.position.lerp(desiredCamPos, 0.08);
+      camera.lookAt(target.x, target.y + 0.8, target.z);
+    }
+  });
+  return null;
+}
+
 // ==========================================
 // MAIN 3D LOBBY SCENE
 // ==========================================
 export default function Lobby3D() {
   const router = useRouter();
+  const [focusTarget, setFocusTarget] = useState<THREE.Vector3 | null>(null);
+  const [isFocusing, setIsFocusing] = useState(false);
+
+  const handleReceptionClick = () => {
+    // Reception world coordinates (group shifted by 2.6 on x)
+    const target = new THREE.Vector3(-4.8 + 2.6, 0.8, -2.5);
+    setFocusTarget(target);
+    setIsFocusing(true);
+    setTimeout(() => {
+      router.push("/appointments/create?from=lobby");
+    }, 600);
+  };
 
   return (
     <div className="w-full h-full bg-slate-950 rounded-2xl overflow-hidden relative shadow-2xl border border-slate-800">
@@ -473,6 +503,9 @@ export default function Lobby3D() {
         <Suspense fallback={<CanvasLoader />}>
           {/* Background color */}
           <color attach="background" args={["#090d16"]} />
+
+          {/* Camera Focus Helper */}
+          <CameraFocusController target={focusTarget} isFocusing={isFocusing} />
 
           {/* ========================================================== */}
           {/* STANDARD LIGHTING SYSTEM (Hệ thống chiếu sáng chuẩn)       */}
@@ -533,9 +566,9 @@ export default function Lobby3D() {
               position={[-4.8, 0, -2.5]}
               color="#3b82f6"
               label="Lễ tân"
-              badgeSubtext="Đặt & Xem lịch hẹn"
+              badgeSubtext="Đặt lịch & Quầy tiếp đón"
               icon="📅"
-              onClick={() => router.push("/appointments")}
+              onClick={handleReceptionClick}
             >
               <ReceptionDesk />
             </InteractiveStation>
@@ -589,16 +622,18 @@ export default function Lobby3D() {
           </group>
 
           {/* OrbitControls to let user smoothly pan around the lobby */}
-          <OrbitControls 
-            makeDefault 
-            target={[2.6, 0, 0]}
-            minPolarAngle={Math.PI / 6} 
-            maxPolarAngle={Math.PI / 2.3}
-            minDistance={8}
-            maxDistance={25}
-            enablePan={false}
-            dampingFactor={0.05}
-          />
+          {!isFocusing && (
+            <OrbitControls 
+              makeDefault 
+              target={[2.6, 0, 0]}
+              minPolarAngle={Math.PI / 6} 
+              maxPolarAngle={Math.PI / 2.3}
+              minDistance={8}
+              maxDistance={25}
+              enablePan={false}
+              dampingFactor={0.05}
+            />
+          )}
         </Suspense>
       </Canvas>
       
