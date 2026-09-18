@@ -41,8 +41,8 @@ function normalizeReminder(raw: any): ReminderNotification {
 
 export const notificationService = {
   /**
-   * Lấy danh sách nhắc lịch theo bộ lọc (type, unread, user)
-   * API: notification.service.list({user: me, type: ['appointment_reminder','vaccine_reminder','checkup_reminder']})
+   * Lấy danh sách thông báo theo bộ lọc (user, type, unread, limit, page, search)
+   * API: notification.service.list({user: me}), notification.service.list({type: [...]})
    */
   async list(params?: NotificationFilterParams): Promise<ReminderNotification[]> {
     if (USE_MOCK) {
@@ -50,20 +50,31 @@ export const notificationService = {
       if (params?.type) {
         const types = Array.isArray(params.type) ? params.type : [params.type];
         filtered = filtered.filter((n) => types.includes(n.type));
-      } else {
-        // Mặc định trả về các loại nhắc lịch
-        const reminderTypes = [
-          "appointment_reminder",
-          "vaccine_reminder",
-          "checkup_reminder",
-          "vaccination_reminder",
-        ];
-        filtered = filtered.filter((n) => reminderTypes.includes(n.type));
       }
 
       if (params?.unread !== undefined) {
         filtered = filtered.filter((n) => n.is_read === !params.unread);
       }
+
+      if (params?.search) {
+        const s = params.search.toLowerCase();
+        filtered = filtered.filter(
+          (n) =>
+            n.title.toLowerCase().includes(s) ||
+            n.content.toLowerCase().includes(s) ||
+            (n.pet_name && n.pet_name.toLowerCase().includes(s))
+        );
+      }
+
+      filtered.sort(
+        (a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+
+      if (params?.limit) {
+        filtered = filtered.slice(0, params.limit);
+      }
+
       return mockDelay(filtered);
     }
 
@@ -78,8 +89,14 @@ export const notificationService = {
       if (params?.limit) {
         queryParams.limit = params.limit;
       }
+      if (params?.page) {
+        queryParams.page = params.page;
+      }
+      if (params?.offset !== undefined) {
+        queryParams.offset = params.offset;
+      }
 
-      const res = await axiosClient.get<any>("/notifications/reminders", {
+      const res = await axiosClient.get<any>("/notifications", {
         params: queryParams,
       });
 
@@ -91,7 +108,7 @@ export const notificationService = {
 
       return rawList.map(normalizeReminder);
     } catch (err) {
-      console.error("[notificationService.list] Failed to fetch reminders:", err);
+      console.error("[notificationService.list] Failed to fetch notifications:", err);
       throw err;
     }
   },
@@ -117,6 +134,7 @@ export const notificationService = {
 
   /**
    * Đánh dấu 1 thông báo / nhắc lịch đã đọc theo ID
+   * API: notification.service.markAsRead(id)
    */
   async markAsRead(id: number | string): Promise<void> {
     if (USE_MOCK) {
@@ -141,9 +159,10 @@ export const notificationService = {
   },
 
   /**
-   * Đánh dấu tất cả thông báo / nhắc lịch đã đọc
+   * Đánh dấu tất cả thông báo đã đọc
+   * API: notification.service.markAllAsRead()
    */
-  async markAllRead(): Promise<void> {
+  async markAllAsRead(): Promise<void> {
     if (USE_MOCK) {
       MOCK_NOTIFICATIONS.forEach((n) => {
         n.is_read = true;
@@ -157,9 +176,29 @@ export const notificationService = {
       try {
         await axiosClient.patch("/notifications/read-all");
       } catch (err) {
-        console.error("[notificationService.markAllRead] Error:", err);
+        console.error("[notificationService.markAllAsRead] Error:", err);
         throw err;
       }
+    }
+  },
+
+  /**
+   * Alias cho markAllAsRead (backward compatibility)
+   */
+  async markAllRead(): Promise<void> {
+    return this.markAllAsRead();
+  },
+
+  /**
+   * Đếm số lượng thông báo chưa đọc
+   */
+  async getUnreadCount(): Promise<number> {
+    try {
+      const unreadList = await this.list({ unread: true });
+      return unreadList.length;
+    } catch (err) {
+      console.error("[notificationService.getUnreadCount] Error:", err);
+      return 0;
     }
   },
 

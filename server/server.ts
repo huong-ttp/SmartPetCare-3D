@@ -8,7 +8,7 @@ import serviceRoutes from "./src/routes/service.routes";
 import invoiceRoutes from "./src/routes/invoice.routes";
 import paymentRoutes from "./src/routes/payment.routes";
 import notificationRoutes from "./src/routes/notification.routes";
-import userRoutes from "./src/routes/service.routes";
+import userRoutes from "./src/routes/user.routes";
 import vaccinationRoutes from "./src/routes/vaccination.routes";
 import vaccineTypeRoutes from "./src/routes/vaccineType.routes";
 

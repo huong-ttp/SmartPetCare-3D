@@ -8,53 +8,63 @@ interface ChangePasswordData {
 }
 
 interface UpdateProfileData {
-  full_name: string;
-  phone?: string;
-  address?: string;
-  avatar_url?: string;
+  full_name?: string;
+  phone?: string | null;
+  address?: string | null;
+  avatar_url?: string | null;
 }
 class UserService {
     
   async updateProfile(
-  userId: number,
-  data: UpdateProfileData
-)
- {
-  const result = await pool.query(
-    `
-      UPDATE users
-      SET
-    full_name = $1,
-    phone = $2,
-    address = $3,
-    avatar_url = $4,
-    updated_at = NOW()
-      WHERE user_id = $5
-      RETURNING
-    user_id,
-    full_name,
-    email,
-    phone,
-    address,
-    avatar_url,
-    role,
-    is_active;
-    `,
-    [
-    data.full_name,
-    data.phone ?? null,
-    data.address ?? null,
-    data.avatar_url ?? null,
-    userId
-]
-  );
+    userId: number,
+    data: UpdateProfileData
+  ) {
+    const current = await pool.query(
+      "SELECT full_name, phone, address, avatar_url FROM users WHERE user_id = $1",
+      [userId]
+    );
 
-  if (result.rows.length === 0) {
-    throw new AppError("Không tìm thấy người dùng", 404);
+    if (current.rows.length === 0) {
+      throw new AppError("Không tìm thấy người dùng", 404);
+    }
+
+    const currentUser = current.rows[0];
+    const fullName = data.full_name !== undefined ? data.full_name : currentUser.full_name;
+    const phone = data.phone !== undefined ? data.phone : currentUser.phone;
+    const address = data.address !== undefined ? data.address : currentUser.address;
+    const avatarUrl = data.avatar_url !== undefined ? data.avatar_url : currentUser.avatar_url;
+
+    const result = await pool.query(
+      `
+        UPDATE users
+        SET
+          full_name = $1,
+          phone = $2,
+          address = $3,
+          avatar_url = $4,
+          updated_at = NOW()
+        WHERE user_id = $5
+        RETURNING
+          user_id,
+          full_name,
+          email,
+          phone,
+          address,
+          avatar_url,
+          role,
+          is_active;
+      `,
+      [
+        fullName,
+        phone,
+        address,
+        avatarUrl,
+        userId
+      ]
+    );
+
+    return result.rows[0];
   }
-
-  return result.rows[0];
-}
 async changePassword(
   userId: number,
   data: ChangePasswordData

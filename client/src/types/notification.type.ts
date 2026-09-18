@@ -11,6 +11,7 @@ export type NotificationType =
   | "appointment_completed"
   | "doctor_assigned"
   | "vaccination_reminder"
+  | "payment"
   | "invoice_created"
   | "payment_success"
   | "payment_failed"
@@ -67,6 +68,9 @@ export interface NotificationFilterParams {
   type?: string | string[];
   unread?: boolean;
   limit?: number;
+  offset?: number;
+  page?: number;
+  search?: string;
 }
 
 export interface MarkReadDTO {
