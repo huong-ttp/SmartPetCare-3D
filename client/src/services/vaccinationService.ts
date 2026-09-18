@@ -41,10 +41,19 @@ export const vaccinationService = {
 
   // ─── Pet vaccinations ───────────────────────────────────────────────────
 
-  async getVaccinationsByPetId(petId: string): Promise<PetVaccination[]> {
-    if (USE_MOCK) return mockDelay(MOCK_PET_VACCINATIONS.filter((v) => v.pet_id === petId));
-    const res = await axiosClient.get<PetVaccination[]>(`/pets/${petId}/vaccinations`);
-    return res.data;
+  async listByPet(petId: string | number): Promise<PetVaccination[]> {
+    if (USE_MOCK) {
+      return mockDelay(
+        MOCK_PET_VACCINATIONS.filter((v) => String(v.pet_id) === String(petId))
+      );
+    }
+    const res = await axiosClient.get<any>(`/vaccinations/pet/${petId}`);
+    const rawList = Array.isArray(res.data) ? res.data : (res.data?.data ?? []);
+    return rawList;
+  },
+
+  async getVaccinationsByPetId(petId: string | number): Promise<PetVaccination[]> {
+    return this.listByPet(petId);
   },
 
   /**

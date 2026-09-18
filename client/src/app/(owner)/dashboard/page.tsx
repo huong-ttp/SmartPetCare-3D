@@ -55,12 +55,21 @@ export default function OwnerDashboardPage() {
         // Invoices API is not available yet, so leave the counter at zero.
         const invoices: { status: string }[] = [];
 
-        setTotalPets(pets.length);
-        
-        // Filter upcoming appts: simple logic for demo (status confirmed and date in future)
+        setTotalPets(Array.isArray(pets) ? pets.length : 0);
+
+        // Normalize appts: API có thể trả về mảng trực tiếp hoặc bọc trong { data: [...] } / { items: [...] }
+        const appointmentsList: any[] = Array.isArray(appts)
+          ? appts
+          : Array.isArray((appts as any)?.data)
+          ? (appts as any).data
+          : Array.isArray((appts as any)?.items)
+          ? (appts as any).items
+          : [];
+
+        // Filter upcoming appts: confirmed + scheduled_at trong tương lai
         const now = new Date();
-        const upcoming = appts.filter(a => 
-          a.status === "confirmed" && new Date(a.scheduled_at) >= now
+        const upcoming = appointmentsList.filter((a: any) =>
+          a?.status === "confirmed" && a?.scheduled_at && new Date(a.scheduled_at) >= now
         );
         setUpcomingAppts(upcoming.length);
 

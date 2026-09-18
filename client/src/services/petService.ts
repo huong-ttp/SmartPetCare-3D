@@ -42,19 +42,25 @@ export const petService = {
   },
 
   /** Lấy chi tiết một thú cưng */
-  async getPetById(id: string): Promise<Pet> {
+  async getPetById(id: string | number): Promise<Pet> {
+    const cleanId = String(id ?? "").trim();
+    if (!cleanId || cleanId === "undefined" || cleanId === "null") {
+      console.warn("[petService.getPetById] Invalid or missing petId:", id);
+      throw new Error("petId không hợp lệ hoặc không được cung cấp.");
+    }
+
     if (USE_MOCK) {
-      const pet = _mockPets.find((p) => p.id === id);
+      const pet = _mockPets.find((p) => String(p.id) === cleanId);
       if (!pet) throw new Error("NOT_FOUND");
       return mockDelay({ ...pet });
     }
-    const res = await axiosClient.get<any>(`/pets/${id}`);
+    const res = await axiosClient.get<any>(`/pets/${cleanId}`);
     const raw = res.data?.data !== undefined ? res.data.data : res.data;
     return normalizePet(raw);
   },
 
   /** Alias: getPetById (cho phép gọi petService.getById(id)) */
-  async getById(id: string): Promise<Pet> {
+  async getById(id: string | number): Promise<Pet> {
     return petService.getPetById(id);
   },
 

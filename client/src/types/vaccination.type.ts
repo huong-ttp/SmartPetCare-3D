@@ -17,22 +17,32 @@ export interface VaccineType {
 }
 
 export interface PetVaccination {
-  id: string;
-  pet_id: string;            // FK → Pet.id
-  vaccine_type_id: string;   // FK → VaccineType.id
-  doctor_id: string;         // FK → User.id (role: doctor)
-  appointment_id?: string;   // FK → Appointment.id (optional)
+  id?: string;
+  vaccination_id?: number;
+  pet_id: string | number;
+  pet_name?: string;
+  vaccine_type_id: string | number;
+  vaccine_name?: string;
+  vaccine_description?: string;
+  recommended_interval_days?: number;
+  medical_record_id?: string | number | null;
+  administered_by?: string | number;
+  doctor_id?: string | number;
+  doctor_name?: string;
+  appointment_id?: string | number;
   date_administered: string; // ISO date
   /**
    * READ-ONLY — computed: date_administered + recommended_interval_days.
    * Không được cập nhật bằng tay.
    */
   readonly next_due_date: string; // ISO date
+  batch_number?: string;
   lot_number?: string;
   manufacturer?: string;
+  reminder_sent?: boolean;
   notes?: string;
-  created_at: string;
-  updated_at: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface CreatePetVaccinationDTO {

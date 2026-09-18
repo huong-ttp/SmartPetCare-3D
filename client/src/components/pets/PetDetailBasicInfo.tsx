@@ -40,9 +40,12 @@ interface PetDetailBasicInfoProps {
   pet: Pet;
 }
 
+// ─── Safe fallback colors khi species/gender không khớp hoặc undefined ──────
+const DEFAULT_COLORS = { bg: "bg-slate-100", text: "text-slate-700", border: "border-slate-200" };
+
 export const PetDetailBasicInfo: React.FC<PetDetailBasicInfoProps> = ({ pet }) => {
-  const speciesColors = SPECIES_BADGE_COLORS[pet.species];
-  const genderColors  = GENDER_BADGE_COLORS[pet.gender];
+  const speciesColors = SPECIES_BADGE_COLORS[pet?.species as keyof typeof SPECIES_BADGE_COLORS] ?? DEFAULT_COLORS;
+  const genderColors  = GENDER_BADGE_COLORS[pet?.gender as keyof typeof GENDER_BADGE_COLORS]  ?? DEFAULT_COLORS;
 
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
@@ -67,7 +70,9 @@ export const PetDetailBasicInfo: React.FC<PetDetailBasicInfoProps> = ({ pet }) =
             <span
               className={cn(
                 "inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border",
-                speciesColors.bg, speciesColors.text, speciesColors.border
+                speciesColors?.bg ?? "bg-slate-100",
+                speciesColors?.text ?? "text-slate-700",
+                speciesColors?.border ?? "border-slate-200"
               )}
             >
               {getSpeciesEmoji(pet.species)} {getSpeciesLabel(pet.species)}
@@ -96,7 +101,9 @@ export const PetDetailBasicInfo: React.FC<PetDetailBasicInfoProps> = ({ pet }) =
             <span
               className={cn(
                 "inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border",
-                genderColors.bg, genderColors.text, genderColors.border
+                genderColors?.bg ?? "bg-slate-100",
+                genderColors?.text ?? "text-slate-700",
+                genderColors?.border ?? "border-slate-200"
               )}
             >
               {getGenderLabel(pet.gender)}

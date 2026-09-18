@@ -32,3 +32,8 @@ coverage/
 
 src/uploads/*
 !src/uploads/.gitkeep
+
+# AI agent
+AGENTS.md
+CLAUDE.md
+.agent/ 
