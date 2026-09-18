@@ -2,15 +2,23 @@
 // SERVICES entity types (dịch vụ phòng khám)
 // ============================================================
 
+export type ServiceCategory =
+  | "Examination"
+  | "Vaccination"
+  | "Surgery"
+  | "Grooming"
+  | "Other";
+
 export interface Service {
   id: string;
   name: string;
   description?: string;
   price: number;         // VND
   duration_minutes?: number;
+  category: ServiceCategory;
   is_active: boolean;
-  created_at: string;
-  updated_at: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface CreateServiceDTO {
@@ -18,7 +26,9 @@ export interface CreateServiceDTO {
   description?: string;
   price: number;
   duration_minutes?: number;
+  category?: ServiceCategory;
   is_active?: boolean;
 }
 
 export type UpdateServiceDTO = Partial<CreateServiceDTO>;
+

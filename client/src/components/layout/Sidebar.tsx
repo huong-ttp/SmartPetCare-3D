@@ -12,7 +12,8 @@ import {
   CreditCard, 
   Settings, 
   Users,
-  Activity
+  Activity,
+  Sparkles
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 
@@ -25,6 +26,7 @@ interface NavItem {
 const OWNER_NAV: NavItem[] = [
   { name: "Tổng quan", href: "/dashboard", icon: <Home size={20} /> },
   { name: "Thú cưng", href: "/pets", icon: <Dog size={20} /> },
+  { name: "Dịch vụ", href: "/services", icon: <Sparkles size={20} /> },
   { name: "Lịch hẹn", href: "/appointments", icon: <Calendar size={20} /> },
   { name: "Hóa đơn", href: "/invoices", icon: <CreditCard size={20} /> },
 ];

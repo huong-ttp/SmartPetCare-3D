@@ -11,7 +11,9 @@ class ServiceService {
         name,
         description,
         duration_minutes,
-        price
+        price,
+        category,
+        is_active
       FROM services
       WHERE is_active = true
       ORDER BY name;
