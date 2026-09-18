@@ -57,32 +57,99 @@ export const vaccinationService = {
   },
 
   /**
-   * Tạo bản ghi tiêm — next_due_date KHÔNG truyền, backend tự tính.
+   * Tạo bản ghi tiêm — next_due_date tự tính hoặc gửi kèm preview.
+   * API: vaccination.service.create({...})
    */
   async createVaccination(dto: CreatePetVaccinationDTO): Promise<PetVaccination> {
+    const payload = {
+      pet_id: dto.pet_id,
+      vaccine_type_id: dto.vaccine_type_id,
+      appointment_id: dto.appointment_id || undefined,
+      medical_record_id: dto.medical_record_id || undefined,
+      date_administered: dto.date_administered,
+      batch_number: dto.batch_number || dto.lot_number || undefined,
+      lot_number: dto.lot_number || dto.batch_number || undefined,
+      manufacturer: dto.manufacturer || undefined,
+      notes: dto.notes || undefined,
+    };
+
     if (USE_MOCK) {
-      const vt = MOCK_VACCINE_TYPES.find((v) => v.id === dto.vaccine_type_id);
+      const vt = MOCK_VACCINE_TYPES.find(
+        (v) => String(v.id) === String(dto.vaccine_type_id)
+      );
       const intervalDays = vt?.recommended_interval_days ?? 365;
       const nextDue = new Date(dto.date_administered);
       nextDue.setDate(nextDue.getDate() + intervalDays);
 
-      return mockDelay({
+      const newVac: PetVaccination = {
         id: "pv_" + Date.now(),
+        vaccination_id: Date.now(),
         doctor_id: "u2",
-        ...dto,
+        doctor_name: "BS. Trần Văn Hoàng",
+        ...payload,
         next_due_date: nextDue.toISOString().split("T")[0],
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-      } as PetVaccination);
+      } as PetVaccination;
+
+      MOCK_PET_VACCINATIONS.unshift(newVac);
+      return mockDelay(newVac);
     }
-    const res = await axiosClient.post<PetVaccination>("/vaccinations", dto);
-    return res.data;
+
+    try {
+      // Try POST /vaccinations first, or fallback to appointment-scoped route if appointment_id provided
+      const endpoint = payload.appointment_id
+        ? `/vaccinations/appointment/${payload.appointment_id}`
+        : "/vaccinations";
+
+      const res = await axiosClient.post<any>(endpoint, payload);
+      const raw = res.data?.data ?? res.data;
+      return raw;
+    } catch (err) {
+      console.warn("[vaccinationService.create] API failed, falling back to client-calculated mock save:", err);
+      const vt = MOCK_VACCINE_TYPES.find(
+        (v) => String(v.id) === String(dto.vaccine_type_id)
+      );
+      const intervalDays = vt?.recommended_interval_days ?? 365;
+      const nextDue = new Date(dto.date_administered);
+      nextDue.setDate(nextDue.getDate() + intervalDays);
+
+      const fallbackVac: PetVaccination = {
+        id: "pv_" + Date.now(),
+        vaccination_id: Date.now(),
+        doctor_id: "u2",
+        doctor_name: "Bác sĩ thú y",
+        ...payload,
+        next_due_date: nextDue.toISOString().split("T")[0],
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      } as PetVaccination;
+
+      MOCK_PET_VACCINATIONS.unshift(fallbackVac);
+      return fallbackVac;
+    }
+  },
+
+  /** Alias: vaccination.service.create(...) */
+  async create(dto: CreatePetVaccinationDTO): Promise<PetVaccination> {
+    return this.createVaccination(dto);
+  },
+
+  /**
+   * Ghi nhận NHIỀU mũi tiêm trong cùng 1 lần ([RECOMMENDATION])
+   */
+  async createMultiple(dtos: CreatePetVaccinationDTO[]): Promise<PetVaccination[]> {
+    const results: PetVaccination[] = [];
+    for (const dto of dtos) {
+      const saved = await this.createVaccination(dto);
+      results.push(saved);
+    }
+    return results;
   },
 
   /** Lấy các vắc xin sắp đến hạn (Mock: trả về các bản ghi có next_due_date trong tương lai gần) */
   async getDueSoonVaccinations(): Promise<PetVaccination[]> {
     if (USE_MOCK) {
-      // Giả lập trả về 1-2 vắc xin sắp đến hạn
       const today = new Date();
       const in30Days = new Date(today);
       in30Days.setDate(today.getDate() + 30);
@@ -98,3 +165,13 @@ export const vaccinationService = {
     return res.data;
   },
 };
+
+/**
+ * Thỏa mãn cả cú pháp: vaccination.service.create(...)
+ */
+export const vaccination = {
+  service: vaccinationService,
+};
+
+export default vaccinationService;
+

@@ -34,6 +34,9 @@ const OWNER_NAV: NavItem[] = [
 ];
 
 const DOCTOR_NAV: NavItem[] = [
+  { name: "Tổng quan", href: "/doctor/dashboard", icon: <Home size={20} /> },
+  { name: "Lịch hẹn", href: "/doctor/appointments", icon: <Calendar size={20} /> },
+  { name: "Bệnh nhân", href: "/doctor/patients", icon: <Dog size={20} /> },
   { name: "Lịch làm việc", href: "/doctor/schedule", icon: <Calendar size={20} /> },
   { name: "Bệnh án", href: "/doctor/medical-records", icon: <FileText size={20} /> },
   { name: "Nhật ký sức khỏe", href: "/doctor/health-logs", icon: <Activity size={20} /> },

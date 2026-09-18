@@ -6,6 +6,7 @@ export type UserRole = "owner" | "doctor" | "admin";
 
 export interface User {
   id: string;
+  user_id?: string | number;
   full_name: string;
   email: string;
   phone?: string;

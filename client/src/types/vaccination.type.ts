@@ -6,14 +6,15 @@
 // ============================================================
 
 export interface VaccineType {
-  id: string;
+  id?: string | number;
+  vaccine_type_id?: number | string;
   name: string;
   description?: string;
   /** Số ngày khuyến cáo giữa hai lần tiêm */
   recommended_interval_days: number;
-  applicable_species: string[]; // e.g. ["dog", "cat"]
-  created_at: string;
-  updated_at: string;
+  applicable_species?: string[]; // e.g. ["dog", "cat"]
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface PetVaccination {
@@ -46,14 +47,16 @@ export interface PetVaccination {
 }
 
 export interface CreatePetVaccinationDTO {
-  pet_id: string;
-  vaccine_type_id: string;
-  appointment_id?: string;
+  pet_id: string | number;
+  vaccine_type_id: string | number;
+  appointment_id?: string | number;
+  medical_record_id?: string | number | null;
   date_administered: string;
+  batch_number?: string;
   lot_number?: string;
   manufacturer?: string;
   notes?: string;
-  // next_due_date tự tính — KHÔNG truyền
+  next_due_date?: string;
 }
 
 export interface CreateVaccineTypeDTO {

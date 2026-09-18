@@ -40,6 +40,8 @@ export interface Appointment {
   service_duration?: number;
   doctor_name?: string;
   doctor_phone?: string;
+  owner_name?: string;
+  owner_phone?: string;
   medical_record_id?: number | string;
   invoice_id?: number | string;
   created_at: string;
@@ -51,6 +53,21 @@ export interface AppointmentFilterDTO {
   from?: string;
   to?: string;
   owner?: string;
+  doctor?: "me" | string;
+  date?: string;
+  upcoming?: boolean;
+}
+
+export interface DoctorDashboardOverview {
+  todayAppointments: number;
+  upcomingAppointments: number;
+  completedAppointments: number;
+  patients: number;
+}
+
+export interface DoctorDashboardData {
+  overview: DoctorDashboardOverview;
+  todayAppointments: Appointment[];
 }
 
 // Owner tạo appointment — không chọn doctor

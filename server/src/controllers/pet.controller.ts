@@ -48,7 +48,8 @@ async getPetById(
   try {
     const pet = await petService.getPetById(
       Number(req.params.id),
-      req.user.user_id
+      req.user.user_id,
+      req.user.role
     );
 
     return res.json({

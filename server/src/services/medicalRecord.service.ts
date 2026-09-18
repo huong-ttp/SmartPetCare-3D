@@ -14,12 +14,14 @@ interface CreateMedicalRecordData {
 class MedicalRecordService {
   async getMedicalRecordsByPet(
     ownerId: number,
-    petId: number
+    petId: number,
+    userRole?: string
   ) {
-    // Kiểm tra pet có thuộc owner
+    // Kiểm tra pet có thuộc owner hoặc userRole là doctor/admin
     await petService.getPetById(
       petId,
-      ownerId
+      ownerId,
+      userRole
     );
 
     const result = await pool.query(
@@ -259,6 +261,18 @@ class MedicalRecordService {
       ]
     );
 
+    // Cập nhật Pet.weight_kg (cache) từ weight_at_visit nếu có
+    if (data.weight_at_visit) {
+      await pool.query(
+        `
+        UPDATE pets
+        SET weight_kg = $1, updated_at = NOW()
+        WHERE pet_id = $2;
+        `,
+        [data.weight_at_visit, appointment.pet_id]
+      );
+    }
+
     const invoiceResult = await pool.query(
       `
       INSERT INTO invoices
@@ -327,45 +341,65 @@ class MedicalRecordService {
     search?: string
   ) {
     let query = `
-      SELECT DISTINCT
+      SELECT
         p.pet_id,
         p.name,
         p.species,
         p.breed,
         p.gender,
         p.avatar_url,
-
+        p.date_of_birth,
+        p.weight_kg,
         u.user_id AS owner_id,
-        u.full_name AS owner_name
-
-      FROM medical_records mr
-
-      INNER JOIN pets p
-        ON mr.pet_id = p.pet_id
-
+        u.full_name AS owner_name,
+        u.phone AS owner_phone,
+        u.email AS owner_email,
+        COUNT(DISTINCT mr.record_id) AS total_records,
+        COUNT(DISTINCT a.appointment_id) AS total_appointments,
+        MAX(COALESCE(mr.record_date, a.appointment_date)) AS last_visit_date
+      FROM pets p
       INNER JOIN users u
         ON p.owner_id = u.user_id
-
-      WHERE mr.doctor_id = $1
+      LEFT JOIN medical_records mr
+        ON mr.pet_id = p.pet_id AND mr.doctor_id = $1
+      LEFT JOIN appointments a
+        ON a.pet_id = p.pet_id AND a.doctor_id = $1 AND a.status = 'completed'
+      WHERE (mr.record_id IS NOT NULL OR a.appointment_id IS NOT NULL)
     `;
 
     const values: any[] = [doctorId];
 
-    if (search) {
+    if (search && search.trim() !== "") {
       query += `
         AND
         (
           LOWER(p.name) LIKE LOWER($2)
           OR
           LOWER(u.full_name) LIKE LOWER($2)
+          OR
+          LOWER(COALESCE(p.breed, '')) LIKE LOWER($2)
         )
       `;
 
-      values.push(`%${search}%`);
+      values.push(`%${search.trim()}%`);
     }
 
     query += `
+      GROUP BY
+        p.pet_id,
+        p.name,
+        p.species,
+        p.breed,
+        p.gender,
+        p.avatar_url,
+        p.date_of_birth,
+        p.weight_kg,
+        u.user_id,
+        u.full_name,
+        u.phone,
+        u.email
       ORDER BY
+        last_visit_date DESC NULLS LAST,
         p.name ASC;
     `;
 

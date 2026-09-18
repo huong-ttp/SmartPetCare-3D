@@ -3,8 +3,9 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Pencil, Trash2, RefreshCw, Dog } from "lucide-react";
+import { ArrowLeft, Pencil, Trash2, RefreshCw, Dog, Stethoscope, Phone, User, FileText } from "lucide-react";
 import { motion } from "framer-motion";
+import { useAuth } from "@/lib/auth-context";
 import { petService } from "@/services/petService";
 import type { Pet, PetSpecies } from "@/types/pet.type";
 import { PetDetailBasicInfo } from "@/components/pets/PetDetailBasicInfo";
@@ -70,7 +71,7 @@ function PetDetailSkeleton() {
 
 // ─── Not Found / 403 state ────────────────────────────────────────────────────
 
-function PetNotFound() {
+function PetNotFound({ isDoctor }: { isDoctor?: boolean }) {
   return (
     <div className="flex flex-col items-center justify-center py-24 text-center">
       <div className="w-20 h-20 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center mb-6 text-4xl">
@@ -81,11 +82,11 @@ function PetNotFound() {
         Thú cưng này không tồn tại, đã bị xóa, hoặc bạn không có quyền xem hồ sơ này.
       </p>
       <Link
-        href="/pets"
+        href={isDoctor ? "/doctor/patients" : "/pets"}
         className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-primary-600 shadow-sm transition-all"
       >
         <ArrowLeft size={15} />
-        Quay lại danh sách thú cưng
+        {isDoctor ? "Quay lại danh sách bệnh nhân" : "Quay lại danh sách thú cưng"}
       </Link>
     </div>
   );
@@ -117,7 +118,11 @@ function PetErrorState({ message, onRetry }: { message: string; onRetry: () => v
 export default function PetDetailPage() {
   const params   = useParams();
   const router   = useRouter();
+  const { user } = useAuth();
   const { success: showSuccess, error: showError } = useToast();
+
+  const isDoctor = user?.role === "doctor";
+  const isReadOnly = isDoctor || user?.role === "admin";
 
   const petId = typeof params?.id === "string" ? params.id : Array.isArray(params?.id) ? params.id[0] : "";
 
@@ -176,7 +181,7 @@ export default function PetDetailPage() {
   // ─── Render ───────────────────────────────────────────────────────────────
 
   if (isLoading)  return <PetDetailSkeleton />;
-  if (notFound)   return <PetNotFound />;
+  if (notFound)   return <PetNotFound isDoctor={isDoctor} />;
   if (fetchError) return <PetErrorState message={fetchError} onRetry={loadPet} />;
   if (!pet) return null;
 
@@ -188,11 +193,11 @@ export default function PetDetailPage() {
     <div className="space-y-6">
       {/* Back link */}
       <Link
-        href="/pets"
-        className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-primary transition-colors"
+        href={isDoctor ? "/doctor/patients" : "/pets"}
+        className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-primary transition-colors font-medium"
       >
         <ArrowLeft size={16} />
-        Danh sách thú cưng
+        {isDoctor ? "Danh sách bệnh nhân" : "Danh sách thú cưng"}
       </Link>
 
       {/* ── Hero header card ─────────────────────────────────────────────── */}
@@ -249,26 +254,67 @@ export default function PetDetailPage() {
               </div>
             </div>
 
-            {/* Action buttons */}
+            {/* Action buttons (Owner: Edit/Delete, Doctor: Read-only Badge & Quick Actions) */}
             <div className="flex items-center gap-2 shrink-0">
-              <Link
-                id="edit-pet-btn"
-                href={`/pets/${pet.id}/edit`}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold border border-slate-200 text-slate-700 bg-white hover:bg-slate-50 hover:border-slate-300 transition-all duration-200 shadow-sm"
-              >
-                <Pencil size={15} />
-                Chỉnh sửa
-              </Link>
-              <button
-                id="delete-pet-btn"
-                onClick={() => setShowDelete(true)}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 hover:border-red-300 transition-all duration-200 shadow-sm"
-              >
-                <Trash2 size={15} />
-                Xóa
-              </button>
+              {isDoctor ? (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-sky-50 text-sky-700 border border-sky-200 shadow-sm">
+                    <Stethoscope size={14} className="text-sky-600" />
+                    <span>Hồ sơ Bệnh nhân</span>
+                    <span className="bg-sky-200/70 text-sky-800 text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded font-bold">
+                      Chỉ đọc
+                    </span>
+                  </div>
+                  <Link
+                    href={`/pets/${pet.id}/medical-records`}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 transition-colors shadow-sm"
+                  >
+                    <FileText size={13} className="text-slate-500" />
+                    Bệnh án
+                  </Link>
+                </div>
+              ) : (
+                <>
+                  <Link
+                    id="edit-pet-btn"
+                    href={`/pets/${pet.id}/edit`}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold border border-slate-200 text-slate-700 bg-white hover:bg-slate-50 hover:border-slate-300 transition-all duration-200 shadow-sm"
+                  >
+                    <Pencil size={15} />
+                    Chỉnh sửa
+                  </Link>
+                  <button
+                    id="delete-pet-btn"
+                    onClick={() => setShowDelete(true)}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 hover:border-red-300 transition-all duration-200 shadow-sm"
+                  >
+                    <Trash2 size={15} />
+                    Xóa
+                  </button>
+                </>
+              )}
             </div>
           </div>
+
+          {/* Owner info banner if available */}
+          {pet.owner_name && (
+            <div className="mt-4 pt-3 border-t border-slate-100 flex flex-wrap items-center gap-4 text-xs text-slate-600">
+              <div className="flex items-center gap-1.5">
+                <User size={14} className="text-slate-400" />
+                <span className="text-slate-400">Chủ nuôi:</span>
+                <span className="font-semibold text-slate-800">{pet.owner_name}</span>
+              </div>
+              {pet.owner_phone && (
+                <a
+                  href={`tel:${pet.owner_phone}`}
+                  className="flex items-center gap-1.5 text-primary hover:underline font-medium"
+                >
+                  <Phone size={13} />
+                  {pet.owner_phone}
+                </a>
+              )}
+            </div>
+          )}
         </div>
       </motion.div>
 

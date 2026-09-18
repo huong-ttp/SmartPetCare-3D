@@ -28,6 +28,9 @@ export interface Pet {
   /** Bệnh mãn tính đã biết */
   chronic_conditions?: string | string[];
   notes?: string;
+  owner_name?: string;
+  owner_phone?: string;
+  owner_email?: string;
   created_at: string;
   updated_at: string;
 }

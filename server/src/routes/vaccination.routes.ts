@@ -1,14 +1,27 @@
 import { Router } from "express";
-import authMiddleware, { authorize} from "../middleware/auth.middleware";
+import authMiddleware, { authorize } from "../middleware/auth.middleware";
 import vaccinationController from "../controllers/vaccination.controller";
 
 const router = Router();
 
-router.post(
-  "/appointment/:appointmentId",
+router.get(
+  "/pet/:petId",
   authMiddleware,
-  authorize("doctor"),
+  vaccinationController.getVaccinationsByPet
+);
+
+router.post(
+  "/",
+  authMiddleware,
+  authorize("doctor", "admin"),
   vaccinationController.createVaccination
 );
 
-export default router;
+router.post(
+  "/appointment/:appointmentId",
+  authMiddleware,
+  authorize("doctor", "admin"),
+  vaccinationController.createVaccination
+);
+
+export default router;

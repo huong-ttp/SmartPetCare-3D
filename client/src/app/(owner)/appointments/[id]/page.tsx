@@ -5,11 +5,13 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft,
+  ArrowRight,
   Calendar as CalendarIcon,
   Clock,
   Dog,
   Cat,
   Stethoscope,
+  User,
   UserCheck,
   AlertCircle,
   CheckCircle2,
@@ -23,7 +25,9 @@ import {
   HelpCircle,
   Plus,
   Info,
+  Syringe,
 } from "lucide-react";
+import { useAuth } from "@/lib/auth-context";
 import { appointmentService } from "@/services/appointmentService";
 import type { Appointment, AppointmentStatus } from "@/types/appointment.type";
 import { formatCurrency } from "@/utils/formatCurrency";
@@ -33,7 +37,10 @@ import { cn } from "@/utils/cn";
 export default function AppointmentDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const { user } = useAuth();
   const { success: showSuccess, error: showError } = useToast();
+
+  const isDoctor = user?.role === "doctor";
 
   const appointmentId = params?.id as string;
 
@@ -45,6 +52,25 @@ export default function AppointmentDetailPage() {
   const [isCancelModalOpen, setIsCancelModalOpen] = useState<boolean>(false);
   const [cancelReasonInput, setCancelReasonInput] = useState<string>("");
   const [isCancelling, setIsCancelling] = useState<boolean>(false);
+
+  // Check if doctor is assigned to this appointment
+  const isAssignedToDoctor = useMemo(() => {
+    if (!isDoctor || !appointment) return true;
+    const currentUserId = String(user?.id ?? user?.user_id ?? "");
+    const apptDoctorId = String(appointment.doctor_id ?? "");
+    return Boolean(currentUserId && apptDoctorId && currentUserId === apptDoctorId);
+  }, [isDoctor, appointment, user]);
+
+  // Check if scheduled appointment time has arrived or passed
+  const isAppointmentTimeReached = useMemo(() => {
+    if (!appointment) return false;
+    const dateVal = appointment.appointment_date || appointment.scheduled_at?.split("T")[0];
+    if (!dateVal) return true;
+    const timeVal = appointment.start_time || "00:00";
+    const apptDateTime = new Date(`${dateVal}T${timeVal}:00`);
+    if (isNaN(apptDateTime.getTime())) return true;
+    return Date.now() >= apptDateTime.getTime();
+  }, [appointment]);
 
   // Fetch Appointment Details
   const loadAppointment = useCallback(async () => {
@@ -176,24 +202,61 @@ export default function AppointmentDetailPage() {
     return "";
   }, [appointment]);
 
+  const backListHref = isDoctor ? "/doctor/appointments" : "/appointments";
+
+  // Permission Guard for Doctor: Doctor ONLY sees appointments assigned to them
+  if (!isLoading && !errorMessage && appointment && isDoctor && !isAssignedToDoctor) {
+    return (
+      <div className="space-y-6 pb-20">
+        <div className="bg-amber-50/90 border border-amber-200 rounded-3xl p-8 text-center space-y-4 max-w-lg mx-auto mt-10 shadow-sm">
+          <div className="w-14 h-14 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center mx-auto">
+            <AlertTriangle size={28} />
+          </div>
+          <div className="space-y-1.5">
+            <h3 className="text-base font-bold text-amber-950">Không có quyền truy cập</h3>
+            <p className="text-xs text-amber-800 leading-relaxed">
+              Bạn không được phân công phụ trách ca khám này. Lịch hẹn chưa được gán hoặc đã được phân
+              công cho một bác sĩ khác.
+            </p>
+          </div>
+          <div className="pt-2">
+            <Link
+              href="/doctor/appointments"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#0EA5B7] text-white text-xs font-bold hover:bg-[#0c8f9f] transition-all shadow-md active:scale-95"
+            >
+              <ArrowLeft size={14} />
+              <span>Quay lại danh sách lịch hẹn của bạn</span>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 pb-20">
       {/* ─── Breadcrumbs & Navigation ─────────────────────────────────── */}
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
-          <Link href="/dashboard" className="hover:text-[#0EA5B7] transition-colors">
+          <Link
+            href={isDoctor ? "/doctor/dashboard" : "/dashboard"}
+            className="hover:text-[#0EA5B7] transition-colors"
+          >
             Tổng quan
           </Link>
           <span>/</span>
-          <Link href="/appointments" className="hover:text-[#0EA5B7] transition-colors">
-            Lịch hẹn
+          <Link
+            href={backListHref}
+            className="hover:text-[#0EA5B7] transition-colors"
+          >
+            {isDoctor ? "Lịch hẹn khám" : "Lịch hẹn"}
           </Link>
           <span>/</span>
           <span className="text-slate-900 font-semibold">Chi tiết #{appointmentId}</span>
         </div>
 
         <Link
-          href="/appointments"
+          href={backListHref}
           className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 transition-colors"
         >
           <ArrowLeft size={14} />
@@ -228,13 +291,13 @@ export default function AppointmentDetailPage() {
           <div className="flex items-center justify-center gap-3 pt-2">
             <button
               onClick={loadAppointment}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-red-600 text-white text-xs font-bold hover:bg-red-700 transition-all shadow-md active:scale-95"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-red-600 text-white text-xs font-bold hover:bg-red-700 transition-all shadow-md active:scale-95 cursor-pointer"
             >
               <RefreshCw size={14} />
               <span>Thử lại</span>
             </button>
             <Link
-              href="/appointments"
+              href={backListHref}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-semibold hover:bg-slate-50 transition-all"
             >
               <span>Về danh sách</span>
@@ -262,23 +325,77 @@ export default function AppointmentDetailPage() {
               </p>
             </div>
 
-            <div className="flex items-center gap-2.5 shrink-0">
-              {canCancel && (
-                <button
-                  onClick={() => setIsCancelModalOpen(true)}
-                  className="px-4 py-2.5 rounded-xl border border-rose-200 bg-rose-50/50 hover:bg-rose-100 text-rose-600 text-xs font-bold transition-all shadow-xs"
-                >
-                  Hủy lịch hẹn
-                </button>
+            {/* Actions: Doctor View vs Owner View */}
+            <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+              {/* Doctor Actions */}
+              {isDoctor && (
+                <>
+                  {appointment.status === "confirmed" && (
+                    <>
+                      {isAppointmentTimeReached ? (
+                        <Link
+                          href={`/appointments/${appointment.id || appointment.appointment_id}/create-record`}
+                          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#0EA5B7] to-teal-600 hover:from-[#0c8f9f] hover:to-teal-700 text-white text-xs font-bold transition-all shadow-md shadow-[#0EA5B7]/25 active:scale-95 cursor-pointer"
+                        >
+                          <Stethoscope size={16} />
+                          <span>Bắt đầu khám</span>
+                          <ArrowRight size={14} />
+                        </Link>
+                      ) : (
+                        <div className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-50 text-amber-800 border border-amber-200 text-xs font-semibold">
+                          <Clock size={14} className="text-amber-600" />
+                          <span>Chưa đến giờ khám ({timeStr || "Theo hẹn"})</span>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {appointment.status === "completed" && (
+                    <Link
+                      href={
+                        appointment.medical_record_id
+                          ? `/medical-records/${appointment.medical_record_id}`
+                          : `/doctor/medical-records`
+                      }
+                      className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 text-xs font-bold transition-all cursor-pointer"
+                    >
+                      <FileText size={15} />
+                      <span>Xem bệnh án đã lưu</span>
+                    </Link>
+                  )}
+
+                  {/* Vaccination Recording Shortcut for Doctor */}
+                  <Link
+                    href={`/appointments/${appointment.id || appointment.appointment_id}/vaccinate`}
+                    className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-teal-50 text-teal-700 hover:bg-teal-100 border border-teal-200 text-xs font-bold transition-all shadow-2xs active:scale-95 cursor-pointer"
+                  >
+                    <Syringe size={15} className="text-teal-600" />
+                    <span>Ghi nhận tiêm phòng</span>
+                  </Link>
+                </>
               )}
 
-              <Link
-                href="/appointments/create"
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#0EA5B7] hover:bg-[#0b8fa0] text-white text-xs font-bold transition-all shadow-md shadow-[#0EA5B7]/20 active:scale-95"
-              >
-                <Plus size={15} />
-                <span>Đặt lịch mới</span>
-              </Link>
+              {/* Owner Actions */}
+              {!isDoctor && (
+                <>
+                  {canCancel && (
+                    <button
+                      onClick={() => setIsCancelModalOpen(true)}
+                      className="px-4 py-2.5 rounded-xl border border-rose-200 bg-rose-50/50 hover:bg-rose-100 text-rose-600 text-xs font-bold transition-all shadow-xs cursor-pointer"
+                    >
+                      Hủy lịch hẹn
+                    </button>
+                  )}
+
+                  <Link
+                    href="/appointments/create"
+                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#0EA5B7] hover:bg-[#0b8fa0] text-white text-xs font-bold transition-all shadow-md shadow-[#0EA5B7]/20 active:scale-95 cursor-pointer"
+                  >
+                    <Plus size={15} />
+                    <span>Đặt lịch mới</span>
+                  </Link>
+                </>
+              )}
             </div>
           </div>
 
@@ -344,7 +461,48 @@ export default function AppointmentDetailPage() {
                 </div>
               </div>
 
-              {/* Card 2: Dịch Vụ & Bác Sĩ Phụ Trách */}
+              {/* Card 2: Thông Tin Chủ Nuôi (Pet Owner) */}
+              <div className="bg-white rounded-3xl border border-slate-200/80 p-6 shadow-xs space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                    <User size={18} className="text-[#0EA5B7]" />
+                    <span>Thông Tin Chủ Nuôi (Khách Hàng)</span>
+                  </h2>
+                  <span className="text-xs text-slate-500 font-medium">Hồ sơ khách hàng</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                  <div className="p-4 rounded-2xl bg-slate-50/70 border border-slate-100 space-y-1.5">
+                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+                      Họ và tên chủ nuôi
+                    </span>
+                    <p className="font-extrabold text-slate-900 text-sm">
+                      {appointment.owner_name || "Nguyễn Văn An"}
+                    </p>
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-slate-50/70 border border-slate-100 space-y-1.5">
+                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+                      Số điện thoại liên hệ
+                    </span>
+                    <p className="font-extrabold text-slate-900 text-sm">
+                      {appointment.owner_phone ? (
+                        <a
+                          href={`tel:${appointment.owner_phone}`}
+                          className="text-[#0EA5B7] hover:underline inline-flex items-center gap-1.5"
+                        >
+                          <Phone size={13} />
+                          <span>{appointment.owner_phone}</span>
+                        </a>
+                      ) : (
+                        <span className="text-slate-500 font-normal">Chưa cập nhật SĐT</span>
+                      )}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 3: Dịch Vụ & Bác Sĩ Phụ Trách */}
               <div className="bg-white rounded-3xl border border-slate-200/80 p-6 shadow-xs space-y-4">
                 <h2 className="text-base font-bold text-slate-900 flex items-center gap-2 border-b border-slate-100 pb-3">
                   <Stethoscope size={18} className="text-[#0EA5B7]" />
