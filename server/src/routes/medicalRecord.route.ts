@@ -1,6 +1,8 @@
 import { Router } from "express";
-import authMiddleware from "../middleware/auth.middleware";
 import medicalRecordController from "../controllers/medicalRecord.controller";
+import authMiddleware, {
+  authorize
+} from "../middleware/auth.middleware";
 
 const router = Router();
 
@@ -8,6 +10,20 @@ router.get(
   "/pet/:petId",
   authMiddleware,
   medicalRecordController.getMedicalRecordsByPet
+);
+
+router.post(
+  "/appointment/:appointmentId",
+  authMiddleware,
+  authorize("doctor"),
+  medicalRecordController.createMedicalRecord
+);
+
+router.get(
+  "/doctor/patients",
+  authMiddleware,
+  authorize("doctor"),
+  medicalRecordController.listPatientsByDoctor
 );
 
 router.get(

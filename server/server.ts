@@ -9,6 +9,9 @@ import invoiceRoutes from "./src/routes/invoice.routes";
 import paymentRoutes from "./src/routes/payment.routes";
 import notificationRoutes from "./src/routes/notification.routes";
 import userRoutes from "./src/routes/service.routes";
+import vaccinationRoutes from "./src/routes/vaccination.routes";
+import vaccineTypeRoutes from "./src/routes/vaccineType.routes";
+
 
 async function connectDatabase() {
   
@@ -61,6 +64,16 @@ app.use(
   app.use(
   "/api/users",
   userRoutes
+);
+
+app.use(
+  "/api/vaccinations",
+  vaccinationRoutes
+);
+
+app.use(
+  "/api/vaccine-types",
+  vaccineTypeRoutes
 );
 });
 

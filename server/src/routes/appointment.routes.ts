@@ -1,5 +1,5 @@
 import { Router } from "express";
-import authMiddleware from "../middleware/auth.middleware"
+import authMiddleware, {authorize} from "../middleware/auth.middleware";
 import appointmentController from "../controllers/appointment.controller"
 
 const router = Router();
@@ -23,6 +23,27 @@ router.get(
 );
 
 router.get(
+  "/doctor/dashboard",
+  authMiddleware,
+  authorize("doctor"),
+  appointmentController.getDoctorDashboard
+);
+
+router.get(
+  "/doctor",
+  authMiddleware,
+  authorize("doctor"),
+  appointmentController.getDoctorAppointments
+);
+
+router.get(
+  "/doctor/:id",
+  authMiddleware,
+  authorize("doctor"),
+  appointmentController.getDoctorAppointmentById
+);
+
+router.get(
   "/:id",
   authMiddleware,
   appointmentController.getAppointmentById
@@ -33,4 +54,6 @@ router.put(
   authMiddleware,
   appointmentController.cancelAppointment
 );
+
+
 export default router;
