@@ -12,6 +12,7 @@ export interface PetHealthLog {
    * Cân nặng đo được — sẽ được dùng để cập nhật Pet.weight_kg cache.
    */
   weight_kg?: number;
+  height_cm?: number; // Chiều cao đo được (cm)
   temperature?: number; // °C
   appetite?: "normal" | "decreased" | "increased" | "none";
   activity_level?: "normal" | "low" | "high" | "lethargic";
@@ -27,6 +28,7 @@ export interface CreatePetHealthLogDTO {
   pet_id: string;
   log_date: string;
   weight_kg?: number;
+  height_cm?: number;
   temperature?: number;
   appetite?: PetHealthLog["appetite"];
   activity_level?: PetHealthLog["activity_level"];
