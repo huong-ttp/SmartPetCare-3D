@@ -27,7 +27,7 @@ export interface Payment {
 }
 
 export interface CreatePaymentDTO {
-  invoice_id: string;
+  invoice_id: string | number;
   amount: number;
   payment_method: PaymentMethod;
   transaction_ref?: string;

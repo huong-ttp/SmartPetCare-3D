@@ -30,8 +30,9 @@ export const paymentService = {
         updated_at: new Date().toISOString(),
       } as Payment);
     }
-    const res = await axiosClient.post<Payment>("/payments", dto);
-    return res.data;
+    const res = await axiosClient.post<any>("/payments", dto);
+    const raw = res.data?.data ?? res.data;
+    return raw;
   },
 
   async updateStatus(id: string, dto: UpdatePaymentStatusDTO): Promise<Payment> {
@@ -40,7 +41,15 @@ export const paymentService = {
       if (!p) throw new Error("Thanh toán không tồn tại.");
       return mockDelay({ ...p, ...dto, updated_at: new Date().toISOString() });
     }
-    const res = await axiosClient.patch<Payment>(`/payments/${id}/status`, dto);
-    return res.data;
+    const res = await axiosClient.patch<any>(`/payments/${id}/status`, dto);
+    const raw = res.data?.data ?? res.data;
+    return raw;
   },
 };
+
+export const payment = {
+  service: paymentService,
+};
+
+export default paymentService;
+
