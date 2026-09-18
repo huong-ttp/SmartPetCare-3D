@@ -29,10 +29,28 @@ export interface Appointment {
   status: AppointmentStatus;
   reason?: string;
   notes?: string;
+  cancel_reason?: string;
   pet_name?: string;
+  pet_species?: string;
+  pet_breed?: string;
+  pet_weight?: number;
   service_name?: string;
+  service_description?: string;
+  service_price?: number;
+  service_duration?: number;
+  doctor_name?: string;
+  doctor_phone?: string;
+  medical_record_id?: number | string;
+  invoice_id?: number | string;
   created_at: string;
   updated_at: string;
+}
+
+export interface AppointmentFilterDTO {
+  status?: AppointmentStatus | "all" | string;
+  from?: string;
+  to?: string;
+  owner?: string;
 }
 
 // Owner tạo appointment — không chọn doctor

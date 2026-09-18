@@ -9,6 +9,7 @@ import type {
   Appointment,
   CreateAppointmentDTO,
   AvailableSlot,
+  AppointmentFilterDTO,
   AssignDoctorDTO,
   UpdateAppointmentStatusDTO,
 } from "@/types/appointment.type";
@@ -57,11 +58,29 @@ function normalizeAppointment(raw: any): Appointment {
 }
 
 export const appointmentService = {
-  /** Lấy tất cả lịch hẹn của owner hiện tại */
-  async getMyAppointments(): Promise<Appointment[]> {
-    if (USE_MOCK) return mockDelay(MOCK_APPOINTMENTS.map(normalizeAppointment));
+  /** Lấy tất cả lịch hẹn của owner hiện tại (hỗ trợ filter status, from, to) */
+  async getMyAppointments(filter?: AppointmentFilterDTO): Promise<Appointment[]> {
+    if (USE_MOCK) {
+      let list = MOCK_APPOINTMENTS.map(normalizeAppointment);
+      if (filter?.status && filter.status !== "all") {
+        list = list.filter((a) => a.status === filter.status);
+      }
+      if (filter?.from) {
+        list = list.filter((a) => (a.appointment_date || a.scheduled_at || "") >= filter.from!);
+      }
+      if (filter?.to) {
+        list = list.filter((a) => (a.appointment_date || a.scheduled_at || "") <= filter.to!);
+      }
+      return mockDelay(list);
+    }
+
     try {
-      const res = await axiosClient.get<any>("/appointments");
+      const params: any = {};
+      if (filter?.status && filter.status !== "all") params.status = filter.status;
+      if (filter?.from) params.from = filter.from;
+      if (filter?.to) params.to = filter.to;
+
+      const res = await axiosClient.get<any>("/appointments", { params });
       const raw = res.data;
       let list: any[] = [];
       if (Array.isArray(raw)) list = raw;
@@ -74,10 +93,36 @@ export const appointmentService = {
     }
   },
 
+  /** Alias: appointment.service.list({ owner: me }) */
+  async list(filter?: AppointmentFilterDTO): Promise<Appointment[]> {
+    return appointmentService.getMyAppointments(filter);
+  },
+
+  /** Lấy chi tiết lịch hẹn theo ID */
+  async getById(id: string | number): Promise<Appointment> {
+    const cleanId = String(id);
+    if (USE_MOCK) {
+      const found = MOCK_APPOINTMENTS.find(
+        (a) => String(a.id) === cleanId || String(a.appointment_id) === cleanId
+      );
+      if (!found) throw new Error("Lịch hẹn không tồn tại.");
+      return mockDelay(normalizeAppointment(found));
+    }
+
+    const res = await axiosClient.get<any>(`/appointments/${cleanId}`);
+    const raw = res.data?.data ?? res.data;
+    if (!raw) throw new Error("Lịch hẹn không tồn tại.");
+    return normalizeAppointment(raw);
+  },
+
+  /** Alias: getAppointmentById */
+  async getAppointmentById(id: string | number): Promise<Appointment> {
+    return appointmentService.getById(id);
+  },
+
   /** Lấy danh sách khung giờ khả dụng theo ngày và pet */
   async getAvailableSlots(petId: string | number, date: string): Promise<AvailableSlot[]> {
     if (USE_MOCK) {
-      // Mock: check if any mock appointments exist for this pet on this date
       const bookedTimes = MOCK_APPOINTMENTS
         .filter((a) => String(a.pet_id) === String(petId) && a.status !== "cancelled")
         .map((a) => {
@@ -193,9 +238,44 @@ export const appointmentService = {
     return res.data;
   },
 
-  /** Owner huỷ lịch hẹn */
-  async cancelAppointment(id: string): Promise<Appointment> {
-    return appointmentService.updateStatus(id, { status: "cancelled" });
+  /** Owner huỷ lịch hẹn (gọi PUT /appointments/:id/cancel) */
+  async cancel(id: string | number, cancel_reason?: string): Promise<Appointment> {
+    const cleanId = String(id);
+    const reasonText = cancel_reason?.trim() || "Chủ nuôi yêu cầu hủy lịch hẹn";
+
+    if (USE_MOCK) {
+      const appt = MOCK_APPOINTMENTS.find(
+        (a) => String(a.id) === cleanId || String(a.appointment_id) === cleanId
+      );
+      if (!appt) throw new Error("Lịch hẹn không tồn tại.");
+      appt.status = "cancelled";
+      appt.cancel_reason = reasonText;
+      appt.updated_at = new Date().toISOString();
+      return mockDelay(normalizeAppointment(appt));
+    }
+
+    try {
+      const res = await axiosClient.put<any>(`/appointments/${cleanId}/cancel`, {
+        cancel_reason: reasonText,
+      });
+      const raw = res.data?.data ?? res.data;
+      return normalizeAppointment(raw);
+    } catch (err: any) {
+      // Fallback: nếu route PUT /cancel lỗi hoặc server dùng PATCH /status
+      if (err?.response?.status === 404 || err?.response?.status === 405) {
+        const patchRes = await axiosClient.patch<any>(`/appointments/${cleanId}/status`, {
+          status: "cancelled",
+        });
+        const raw = patchRes.data?.data ?? patchRes.data;
+        return normalizeAppointment(raw);
+      }
+      throw err;
+    }
+  },
+
+  /** Alias: cancelAppointment */
+  async cancelAppointment(id: string | number, cancel_reason?: string): Promise<Appointment> {
+    return appointmentService.cancel(id, cancel_reason);
   },
 };
 

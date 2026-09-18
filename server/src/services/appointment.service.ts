@@ -155,12 +155,28 @@ class AppointmentService {
       SELECT
         a.*,
         p.name AS pet_name,
-        s.name AS service_name
+        p.species AS pet_species,
+        p.breed AS pet_breed,
+        p.weight_kg AS pet_weight,
+        s.name AS service_name,
+        s.description AS service_description,
+        s.price AS service_price,
+        s.duration_minutes AS service_duration,
+        u.full_name AS doctor_name,
+        u.phone AS doctor_phone,
+        mr.record_id AS medical_record_id,
+        inv.invoice_id AS invoice_id
       FROM appointments a
       JOIN pets p
         ON a.pet_id = p.pet_id
       LEFT JOIN services s
         ON a.service_id = s.service_id
+      LEFT JOIN users u
+        ON a.doctor_id = u.user_id
+      LEFT JOIN medical_records mr
+        ON mr.appointment_id = a.appointment_id
+      LEFT JOIN invoices inv
+        ON inv.appointment_id = a.appointment_id
       WHERE p.owner_id = $1
     `;
 
@@ -206,12 +222,28 @@ class AppointmentService {
       SELECT
         a.*,
         p.name AS pet_name,
-        s.name AS service_name
+        p.species AS pet_species,
+        p.breed AS pet_breed,
+        p.weight_kg AS pet_weight,
+        s.name AS service_name,
+        s.description AS service_description,
+        s.price AS service_price,
+        s.duration_minutes AS service_duration,
+        u.full_name AS doctor_name,
+        u.phone AS doctor_phone,
+        mr.record_id AS medical_record_id,
+        inv.invoice_id AS invoice_id
       FROM appointments a
       JOIN pets p
         ON a.pet_id = p.pet_id
       LEFT JOIN services s
         ON a.service_id = s.service_id
+      LEFT JOIN users u
+        ON a.doctor_id = u.user_id
+      LEFT JOIN medical_records mr
+        ON mr.appointment_id = a.appointment_id
+      LEFT JOIN invoices inv
+        ON inv.appointment_id = a.appointment_id
       WHERE
         a.appointment_id = $1
         AND p.owner_id = $2;
