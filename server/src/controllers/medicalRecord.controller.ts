@@ -27,6 +27,68 @@ export const getMedicalRecordsByPet = async (
   }
 };
 
+export const createMedicalRecord = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+
+  try {
+
+    const doctorId = req.user!.user_id;
+
+    const appointmentId = Number(
+      req.params.appointmentId
+    );
+
+    const record =
+      await medicalRecordService.createMedicalRecord(
+        doctorId,
+        appointmentId,
+        req.body
+      );
+
+    res.status(201).json({
+      success: true,
+      data: record
+    });
+
+  } catch (error) {
+    next(error);
+  }
+
+};
+
+export const listPatientsByDoctor = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+
+    const doctorId = req.user!.user_id;
+
+    const search =
+      req.query.search as string | undefined;
+
+    const patients =
+      await medicalRecordService.listPatientsByDoctor(
+        doctorId,
+        search
+      );
+
+    res.json({
+      success: true,
+      data: patients
+    });
+
+  } catch (error) {
+    next(error);
+  }
+};
+
 export default {
   getMedicalRecordsByPet,
+  createMedicalRecord,
+  listPatientsByDoctor
 };

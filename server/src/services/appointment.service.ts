@@ -24,6 +24,21 @@ interface AppointmentFilter {
   from?: string;
   to?: string;
 }
+
+interface DoctorAppointmentFilter {
+  tab?: "today" | "upcoming" | "completed";
+}
+
+interface DoctorDashboard {
+  overview: {
+    todayAppointments: number;
+    upcomingAppointments: number;
+    completedAppointments: number;
+    patients: number;
+  };
+
+  todayAppointments: any[];
+}
 class AppointmentService {
     async createAppointment(
   ownerId: number,
@@ -329,5 +344,268 @@ async getAvailableSlots(
     available: !bookedTimes.includes(slot)
   }));
 }
+
+async getDoctorAppointments(
+  doctorId: number,
+  filter: DoctorAppointmentFilter
+) {
+  if (!filter.tab) {
+    filter.tab = "today";
+  }
+
+  let query = `
+    SELECT
+      a.appointment_id,
+      a.appointment_date,
+      a.start_time,
+      a.end_time,
+      a.status,
+      a.reason,
+      a.notes,
+
+      p.pet_id,
+      p.name AS pet_name,
+
+      u.full_name AS owner_name,
+
+      s.service_id,
+      s.name AS service_name
+
+    FROM appointments a
+
+    JOIN pets p
+      ON a.pet_id = p.pet_id
+
+    JOIN users u
+      ON p.owner_id = u.user_id
+
+    JOIN services s
+      ON a.service_id = s.service_id
+
+    WHERE
+      a.doctor_id = $1
+  `;
+
+  const values: any[] = [doctorId];
+
+  if (filter.tab === "today") {
+
+    query += `
+      AND a.appointment_date = CURRENT_DATE
+    `;
+
+  }
+
+  if (filter.tab === "upcoming") {
+
+    query += `
+      AND a.appointment_date > CURRENT_DATE
+      AND a.status = 'confirmed'
+    `;
+
+  }
+
+  if (filter.tab === "completed") {
+
+    query += `
+      AND a.status = 'completed'
+    `;
+
+  }
+
+  query += `
+    ORDER BY
+      a.appointment_date,
+      a.start_time;
+  `;
+
+  const result = await pool.query(
+    query,
+    values
+  );
+
+  return result.rows;
 }
+
+async getDoctorAppointmentById(
+  doctorId: number,
+  appointmentId: number
+) {
+
+  const result = await pool.query(
+    `
+    SELECT
+      a.*,
+
+      p.pet_id,
+      p.name AS pet_name,
+      p.species,
+      p.breed,
+
+      u.user_id AS owner_id,
+      u.full_name AS owner_name,
+
+      s.service_id,
+      s.name AS service_name,
+      s.price
+
+    FROM appointments a
+
+    JOIN pets p
+      ON a.pet_id = p.pet_id
+
+    JOIN users u
+      ON p.owner_id = u.user_id
+
+    JOIN services s
+      ON a.service_id = s.service_id
+
+    WHERE
+      a.appointment_id = $1
+      AND a.doctor_id = $2;
+    `,
+    [
+      appointmentId,
+      doctorId
+    ]
+  );
+
+  if (result.rowCount === 0) {
+  throw new AppError(
+    "Appointment not found",
+    404
+  );
+}
+
+const appointment = result.rows[0];
+
+// Ghép ngày + giờ hẹn
+const appointmentDate = new Date(
+  appointment.appointment_date
+);
+
+const dateString =
+  appointmentDate
+    .toISOString()
+    .split("T")[0];
+
+const appointmentDateTime = new Date(
+  `${appointment.appointment_date}T${appointment.start_time}`
+);
+
+if (appointmentDateTime > new Date()) {
+  throw new AppError(
+    "Appointment has not started yet",
+    400
+  );
+}
+
+// Thời gian hiện tại
+const now = new Date();
+
+// Chỉ được tạo Medical Record
+// khi lịch hẹn đã đến hoặc đã qua
+appointment.canCreateMedicalRecord =
+  appointment.status === "confirmed" &&
+  appointmentDateTime <= now;
+
+return appointment;
+}
+async getDoctorDashboard(
+  doctorId: number
+): Promise<DoctorDashboard> {
+
+  const today = await pool.query(
+    `
+    SELECT COUNT(*) AS total
+    FROM appointments
+    WHERE
+      doctor_id = $1
+      AND appointment_date = CURRENT_DATE;
+    `,
+    [doctorId]
+  );
+
+  const upcoming = await pool.query(
+    `
+    SELECT COUNT(*) AS total
+    FROM appointments
+    WHERE
+      doctor_id = $1
+      AND appointment_date > CURRENT_DATE
+      AND status = 'confirmed';
+    `,
+    [doctorId]
+  );
+
+  const completed = await pool.query(
+    `
+    SELECT COUNT(*) AS total
+    FROM appointments
+    WHERE
+      doctor_id = $1
+      AND status = 'completed';
+    `,
+    [doctorId]
+  );
+
+  const patients = await pool.query(
+    `
+    SELECT COUNT(DISTINCT pet_id) AS total
+    FROM medical_records
+    WHERE doctor_id = $1;
+    `,
+    [doctorId]
+  );
+
+  const todayList = await pool.query(
+    `
+    SELECT
+      a.appointment_id,
+      a.start_time,
+      a.status,
+
+      p.pet_id,
+      p.name AS pet_name,
+
+      u.full_name AS owner_name,
+
+      s.name AS service_name
+
+    FROM appointments a
+
+    JOIN pets p
+      ON a.pet_id = p.pet_id
+
+    JOIN users u
+      ON p.owner_id = u.user_id
+
+    JOIN services s
+      ON a.service_id = s.service_id
+
+    WHERE
+      a.doctor_id = $1
+      AND a.appointment_date = CURRENT_DATE
+
+    ORDER BY a.start_time;
+    `,
+    [doctorId]
+  );
+
+  return {
+    overview: {
+      todayAppointments: Number(today.rows[0].total),
+      upcomingAppointments: Number(upcoming.rows[0].total),
+      completedAppointments: Number(completed.rows[0].total),
+      patients: Number(patients.rows[0].total),
+    },
+
+    todayAppointments: todayList.rows,
+  };
+}
+}
+
+
+
+
 export default new AppointmentService();

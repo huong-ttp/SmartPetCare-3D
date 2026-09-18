@@ -152,12 +152,100 @@ export const getAvailableSlots = async (
 
 
 };
+
+export const getDoctorAppointments = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+
+  try {
+
+    const doctorId = req.user!.user_id;
+
+    const appointments =
+      await appointmentService.getDoctorAppointments(
+        doctorId,
+        {
+          tab: req.query.tab as
+            | "today"
+            | "upcoming"
+            | "completed"
+        }
+      );
+
+    res.json({
+      success: true,
+      data: appointments
+    });
+
+  } catch (error) {
+    next(error);
+  }
+
+};
+
+export const getDoctorAppointmentById = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+
+  try {
+
+    const doctorId = req.user!.user_id;
+
+    const appointment =
+      await appointmentService.getDoctorAppointmentById(
+        doctorId,
+        Number(req.params.id)
+      );
+
+    res.json({
+      success: true,
+      data: appointment
+    });
+
+  } catch (error) {
+    next(error);
+  }
+
+};
+
+export const getDoctorDashboard = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+
+  try {
+
+    const doctorId = req.user!.user_id;
+
+    const dashboard =
+      await appointmentService.getDoctorDashboard(
+        doctorId
+      );
+
+    res.json({
+      success: true,
+      data: dashboard
+    });
+
+  } catch (error) {
+    next(error);
+  }
+
+};
 export default {
   createAppointment,
    getAppointmentsByOwner,
    getAppointmentById,
    cancelAppointment,
-   getAvailableSlots
+   getAvailableSlots,
+   getDoctorAppointments,
+   getDoctorAppointmentById,
+   getDoctorDashboard
 
 };
 
