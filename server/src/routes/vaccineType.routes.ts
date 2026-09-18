@@ -14,7 +14,8 @@ router.get(
   authMiddleware,
   authorize(
     "doctor",
-    "admin"
+    "admin",
+    "owner"
   ),
   vaccineTypeController.getAllVaccineTypes
 );

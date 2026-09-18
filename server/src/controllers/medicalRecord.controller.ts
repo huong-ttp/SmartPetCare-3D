@@ -8,13 +8,15 @@ export const getMedicalRecordsByPet = async (
 ) => {
   try {
     const ownerId = req.user!.user_id;
+    const role = req.user!.role;
 
     const petId = Number(req.params.petId);
 
     const records =
       await medicalRecordService.getMedicalRecordsByPet(
         ownerId,
-        petId
+        petId,
+        role
       );
 
     res.json({

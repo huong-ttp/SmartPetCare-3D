@@ -151,13 +151,19 @@ async getPetsByOwner(ownerId: number) {
 
 async getPetById(
   petId: number,
-  ownerId: number
+  ownerId: number,
+  userRole?: string
 ) {
   const result = await pool.query(
     `
-    SELECT *
-    FROM pets
-    WHERE pet_id = $1
+    SELECT
+      p.*,
+      u.full_name AS owner_name,
+      u.phone AS owner_phone,
+      u.email AS owner_email
+    FROM pets p
+    LEFT JOIN users u ON p.owner_id = u.user_id
+    WHERE p.pet_id = $1
     `,
     [petId]
   );
@@ -171,7 +177,8 @@ async getPetById(
 
   const pet = result.rows[0];
 
-  if (pet.owner_id !== ownerId) {
+  // Cho phép doctor và admin xem thông tin pet, owner chỉ xem được thú cưng của mình
+  if (userRole !== "doctor" && userRole !== "admin" && pet.owner_id !== ownerId) {
     throw new AppError(
       "You do not have permission to access this pet",
       403

@@ -62,37 +62,39 @@ class HealthLogService {
     return result.rows[0];
   }
   async getHealthLogsByPet(
-  ownerId: number,
-  petId: number
-) {
+    ownerId: number,
+    petId: number,
+    userRole?: string
+  ) {
     await petService.getPetById(
-  petId,
-  ownerId
-);
-const result = await pool.query(
-  `
-  SELECT *
-  FROM pet_health_logs
-  WHERE pet_id = $1
-  ORDER BY log_date DESC;
-  `,
-  [
-    petId
-  ]
-);
-return result.rows;
+      petId,
+      ownerId,
+      userRole
+    );
+    const result = await pool.query(
+      `
+      SELECT *
+      FROM pet_health_logs
+      WHERE pet_id = $1
+      ORDER BY log_date DESC;
+      `,
+      [
+        petId
+      ]
+    );
+    return result.rows;
+  }
 
-}
-
-async getLatestHealthLog(
-  ownerId: number,
-  petId: number
-) {
-
-  await petService.getPetById(
-    petId,
-    ownerId
-  );
+  async getLatestHealthLog(
+    ownerId: number,
+    petId: number,
+    userRole?: string
+  ) {
+    await petService.getPetById(
+      petId,
+      ownerId,
+      userRole
+    );
 
   const result = await pool.query(
     `

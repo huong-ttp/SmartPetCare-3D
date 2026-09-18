@@ -54,15 +54,39 @@ export interface MedicalRecord {
 }
 
 export interface CreateMedicalRecordDTO {
-  appointment_id: string;
-  pet_id: string;
+  appointment_id: string | number;
+  pet_id: string | number;
   weight_at_visit?: number;
   temperature?: number;
-  diagnosis?: string;
+  diagnosis: string;
   treatment?: string;
   prescription?: string;
+  record_date?: string;
   follow_up_date?: string;
   notes?: string;
 }
 
 export type UpdateMedicalRecordDTO = Partial<Omit<CreateMedicalRecordDTO, "appointment_id" | "pet_id">>;
+
+// ============================================================
+// DOCTOR_PATIENT entity type
+// Thú cưng distinct đã từng khám hoặc hoàn thành lịch hẹn bởi bác sĩ
+// ============================================================
+
+export interface DoctorPatient {
+  pet_id: number | string;
+  name: string;
+  species: string;
+  breed?: string;
+  gender?: string;
+  avatar_url?: string;
+  date_of_birth?: string;
+  weight_kg?: number;
+  owner_id?: number | string;
+  owner_name: string;
+  owner_phone?: string;
+  owner_email?: string;
+  total_records?: number;
+  total_appointments?: number;
+  last_visit_date?: string;
+}

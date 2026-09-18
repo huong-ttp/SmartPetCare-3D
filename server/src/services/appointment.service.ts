@@ -405,8 +405,11 @@ async getDoctorAppointments(
 
       p.pet_id,
       p.name AS pet_name,
+      p.species AS pet_species,
+      p.breed AS pet_breed,
 
       u.full_name AS owner_name,
+      u.phone AS owner_phone,
 
       s.service_id,
       s.name AS service_name
@@ -479,11 +482,13 @@ async getDoctorAppointmentById(
 
       p.pet_id,
       p.name AS pet_name,
-      p.species,
-      p.breed,
+      p.species AS pet_species,
+      p.breed AS pet_breed,
+      p.weight_kg AS pet_weight,
 
       u.user_id AS owner_id,
       u.full_name AS owner_name,
+      u.phone AS owner_phone,
 
       s.service_id,
       s.name AS service_name,

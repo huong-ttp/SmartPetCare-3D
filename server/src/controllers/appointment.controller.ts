@@ -66,17 +66,23 @@ export const getAppointmentById = async (
 
   try {
 
-    const ownerId = req.user!.user_id;
-
+    const user = req.user!;
     const appointmentId = Number(
       req.params.id
     );
 
-    const appointment =
-      await appointmentService.getAppointmentById(
-        ownerId,
+    let appointment;
+    if (user.role === "doctor") {
+      appointment = await appointmentService.getDoctorAppointmentById(
+        user.user_id,
         appointmentId
       );
+    } else {
+      appointment = await appointmentService.getAppointmentById(
+        user.user_id,
+        appointmentId
+      );
+    }
 
     res.json({
       success: true,

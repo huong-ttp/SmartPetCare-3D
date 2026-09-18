@@ -8,7 +8,8 @@ import medicalRecordRoutes from "./medicalRecord.route";
 import paymentRoutes from "./payment.routes";
 import dashboardRoutes from "./dashboard.routes";
 import userRoutes from "./user.routes";
-import vaccinationRoutes from "./vaccination.route";
+import vaccinationRoutes from "./vaccination.routes";
+import vaccineTypeRoutes from "./vaccineType.routes";
 import serviceRoutes from "./service.routes";
 
 const router = Router();
@@ -22,5 +23,6 @@ router.use("/payments", paymentRoutes);
 router.use("/dashboard", dashboardRoutes);
 router.use("/users", userRoutes);
 router.use("/vaccinations", vaccinationRoutes);
+router.use("/vaccine-types", vaccineTypeRoutes);
 router.use("/services", serviceRoutes);
 export default router;
