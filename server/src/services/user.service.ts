@@ -6,37 +6,47 @@ interface ChangePasswordData {
   current_password: string;
   new_password: string;
 }
+
+interface UpdateProfileData {
+  full_name: string;
+  phone?: string;
+  address?: string;
+  avatar_url?: string;
+}
 class UserService {
-    async updateProfile(
+    
+  async updateProfile(
   userId: number,
-  data: {
-    full_name: string;
-    phone?: string;
-    address?: string;
-  }
-) {
+  data: UpdateProfileData
+)
+ {
   const result = await pool.query(
     `
       UPDATE users
       SET
-        full_name = $1,
-        phone = $2,
-        address = $3
-      WHERE user_id = $4
+    full_name = $1,
+    phone = $2,
+    address = $3,
+    avatar_url = $4,
+    updated_at = NOW()
+      WHERE user_id = $5
       RETURNING
-        user_id,
-        full_name,
-        email,
-        phone,
-        address,
-        role;
+    user_id,
+    full_name,
+    email,
+    phone,
+    address,
+    avatar_url,
+    role,
+    is_active;
     `,
     [
-      data.full_name,
-      data.phone ?? null,
-      data.address ?? null,
-      userId,
-    ]
+    data.full_name,
+    data.phone ?? null,
+    data.address ?? null,
+    data.avatar_url ?? null,
+    userId
+]
   );
 
   if (result.rows.length === 0) {
@@ -97,6 +107,42 @@ async changePassword(
   return {
     message: "Mật khẩu đã được thay đổi thành công",
   };
+}
+
+async getProfile(
+  userId: number
+) {
+
+  const result = await pool.query(
+    `
+    SELECT
+      user_id,
+      full_name,
+      email,
+      phone,
+      address,
+      avatar_url,
+      role,
+      is_active,
+      created_at,
+      updated_at
+
+    FROM users
+
+    WHERE user_id = $1;
+    `,
+    [userId]
+  );
+
+  if (result.rowCount === 0) {
+    throw new AppError(
+      "User not found",
+      404
+    );
+  }
+
+  return result.rows[0];
+
 }
 }
 
