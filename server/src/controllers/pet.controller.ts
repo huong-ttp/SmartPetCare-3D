@@ -3,19 +3,22 @@ import petService from "../services/pet.service";
 
 class PetController {
 
-  async createPet(req: Request, res: Response) {
+  async createPet(req: Request, res: Response, next: NextFunction) {
+    try {
+      const owner_id = req.user.user_id;
 
-    const owner_id = req.user.user_id;
+      const pet = await petService.createPet({
+        owner_id,
+        ...req.body,
+      });
 
-    const pet = await petService.createPet({
-      owner_id,
-      ...req.body,
-    });
-
-    res.status(201).json({
-      success: true,
-      data: pet,
-    });
+      return res.status(201).json({
+        success: true,
+        data: pet,
+      });
+    } catch (error) {
+      next(error);
+    }
   }
 
   async getMyPets(

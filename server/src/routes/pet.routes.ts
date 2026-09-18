@@ -33,6 +33,13 @@ router.put(
   petController.updatePet
 );
 
+router.patch(
+  "/:id",
+  authMiddleware,
+  validate(updatePetSchema),
+  petController.updatePet
+);
+
 router.delete(
   "/:id",
   authMiddleware,

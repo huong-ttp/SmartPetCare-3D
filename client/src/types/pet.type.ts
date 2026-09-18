@@ -40,9 +40,13 @@ export interface CreatePetDTO {
   date_of_birth?: string;
   avatar_url?: string;
   color?: string;
+  microchip_id?: string;
   microchip_number?: string;
   is_neutered?: boolean;
+  allergies?: string;
+  chronic_conditions?: string;
+  special_notes?: string;
   notes?: string;
 }
 
-export type UpdatePetDTO = Partial<Omit<CreatePetDTO, "species">>;
+export type UpdatePetDTO = Partial<CreatePetDTO>;

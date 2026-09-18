@@ -103,18 +103,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const requireRole = useCallback(
     (role: UserRole | UserRole[]): boolean => {
-      // Đợi hydrate xong từ localStorage mới thực hiện kiểm tra
+      /**
+       * QUAN TRỌNG: Trong khi isLoading=true, AuthProvider đang đọc
+       * localStorage — chưa biết user có auth hay không.
+       * Tuyệt đối KHÔNG redirect ở đây, trả về false để layout
+       * hiển thị spinner và chờ hydrate xong.
+       */
       if (state.isLoading) return false;
 
+      // Hydrate xong, chưa đăng nhập → đá về /login
       if (!state.isAuthenticated || !state.user) {
         router.push("/login");
         return false;
       }
+
+      // Đăng nhập nhưng sai role → về trang chủ
       const allowed = Array.isArray(role) ? role : [role];
       if (!allowed.includes(state.user.role)) {
         router.push("/");
         return false;
       }
+
       return true;
     },
     [state.isLoading, state.isAuthenticated, state.user, router]

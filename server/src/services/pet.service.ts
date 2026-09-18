@@ -81,6 +81,17 @@ class PetService {
     );
   }
 
+  // Kiểm tra Microchip ID đã tồn tại chưa nếu có nhập
+  if (data.microchip_id && data.microchip_id.trim() !== "") {
+    const existingChip = await pool.query(
+      `SELECT pet_id FROM pets WHERE LOWER(microchip_id) = LOWER($1)`,
+      [data.microchip_id.trim()]
+    );
+    if (existingChip.rows.length > 0) {
+      throw new AppError("Mã Microchip ID này đã được đăng ký cho thú cưng khác", 400);
+    }
+  }
+
   // Thêm thú cưng
   const result = await pool.query(
     `
@@ -179,6 +190,17 @@ async updatePet(
     petId,
     ownerId
   );
+
+  // Kiểm tra Microchip ID đã tồn tại chưa nếu có nhập và khác với giá trị hiện tại
+  if (data.microchip_id && data.microchip_id.trim() !== "") {
+    const existingChip = await pool.query(
+      `SELECT pet_id FROM pets WHERE LOWER(microchip_id) = LOWER($1) AND pet_id != $2`,
+      [data.microchip_id.trim(), petId]
+    );
+    if (existingChip.rows.length > 0) {
+      throw new AppError("Mã Microchip ID này đã được đăng ký cho thú cưng khác", 400);
+    }
+  }
 
   const result = await pool.query(
     `
