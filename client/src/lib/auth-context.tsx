@@ -51,6 +51,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isAuthenticated: false,
   });
 
+  // Cookie helpers đồng bộ giữa Client và Server/Middleware
+  const setAuthCookie = (token: string) => {
+    if (typeof document !== "undefined") {
+      document.cookie = `spc_access_token=${encodeURIComponent(token)}; path=/; max-age=604800; SameSite=Lax`;
+    }
+  };
+
+  const removeAuthCookie = () => {
+    if (typeof document !== "undefined") {
+      document.cookie = "spc_access_token=; path=/; max-age=0; SameSite=Lax";
+    }
+  };
+
   // Hydrate từ localStorage khi mount
   useEffect(() => {
     const token = localStorage.getItem(TOKEN_KEY);
@@ -59,13 +72,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (token && raw) {
       try {
         const user: User = JSON.parse(raw);
+        setAuthCookie(token);
         setState({ user, token, isLoading: false, isAuthenticated: true });
       } catch {
         localStorage.removeItem(TOKEN_KEY);
         localStorage.removeItem(USER_KEY);
+        removeAuthCookie();
         setState((s) => ({ ...s, isLoading: false }));
       }
     } else {
+      removeAuthCookie();
       setState((s) => ({ ...s, isLoading: false }));
     }
   }, []);
@@ -73,30 +89,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = useCallback((token: string, user: User) => {
     localStorage.setItem(TOKEN_KEY, token);
     localStorage.setItem(USER_KEY, JSON.stringify(user));
+    setAuthCookie(token);
     setState({ user, token, isLoading: false, isAuthenticated: true });
   }, []);
 
   const logout = useCallback(() => {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
+    removeAuthCookie();
     setState({ user: null, token: null, isLoading: false, isAuthenticated: false });
     router.push("/");
   }, [router]);
 
   const requireRole = useCallback(
     (role: UserRole | UserRole[]): boolean => {
+      /**
+       * QUAN TRỌNG: Trong khi isLoading=true, AuthProvider đang đọc
+       * localStorage — chưa biết user có auth hay không.
+       * Tuyệt đối KHÔNG redirect ở đây, trả về false để layout
+       * hiển thị spinner và chờ hydrate xong.
+       */
+      if (state.isLoading) return false;
+
+      // Hydrate xong, chưa đăng nhập → đá về /login
       if (!state.isAuthenticated || !state.user) {
         router.push("/login");
         return false;
       }
+
+      // Đăng nhập nhưng sai role → về trang chủ
       const allowed = Array.isArray(role) ? role : [role];
       if (!allowed.includes(state.user.role)) {
         router.push("/");
         return false;
       }
+
       return true;
     },
-    [state.isAuthenticated, state.user, router]
+    [state.isLoading, state.isAuthenticated, state.user, router]
   );
 
   return (

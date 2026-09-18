@@ -18,9 +18,10 @@ function mockDelay<T>(data: T, ms = 400): Promise<T> {
 
 export const medicalRecordService = {
   async getByPetId(petId: string): Promise<MedicalRecord[]> {
-    if (USE_MOCK) return mockDelay(MOCK_MEDICAL_RECORDS.filter((r) => r.pet_id === petId));
-    const res = await axiosClient.get<MedicalRecord[]>(`/pets/${petId}/medical-records`);
-    return res.data;
+    if (USE_MOCK) return mockDelay(MOCK_MEDICAL_RECORDS.filter((r) => String(r.pet_id) === String(petId)));
+    const res = await axiosClient.get<any>(`/medical-records/pet/${petId}`);
+    const rawList = Array.isArray(res.data) ? res.data : (res.data?.data ?? []);
+    return rawList;
   },
 
   async getById(id: string): Promise<MedicalRecord> {

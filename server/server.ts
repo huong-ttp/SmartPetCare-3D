@@ -1,37 +1,68 @@
 import dotenv from "dotenv";
 dotenv.config();
-
-import express from "express";
+import app from "./app";
 import pool from "./src/config/database.config";
+import { sendTestEmail } from "./src/utils/mail";
+import medicalRecordRoutes from "./src/routes/medicalRecord.route";
+import serviceRoutes from "./src/routes/service.routes";
+import invoiceRoutes from "./src/routes/invoice.routes";
+import paymentRoutes from "./src/routes/payment.routes";
+import notificationRoutes from "./src/routes/notification.routes";
+import userRoutes from "./src/routes/service.routes";
 
-const app = express();
-
-app.use(express.json());
-
-app.get("/", (req, res) => {
-  res.send("SmartPetCare Backend Running");
-});
-
-app.get("/test-db", async (req, res) => {
+async function connectDatabase() {
+  
   try {
     const result = await pool.query("SELECT NOW()");
-
-    res.json({
-      success: true,
-      time: result.rows[0],
-    });
+    console.log("PostgreSQL connected successfully");
+    console.log(`🕒 Database time: ${result.rows[0].now}`);
   } catch (error) {
-    console.error(error);
-
-    res.status(500).json({
-      success: false,
-      error,
-    });
+    console.error("Database connection failed:", error);
+    process.exit(1);
+    
   }
-});
+}
+
+
 
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}`);
+connectDatabase().then(() => {
+  app.listen(PORT, () => {
+    
+    console.log(`Server running at http://localhost:${PORT}`);
+  });
+
+  app.use(
+  "/api/medical-records",
+  medicalRecordRoutes
+);
+  
+app.use(
+  "/api/services",
+  serviceRoutes
+);
+
+app.use(
+  "/api/invoices",
+  invoiceRoutes
+);
+
+app.use(
+  "/api/payments",
+  paymentRoutes
+  );
+
+  app.use(
+  "/api/notifications",
+   notificationRoutes
+  );
+
+  app.use(
+  "/api/users",
+  userRoutes
+);
 });
+
+
+

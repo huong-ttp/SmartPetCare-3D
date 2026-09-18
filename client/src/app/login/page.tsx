@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
@@ -10,7 +10,7 @@ import { authService } from "@/services/authService";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login, isAuthenticated } = useAuth();
+  const { login, isAuthenticated, isLoading: authLoading, user: authUser } = useAuth();
   
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -24,13 +24,20 @@ export default function LoginPage() {
   const [errorMsg, setErrorMsg] = useState("");
   const [needsVerification, setNeedsVerification] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
+  // Cờ ngăn guard tự redirect về "/" khi handleSubmit đang điều khiển navigation
+  const justLoggedIn = useRef(false);
 
-  // Bắt redirect nếu đã login
+  // Guard: user đã có session hợp lệ mà tự gõ URL /login
+  // → chuyển thẳng về dashboard theo role, không để họ ở lại màn hình Login.
+  // Bỏ qua khi justLoggedIn=true vì handleSubmit đang tự điều khiển navigation.
   useEffect(() => {
-    if (isAuthenticated) {
-      router.push("/");
+    if (!authLoading && isAuthenticated && !justLoggedIn.current) {
+      // Redirect về đúng dashboard theo role của session hiện tại
+      if (authUser?.role === "admin") router.replace("/admin/dashboard");
+      else if (authUser?.role === "doctor") router.replace("/doctor/dashboard");
+      else router.replace("/dashboard");
     }
-  }, [isAuthenticated, router]);
+  }, [authLoading, isAuthenticated, authUser, router]);
 
   const validateEmail = (val: string) => {
     if (!val) return "Email không được để trống";
@@ -80,16 +87,16 @@ export default function LoginPage() {
     setIsLoading(true);
     try {
       const res = await authService.login({ email, password });
-      // Thành công
-      setSuccessMsg("Đăng nhập thành công!");
+      // Thành công — đặt cờ trước khi gọi login() để guard useEffect biết
+      // không redirect cạnh tranh về "/"
+      justLoggedIn.current = true;
       login(res.access_token, res.user);
-      
-      // Redirect theo role
-      setTimeout(() => {
-        if (res.user.role === "admin") router.push("/admin/dashboard");
-        else if (res.user.role === "doctor") router.push("/doctor/dashboard");
-        else router.push("/dashboard");
-      }, 500);
+      setSuccessMsg("Đăng nhập thành công!");
+
+      // Redirect theo role — chỉ một lệnh push duy nhất
+      if (res.user.role === "admin") router.push("/admin/dashboard");
+      else if (res.user.role === "doctor") router.push("/doctor/dashboard");
+      else router.push("/dashboard");
       
     } catch (error: any) {
       const msg = error?.response?.data?.message || error.message || "Đăng nhập thất bại. Vui lòng thử lại.";
