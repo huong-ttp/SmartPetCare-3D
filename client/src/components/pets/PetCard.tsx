@@ -4,7 +4,7 @@ import React from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Scale, Venus, Mars, HelpCircle, CheckCircle2 } from "lucide-react";
-import type { Pet } from "@/types/pet.type";
+import type { Pet, PetSpecies, PetGender } from "@/types/pet.type";
 import { calcAge } from "@/utils/formatDate";
 import {
   getSpeciesLabel,
@@ -27,8 +27,10 @@ function GenderIcon({ gender }: { gender: Pet["gender"] }) {
 }
 
 export const PetCard: React.FC<PetCardProps> = ({ pet }) => {
-  const speciesColors = SPECIES_BADGE_COLORS[pet.species];
-  const genderColors  = GENDER_BADGE_COLORS[pet.gender];
+  const petSpeciesKey = (pet.species?.toLowerCase() || "other") as PetSpecies;
+  const speciesColors = SPECIES_BADGE_COLORS[petSpeciesKey] || SPECIES_BADGE_COLORS.other;
+  const petGenderKey  = (pet.gender?.toLowerCase() || "unknown") as PetGender;
+  const genderColors  = GENDER_BADGE_COLORS[petGenderKey] || GENDER_BADGE_COLORS.unknown;
 
   return (
     <Link href={`/pets/${pet.id}`} className="block group outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-2xl">

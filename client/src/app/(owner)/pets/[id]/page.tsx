@@ -6,7 +6,7 @@ import Link from "next/link";
 import { ArrowLeft, Pencil, Trash2, RefreshCw, Dog } from "lucide-react";
 import { motion } from "framer-motion";
 import { petService } from "@/services/petService";
-import type { Pet } from "@/types/pet.type";
+import type { Pet, PetSpecies } from "@/types/pet.type";
 import { PetDetailBasicInfo } from "@/components/pets/PetDetailBasicInfo";
 import { PetDetailHealthInfo } from "@/components/pets/PetDetailHealthInfo";
 import { PetDetailNavTabs } from "@/components/pets/PetDetailNavTabs";
@@ -178,9 +178,11 @@ export default function PetDetailPage() {
   if (isLoading)  return <PetDetailSkeleton />;
   if (notFound)   return <PetNotFound />;
   if (fetchError) return <PetErrorState message={fetchError} onRetry={loadPet} />;
-  if (!pet)       return null;
+  if (!pet) return null;
 
-  const speciesColors = SPECIES_BADGE_COLORS[pet.species];
+  const petSpeciesKey = (pet.species?.toLowerCase() || "other") as PetSpecies;
+  const speciesColors =
+    SPECIES_BADGE_COLORS[petSpeciesKey] || SPECIES_BADGE_COLORS.other;
 
   return (
     <div className="space-y-6">

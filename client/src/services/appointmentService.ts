@@ -22,8 +22,13 @@ export const appointmentService = {
   /** Lấy tất cả lịch hẹn của owner hiện tại */
   async getMyAppointments(): Promise<Appointment[]> {
     if (USE_MOCK) return mockDelay(MOCK_APPOINTMENTS);
-    const res = await axiosClient.get<Appointment[]>("/appointments");
-    return res.data;
+    const res = await axiosClient.get<any>("/appointments");
+    // Server có thể trả bare array hoặc { data: [...] } / { items: [...] }
+    const raw = res.data;
+    if (Array.isArray(raw)) return raw;
+    if (Array.isArray(raw?.data)) return raw.data;
+    if (Array.isArray(raw?.items)) return raw.items;
+    return [];
   },
 
   /** Lấy tất cả lịch hẹn (admin/doctor view) */
