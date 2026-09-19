@@ -49,6 +49,33 @@ interface UpdatePetData {
   chronic_conditions?: string;
   special_notes?: string;
 }
+
+interface AppointmentFilter {
+
+  search?: string;
+
+  status?: string;
+
+  unassigned?: boolean;
+
+  dateFrom?: string;
+
+  dateTo?: string;
+
+  page?: number;
+
+  limit?: number;
+
+}
+
+interface MedicalRecordFilter {
+  search?: string;
+  doctorId?: number;
+  dateFrom?: string;
+  dateTo?: string;
+  page?: number;
+  limit?: number;
+}
 class AdminService {
 
   async getDashboard() {
@@ -994,6 +1021,642 @@ async deletePet(
   return {
     message: "Pet deleted successfully"
   };
+
+}
+
+async listAppointments(
+  filter: AppointmentFilter
+) {
+
+  const page = filter.page || 1;
+  const limit = filter.limit || 10;
+  const offset = (page - 1) * limit;
+
+  if (page < 1) {
+    throw new AppError(
+      "Page must be greater than 0",
+      400
+    );
+  }
+
+  if (limit < 1 || limit > 100) {
+    throw new AppError(
+      "Limit must be between 1 and 100",
+      400
+    );
+  }
+
+  let query = `
+    SELECT
+
+    a.appointment_id,
+
+    p.pet_id,
+
+    p.name AS pet_name,
+
+    u.user_id AS owner_id,
+
+    u.full_name AS owner_name,
+
+    s.service_id,
+
+    s.name AS service_name,
+
+    a.appointment_date,
+
+    a.start_time,
+
+    a.end_time,
+
+    a.reason,
+
+    a.status,
+
+    a.doctor_id,
+
+    d.full_name AS doctor_name
+
+    FROM appointments a
+
+    INNER JOIN pets p
+      ON a.pet_id = p.pet_id
+
+    INNER JOIN users u
+      ON p.owner_id = u.user_id
+
+    INNER JOIN services s
+      ON a.service_id = s.service_id
+
+    LEFT JOIN users d
+      ON a.doctor_id = d.user_id
+
+    WHERE 1 = 1
+  `;
+
+  let countQuery = `
+    SELECT COUNT(*) AS total
+
+    FROM appointments a
+
+    INNER JOIN pets p
+      ON a.pet_id = p.pet_id
+
+    INNER JOIN users u
+      ON p.owner_id = u.user_id
+
+    INNER JOIN services s
+      ON a.service_id = s.service_id
+
+    LEFT JOIN users d
+      ON a.doctor_id = d.user_id
+
+    WHERE 1 = 1
+  `;
+
+  const values: any[] = [];
+  let index = 1;
+
+  if (filter.search) {
+
+  const condition = `
+
+    AND (
+
+      LOWER(p.name)
+
+      LIKE LOWER($${index})
+
+      OR
+
+      LOWER(u.full_name)
+
+      LIKE LOWER($${index})
+
+    )
+
+  `;
+
+  query += condition;
+  countQuery += condition;
+
+  values.push(`%${filter.search}%`);
+
+  index++;
+
+}
+
+if (filter.status) {
+
+  const condition = `
+    AND a.status = $${index}
+  `;
+
+  query += condition;
+  countQuery += condition;
+
+  values.push(filter.status);
+
+  index++;
+
+}
+
+if (filter.unassigned) {
+
+  const condition = `
+    AND a.doctor_id IS NULL
+  `;
+
+  query += condition;
+  countQuery += condition;
+
+}
+
+if (filter.dateFrom) {
+
+  const condition = `
+    AND a.appointment_date >= $${index}
+  `;
+
+  query += condition;
+  countQuery += condition;
+
+  values.push(filter.dateFrom);
+
+  index++;
+
+}
+
+if (filter.dateTo) {
+
+  const condition = `
+    AND a.appointment_date <= $${index}
+  `;
+
+  query += condition;
+  countQuery += condition;
+
+  values.push(filter.dateTo);
+
+  index++;
+
+}
+
+query += `
+
+ORDER BY
+
+a.appointment_date DESC,
+
+a.start_time DESC
+
+LIMIT $${index}
+
+OFFSET $${index + 1};
+
+`;
+
+values.push(limit);
+
+values.push(offset);
+
+const result =
+await pool.query(
+    query,
+    values
+);
+
+const countResult =
+await pool.query(
+    countQuery,
+    values.slice(0, values.length - 2)
+);
+
+const total =
+Number(countResult.rows[0].total);
+
+return {
+
+    items: result.rows,
+
+    pagination: {
+
+        page,
+
+        limit,
+
+        total,
+
+        totalPages:
+            Math.ceil(total / limit)
+
+    }
+
+};
+
+}
+
+async listMedicalRecords(
+  filter: MedicalRecordFilter
+) {
+
+  const page = filter.page || 1;
+
+  const limit = filter.limit || 10;
+
+  const offset = (page - 1) * limit;
+
+  if (page < 1) {
+    throw new AppError(
+      "Page must be greater than 0",
+      400
+    );
+  }
+
+  if (limit < 1 || limit > 100) {
+    throw new AppError(
+      "Limit must be between 1 and 100",
+      400
+    );
+  }
+    let query = `
+    SELECT
+
+      mr.record_id,
+
+      mr.record_date,
+
+      mr.diagnosis,
+
+      p.pet_id,
+
+      p.name AS pet_name,
+
+      owner.user_id AS owner_id,
+
+      owner.full_name AS owner_name,
+
+      doctor.user_id AS doctor_id,
+
+      doctor.full_name AS doctor_name,
+
+      a.appointment_id
+
+    FROM medical_records mr
+
+    INNER JOIN pets p
+      ON mr.pet_id = p.pet_id
+
+    INNER JOIN users owner
+      ON p.owner_id = owner.user_id
+
+    INNER JOIN users doctor
+      ON mr.doctor_id = doctor.user_id
+
+    LEFT JOIN appointments a
+      ON mr.appointment_id = a.appointment_id
+
+    WHERE 1 = 1
+  `;
+    let countQuery = `
+    SELECT COUNT(*) AS total
+
+    FROM medical_records mr
+
+    INNER JOIN pets p
+      ON mr.pet_id = p.pet_id
+
+    INNER JOIN users owner
+      ON p.owner_id = owner.user_id
+
+    INNER JOIN users doctor
+      ON mr.doctor_id = doctor.user_id
+
+    LEFT JOIN appointments a
+      ON mr.appointment_id = a.appointment_id
+
+    WHERE 1 = 1
+  `;
+    const values: any[] = [];
+
+  let index = 1;
+    if (filter.search) {
+
+    const condition = `
+      AND (
+
+        LOWER(p.name)
+        LIKE LOWER($${index})
+
+        OR
+
+        LOWER(owner.full_name)
+        LIKE LOWER($${index})
+
+        OR
+
+        LOWER(doctor.full_name)
+        LIKE LOWER($${index})
+
+      )
+    `;
+
+    query += condition;
+
+    countQuery += condition;
+
+    values.push(`%${filter.search}%`);
+
+    index++;
+
+  }
+    if (filter.doctorId) {
+
+    const condition = `
+      AND doctor.user_id = $${index}
+    `;
+
+    query += condition;
+
+    countQuery += condition;
+
+    values.push(filter.doctorId);
+
+    index++;
+
+  }
+    if (filter.dateFrom) {
+
+    const condition = `
+      AND mr.record_date >= $${index}
+    `;
+
+    query += condition;
+
+    countQuery += condition;
+
+    values.push(filter.dateFrom);
+
+    index++;
+
+  }
+    if (filter.dateTo) {
+
+    const condition = `
+      AND mr.record_date <= $${index}
+    `;
+
+    query += condition;
+
+    countQuery += condition;
+
+    values.push(filter.dateTo);
+
+    index++;
+
+  }
+    query += `
+
+    ORDER BY
+
+      mr.record_date DESC,
+
+      mr.record_id DESC
+
+    LIMIT $${index}
+
+    OFFSET $${index + 1};
+
+  `;
+
+  values.push(limit);
+
+  values.push(offset);
+    const result =
+    await pool.query(
+      query,
+      values
+    );
+
+  const countResult =
+    await pool.query(
+      countQuery,
+      values.slice(0, values.length - 2)
+    );
+
+  const total =
+    Number(countResult.rows[0].total);
+
+  return {
+
+    items: result.rows,
+
+    pagination: {
+
+      page,
+
+      limit,
+
+      total,
+
+      totalPages:
+        Math.ceil(total / limit)
+
+    }
+
+  };
+
+}
+
+async listDoctors() {
+
+  const result = await pool.query(
+    `
+    SELECT
+
+      user_id,
+      full_name,
+      email
+
+    FROM users
+
+    WHERE
+
+      role = 'doctor'
+
+      AND is_active = true
+
+    ORDER BY full_name;
+    `
+  );
+
+  return result.rows;
+
+}
+
+async assignDoctor(
+  appointmentId: number,
+  doctorId: number
+) {
+
+  // Appointment tồn tại?
+
+  const appointment = await pool.query(
+    `
+    SELECT
+      appointment_id,
+      doctor_id,
+      status
+    FROM appointments
+    WHERE appointment_id = $1;
+    `,
+    [appointmentId]
+  );
+
+  if (appointment.rowCount === 0) {
+    throw new AppError(
+      "Appointment not found",
+      404
+    );
+  }
+
+  const current =
+    appointment.rows[0];
+
+  if (current.status !== "confirmed") {
+    throw new AppError(
+      "Only confirmed appointments can assign doctor",
+      400
+    );
+  }
+
+  if (current.doctor_id) {
+    throw new AppError(
+      "Doctor already assigned",
+      409
+    );
+  }
+
+  // Doctor tồn tại?
+
+  const doctor = await pool.query(
+    `
+    SELECT user_id
+
+    FROM users
+
+    WHERE
+
+      user_id = $1
+
+      AND role = 'doctor'
+
+      AND is_active = true;
+    `,
+    [doctorId]
+  );
+
+  if (doctor.rowCount === 0) {
+    throw new AppError(
+      "Doctor not found",
+      404
+    );
+  }
+
+  const result = await pool.query(
+    `
+    UPDATE appointments
+
+    SET
+
+      doctor_id = $1,
+
+      doctor_assigned_at = NOW(),
+
+      updated_at = NOW()
+
+    WHERE appointment_id = $2
+
+    RETURNING *;
+    `,
+    [
+      doctorId,
+      appointmentId
+    ]
+  );
+
+  return result.rows[0];
+
+}
+
+async cancelAppointment(
+  appointmentId: number,
+  reason: string
+) {
+
+  if (!reason?.trim()) {
+    throw new AppError(
+      "Cancel reason is required",
+      400
+    );
+  }
+
+  const appointment =
+    await pool.query(
+      `
+      SELECT
+
+        appointment_id,
+        status
+
+      FROM appointments
+
+      WHERE appointment_id = $1;
+      `,
+      [appointmentId]
+    );
+
+  if (appointment.rowCount === 0) {
+    throw new AppError(
+      "Appointment not found",
+      404
+    );
+  }
+
+  const current =
+    appointment.rows[0];
+
+  if (current.status === "cancelled") {
+    throw new AppError(
+      "Appointment already cancelled",
+      409
+    );
+  }
+
+  const result =
+    await pool.query(
+      `
+      UPDATE appointments
+
+      SET
+
+        status = 'cancelled',
+
+        cancel_reason = $1,
+
+        updated_at = NOW()
+
+      WHERE appointment_id = $2
+
+      RETURNING *;
+      `,
+      [
+        reason,
+        appointmentId
+      ]
+    );
+
+  return result.rows[0];
 
 }
 

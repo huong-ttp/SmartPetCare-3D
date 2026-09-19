@@ -87,8 +87,76 @@ export const listPatientsByDoctor = async (
   }
 };
 
+export const updateMedicalRecord = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+
+  try {
+
+    const record =
+      await medicalRecordService.updateMedicalRecord(
+
+        Number(req.params.id),
+
+        req.body
+
+      );
+
+    res.json({
+
+      success: true,
+
+      message:
+        "Medical record updated successfully",
+
+      data: record
+
+    });
+
+  } catch (err) {
+
+    next(err);
+
+  }
+
+};
+
+export const deleteMedicalRecord = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+
+  try {
+
+    const result =
+      await medicalRecordService.deleteMedicalRecord(
+
+        Number(req.params.id)
+
+      );
+
+    res.json({
+
+      success: true,
+
+      ...result
+
+    });
+
+  } catch (err) {
+
+    next(err);
+
+  }
+
+};
 export default {
   getMedicalRecordsByPet,
   createMedicalRecord,
-  listPatientsByDoctor
+  listPatientsByDoctor,
+  updateMedicalRecord,
+  deleteMedicalRecord
 };

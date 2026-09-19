@@ -271,6 +271,207 @@ export const deletePet = async (
   }
 
 };
+
+export const listAppointments = async (
+
+  req: Request,
+
+  res: Response,
+
+  next: NextFunction
+
+) => {
+
+  try {
+
+    const appointments =
+      await adminService.listAppointments({
+
+        search:
+          req.query.search as string,
+
+        status:
+          req.query.status as string,
+
+        unassigned:
+          req.query.unassigned === "true",
+
+        dateFrom:
+          req.query.dateFrom as string,
+
+        dateTo:
+          req.query.dateTo as string,
+
+        page:
+          Number(req.query.page) || 1,
+
+        limit:
+          Number(req.query.limit) || 10
+
+      });
+
+    res.json({
+
+      success: true,
+
+      data: appointments
+
+    });
+
+  } catch (err) {
+
+    next(err);
+
+  }
+
+};
+
+export const listDoctors = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+
+  try {
+
+    const doctors =
+      await adminService.listDoctors();
+
+    res.json({
+
+      success: true,
+
+      data: doctors
+
+    });
+
+  } catch (err) {
+
+    next(err);
+
+  }
+
+};
+
+export const assignDoctor = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+
+  try {
+
+    const appointment =
+      await adminService.assignDoctor(
+
+        Number(req.params.id),
+
+        req.body.doctor_id
+
+      );
+
+    res.json({
+
+      success: true,
+
+      message: "Doctor assigned successfully",
+
+      data: appointment
+
+    });
+
+  } catch (err) {
+
+    next(err);
+
+  }
+
+};
+
+export const cancelAppointment = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+
+  try {
+
+    const appointment =
+      await adminService.cancelAppointment(
+
+        Number(req.params.id),
+
+        req.body.cancel_reason
+
+      );
+
+    res.json({
+
+      success: true,
+
+      message: "Appointment cancelled successfully",
+
+      data: appointment
+
+    });
+
+  } catch (err) {
+
+    next(err);
+
+  }
+
+};
+
+export const listMedicalRecords = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+
+  try {
+
+    const records =
+      await adminService.listMedicalRecords({
+
+        search:
+          req.query.search as string,
+
+        doctorId:
+          req.query.doctorId
+            ? Number(req.query.doctorId)
+            : undefined,
+
+        dateFrom:
+          req.query.dateFrom as string,
+
+        dateTo:
+          req.query.dateTo as string,
+
+        page:
+          Number(req.query.page) || 1,
+
+        limit:
+          Number(req.query.limit) || 10
+
+      });
+
+    res.json({
+
+      success: true,
+
+      data: records
+
+    });
+
+  } catch (err) {
+
+    next(err);
+
+  }
+
+};
+
 export default {
   getDashboard,
   listUsers,
@@ -280,5 +481,10 @@ export default {
   listPets,
   getPetById,
   updatePet,
-  deletePet
+  deletePet,
+  listAppointments,
+  listDoctors,
+  assignDoctor,
+  cancelAppointment,
+  listMedicalRecords
 };
