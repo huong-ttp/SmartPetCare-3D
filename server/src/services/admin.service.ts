@@ -25,13 +25,9 @@ interface UpdateRoleData {
 }
 
 interface PetFilter {
-
     search?: string;
-
     species?: string;
-
     page?: number;
-
     limit?: number;
 
 }
@@ -51,19 +47,12 @@ interface UpdatePetData {
 }
 
 interface AppointmentFilter {
-
   search?: string;
-
   status?: string;
-
   unassigned?: boolean;
-
   dateFrom?: string;
-
   dateTo?: string;
-
   page?: number;
-
   limit?: number;
 
 }
@@ -75,6 +64,15 @@ interface MedicalRecordFilter {
   dateTo?: string;
   page?: number;
   limit?: number;
+}
+
+interface VaccinationFilter {
+  search?: string;
+  vaccineType?: number;
+  dueStatus?: "upcoming" | "overdue" | "valid";
+  page?: number;
+  limit?: number;
+
 }
 class AdminService {
 
@@ -1658,6 +1656,211 @@ async cancelAppointment(
 
   return result.rows[0];
 
+}
+
+async listVaccinations(
+    filter: VaccinationFilter
+) {
+const page = filter.page || 1;
+
+const limit = filter.limit || 10;
+
+const offset = (page - 1) * limit;
+
+if (page < 1) {
+
+    throw new AppError(
+        "Page must be greater than 0",
+        400
+    );
+
+}
+
+if (limit < 1 || limit > 100) {
+
+    throw new AppError(
+        "Limit must be between 1 and 100",
+        400
+    );
+
+}
+let query = `
+
+SELECT
+
+pv.vaccination_id,
+
+pv.date_administered,
+
+pv.next_due_date,
+
+pv.batch_number,
+
+pv.reminder_sent,
+
+p.pet_id,
+
+p.name AS pet_name,
+
+u.user_id AS owner_id,
+
+u.full_name AS owner_name,
+
+vt.vaccine_type_id,
+
+vt.name AS vaccine_type,
+
+d.user_id AS doctor_id,
+
+d.full_name AS doctor_name
+
+FROM pet_vaccinations pv
+
+INNER JOIN pets p
+
+ON pv.pet_id = p.pet_id
+
+INNER JOIN users u
+
+ON p.owner_id = u.user_id
+
+INNER JOIN vaccine_types vt
+
+ON pv.vaccine_type_id = vt.vaccine_type_id
+
+LEFT JOIN users d
+
+ON pv.administered_by = d.user_id
+
+WHERE 1 = 1
+
+`;
+let countQuery = `
+
+SELECT COUNT(*) AS total
+
+FROM pet_vaccinations pv
+
+INNER JOIN pets p
+
+ON pv.pet_id = p.pet_id
+
+INNER JOIN users u
+
+ON p.owner_id = u.user_id
+
+INNER JOIN vaccine_types vt
+
+ON pv.vaccine_type_id = vt.vaccine_type_id
+
+LEFT JOIN users d
+
+ON pv.administered_by = d.user_id
+
+WHERE 1 = 1
+
+`;
+const values: any[] = [];
+
+let index = 1;
+if (filter.search) {
+
+  const condition = `
+    AND (
+      LOWER(p.name) LIKE LOWER($${index})
+      OR
+      LOWER(u.full_name) LIKE LOWER($${index})
+    )
+  `;
+
+  query += condition;
+  countQuery += condition;
+
+  values.push(`%${filter.search}%`);
+
+  index++;
+}
+if (filter.vaccineType) {
+
+  const condition = `
+    AND vt.vaccine_type_id = $${index}
+  `;
+
+  query += condition;
+  countQuery += condition;
+
+  values.push(filter.vaccineType);
+
+  index++;
+}
+if (filter.dueStatus === "overdue") {
+
+  const condition = `
+    AND pv.next_due_date < CURRENT_DATE
+  `;
+
+  query += condition;
+  countQuery += condition;
+
+}
+
+if (filter.dueStatus === "upcoming") {
+
+  const condition = `
+    AND
+      pv.next_due_date >= CURRENT_DATE
+      AND
+      pv.next_due_date <= CURRENT_DATE + INTERVAL '7 day'
+  `;
+
+  query += condition;
+  countQuery += condition;
+
+}
+
+if (filter.dueStatus === "valid") {
+
+  const condition = `
+    AND
+      pv.next_due_date >
+      CURRENT_DATE + INTERVAL '7 day'
+  `;
+
+  query += condition;
+  countQuery += condition;
+
+}
+query += `
+ORDER BY
+  pv.next_due_date ASC,
+  pv.vaccination_id DESC
+LIMIT $${index}
+OFFSET $${index + 1};
+`;
+
+values.push(limit);
+values.push(offset);
+const result = await pool.query(
+  query,
+  values
+);
+
+const countResult = await pool.query(
+  countQuery,
+  values.slice(0, values.length - 2)
+);
+
+const total = Number(countResult.rows[0].total);
+
+return {
+  items: result.rows,
+  pagination: {
+    page,
+    limit,
+    total,
+    totalPages: Math.ceil(total / limit)
+  }
+};
 }
 
 }

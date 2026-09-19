@@ -129,4 +129,11 @@ router.get(
   authorize("admin"),
   adminController.listMedicalRecords
 );
+
+router.get(
+  "/vaccinations",
+  authMiddleware,
+  authorize("admin"),
+  adminController.listVaccinations
+);
 export default router;

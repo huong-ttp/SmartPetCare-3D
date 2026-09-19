@@ -33,6 +33,74 @@ export const createVaccination = async (
 
 };
 
+export const updateVaccination = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+
+  try {
+
+    const vaccination =
+      await vaccinationService.updateVaccination(
+
+        Number(req.params.id),
+
+        req.body
+
+      );
+
+    res.json({
+
+      success: true,
+
+      message:
+        "Vaccination updated successfully",
+
+      data: vaccination
+
+    });
+
+  } catch (err) {
+
+    next(err);
+
+  }
+
+};
+
+export const deleteVaccination = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+
+  try {
+
+    const result =
+      await vaccinationService.deleteVaccination(
+
+        Number(req.params.id)
+
+      );
+
+    res.json({
+
+      success: true,
+
+      message: result.message
+
+    });
+
+  } catch (err) {
+
+    next(err);
+
+  }
+
+};
 export default {
-  createVaccination
+  createVaccination,
+  updateVaccination,
+  deleteVaccination
 };

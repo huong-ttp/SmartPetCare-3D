@@ -472,6 +472,55 @@ export const listMedicalRecords = async (
 
 };
 
+export const listVaccinations = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+
+  try {
+
+    const data =
+      await adminService.listVaccinations({
+
+        search: req.query.search as string,
+
+        vaccineType: req.query.vaccineType
+          ? Number(req.query.vaccineType)
+          : undefined,
+
+        dueStatus: req.query.dueStatus as
+          | "upcoming"
+          | "overdue"
+          | "valid"
+          | undefined,
+
+        page: req.query.page
+          ? Number(req.query.page)
+          : 1,
+
+        limit: req.query.limit
+          ? Number(req.query.limit)
+          : 10
+
+      });
+
+    res.json({
+
+      success: true,
+
+      data
+
+    });
+
+  } catch (err) {
+
+    next(err);
+
+  }
+
+};
+
 export default {
   getDashboard,
   listUsers,
@@ -486,5 +535,6 @@ export default {
   listDoctors,
   assignDoctor,
   cancelAppointment,
-  listMedicalRecords
+  listMedicalRecords,
+  listVaccinations
 };
