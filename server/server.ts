@@ -14,6 +14,7 @@ import vaccineTypeRoutes from "./src/routes/vaccineType.routes";
 import adminRoutes from "./src/routes/admin.routes";
 
 
+
 async function connectDatabase() {
   
   try {
@@ -73,7 +74,7 @@ app.use(
 );
 
 app.use(
-  "/api/vaccine-types",
+  "/api/admin/vaccine-types",
   vaccineTypeRoutes
 );
 
