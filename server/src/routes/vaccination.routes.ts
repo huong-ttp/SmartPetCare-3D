@@ -24,4 +24,18 @@ router.post(
   vaccinationController.createVaccination
 );
 
-export default router;
+router.put(
+  "/:id",
+  authMiddleware,
+  authorize("admin"),
+  vaccinationController.updateVaccination
+);
+
+router.delete(
+  "/:id",
+  authMiddleware,
+  authorize("admin"),
+  vaccinationController.deleteVaccination
+);
+
+export default router;

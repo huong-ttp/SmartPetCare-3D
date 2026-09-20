@@ -32,4 +32,17 @@ router.get(
   medicalRecordController.getMedicalRecordById
 );
 
+router.put(
+  "/:id",
+  authMiddleware,
+  authorize("doctor", "admin"),
+  medicalRecordController.updateMedicalRecord
+);
+
+router.delete(
+  "/:id",
+  authMiddleware,
+  authorize("doctor", "admin"),
+  medicalRecordController.deleteMedicalRecord
+);
 export default router;

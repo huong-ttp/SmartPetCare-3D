@@ -7,6 +7,18 @@ import authMiddleware, {
 import vaccineTypeController
   from "../controllers/vaccineType.controller";
 
+import {
+
+  listVaccineTypes,
+
+  createVaccineType,
+
+  updateVaccineType,
+
+  deleteVaccineType
+
+} from "../controllers/vaccineType.controller";
+
 const router = Router();
 
 router.get(
@@ -18,6 +30,31 @@ router.get(
     "owner"
   ),
   vaccineTypeController.getAllVaccineTypes
+);
+
+router.use(
+  authMiddleware,
+  authorize("admin")
+);
+
+router.get(
+  "/",
+  listVaccineTypes
+);
+
+router.post(
+  "/",
+  createVaccineType
+);
+
+router.put(
+  "/:id",
+  updateVaccineType
+);
+
+router.delete(
+  "/:id",
+  deleteVaccineType
 );
 
 export default router;

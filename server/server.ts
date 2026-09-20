@@ -11,6 +11,8 @@ import notificationRoutes from "./src/routes/notification.routes";
 import userRoutes from "./src/routes/user.routes";
 import vaccinationRoutes from "./src/routes/vaccination.routes";
 import vaccineTypeRoutes from "./src/routes/vaccineType.routes";
+import adminRoutes from "./src/routes/admin.routes";
+
 
 
 async function connectDatabase() {
@@ -72,8 +74,13 @@ app.use(
 );
 
 app.use(
-  "/api/vaccine-types",
+  "/api/admin/vaccine-types",
   vaccineTypeRoutes
+);
+
+app.use(
+  "/api/admin",
+  adminRoutes
 );
 });
 

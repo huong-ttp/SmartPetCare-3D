@@ -11,6 +11,15 @@ interface CreateMedicalRecordData {
   notes?: string;
 }
 
+interface UpdateMedicalRecordData {
+  diagnosis: string;
+  treatment?: string;
+  prescription?: string;
+  weight_at_visit?: number;
+  record_date?: string;
+  notes?: string;
+}
+
 class MedicalRecordService {
   async getMedicalRecordsByPet(
     ownerId: number,
@@ -333,6 +342,105 @@ class MedicalRecordService {
       invoice,
       message:
         "Medical record created successfully. Invoice generated automatically."
+    };
+  }
+
+  async updateMedicalRecord(
+    recordId: number,
+    data: UpdateMedicalRecordData
+  ) {
+    const existed = await pool.query(
+      `
+      SELECT *
+      FROM medical_records
+      WHERE record_id = $1;
+      `,
+      [recordId]
+    );
+
+    if (existed.rowCount === 0) {
+      throw new AppError(
+        "Medical record not found",
+        404
+      );
+    }
+
+    const result = await pool.query(
+      `
+      UPDATE medical_records
+      SET
+        diagnosis = $1,
+        treatment = $2,
+        prescription = $3,
+        weight_at_visit = $4,
+        record_date = $5,
+        notes = $6
+      WHERE record_id = $7
+      RETURNING *;
+      `,
+      [
+        data.diagnosis,
+        data.treatment ?? null,
+        data.prescription ?? null,
+        data.weight_at_visit ?? null,
+        data.record_date ?? null,
+        data.notes ?? null,
+        recordId
+      ]
+    );
+
+    return result.rows[0];
+  }
+
+  async deleteMedicalRecord(
+    recordId: number
+  ) {
+    const existed = await pool.query(
+      `
+      SELECT *
+      FROM medical_records
+      WHERE record_id = $1;
+      `,
+      [recordId]
+    );
+
+    if (existed.rowCount === 0) {
+      throw new AppError(
+        "Medical record not found",
+        404
+      );
+    }
+
+    const vaccineResult = await pool.query(
+      `
+      SELECT COUNT(*) AS total
+      FROM pet_vaccinations
+      WHERE medical_record_id = $1;
+      `,
+      [recordId]
+    );
+
+    const vaccineCount =
+      Number(vaccineResult.rows[0].total);
+
+    if (vaccineCount > 0) {
+      throw new AppError(
+        "Cannot delete medical record because vaccination records are linked.",
+        409
+      );
+    }
+
+    await pool.query(
+      `
+      DELETE FROM medical_records
+      WHERE record_id = $1;
+      `,
+      [recordId]
+    );
+
+    return {
+      message:
+        "Medical record deleted successfully"
     };
   }
 
