@@ -6,6 +6,7 @@ import authMiddleware, {
 
 import invoiceController from "../controllers/invoice.controller";
 import paymentController from "../controllers/payment.controller";
+import notificationController from "../controllers/notification.controller";
 
 const router = Router();
 
@@ -167,5 +168,12 @@ router.post(
   authorize("admin"),
   paymentController.createCashPayment
 
+);
+
+router.get(
+  "/notifications",
+  authMiddleware,
+  authorize("admin"),
+  notificationController.listNotifications
 );
 export default router;
