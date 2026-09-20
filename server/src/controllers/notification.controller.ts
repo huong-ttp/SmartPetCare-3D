@@ -172,11 +172,45 @@ export const listNotifications = async (
 
 };
 
+export const sendSystemNotification = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+
+  try {
+
+    const result =
+      await notificationService.sendSystemNotification(
+        req.body
+      );
+
+    res.status(201).json({
+
+      success: true,
+
+      message:
+        "System notification sent successfully",
+
+      data: result
+
+    });
+
+  }
+
+  catch (err) {
+
+    next(err);
+
+  }
+
+};
 export default {
   getReminderNotifications,
   getNotifications,
   markAsRead,
   markAllAsRead,
-  listNotifications
+  listNotifications,
+  sendSystemNotification
 
 };

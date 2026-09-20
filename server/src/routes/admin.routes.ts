@@ -8,6 +8,7 @@ import invoiceController from "../controllers/invoice.controller";
 import paymentController from "../controllers/payment.controller";
 import notificationController from "../controllers/notification.controller";
 
+
 const router = Router();
 
 router.get(
@@ -175,5 +176,12 @@ router.get(
   authMiddleware,
   authorize("admin"),
   notificationController.listNotifications
+);
+
+router.post(
+  "/notifications/system",
+  authMiddleware,
+  authorize("admin"),
+  notificationController.sendSystemNotification
 );
 export default router;

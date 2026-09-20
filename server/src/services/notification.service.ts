@@ -11,7 +11,13 @@ interface NotificationFilter {
   page?: number;
 }
 
-
+interface SendSystemNotificationData {
+  target: "all" | "role" | "user";
+  role?: string;
+  user_id?: number;
+  title: string;
+  content: string;
+}
 
 class notificationService {
     async getReminderNotifications(
@@ -369,6 +375,132 @@ async listNotifications(
 
     }
 
+  };
+
+}
+
+async sendSystemNotification(
+  data: SendSystemNotificationData
+) {
+
+  let users: any[] = [];
+
+  if (data.target === "all") {
+
+    const result = await pool.query(
+      `
+      SELECT user_id
+      FROM users
+      WHERE is_active = true;
+      `
+    );
+
+    users = result.rows;
+
+  }
+
+  else if (data.target === "role") {
+
+    if (!data.role) {
+      throw new AppError(
+        "Role is required",
+        400
+      );
+    }
+
+    const result = await pool.query(
+      `
+      SELECT user_id
+      FROM users
+      WHERE
+        role = $1
+        AND is_active = true;
+      `,
+      [data.role]
+    );
+
+    users = result.rows;
+
+  }
+
+  else if (data.target === "user") {
+
+    if (!data.user_id) {
+      throw new AppError(
+        "User is required",
+        400
+      );
+    }
+
+    const result = await pool.query(
+      `
+      SELECT user_id
+      FROM users
+      WHERE
+        user_id = $1
+        AND is_active = true;
+      `,
+      [data.user_id]
+    );
+
+    users = result.rows;
+
+  }
+
+  else {
+
+    throw new AppError(
+      "Invalid target",
+      400
+    );
+
+  }
+
+  if (users.length === 0) {
+
+    throw new AppError(
+      "No recipients found",
+      404
+    );
+
+  }
+
+  for (const user of users) {
+
+    await pool.query(
+      `
+      INSERT INTO notifications
+      (
+        user_id,
+        type,
+        title,
+        content,
+        is_read,
+        sent_at,
+        created_at
+      )
+      VALUES
+      (
+        $1,
+        'system',
+        $2,
+        $3,
+        false,
+        NOW(),
+        NOW()
+      );
+      `,
+      [
+        user.user_id,
+        data.title,
+        data.content
+      ]
+    );
+
+  }
+
+  return {
+    recipients: users.length
   };
 
 }
