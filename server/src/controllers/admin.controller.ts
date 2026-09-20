@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import adminService from "../services/admin.service";
+import invoiceService from "../services/invoice.service";
 
 export const getDashboard = async (
   req: Request,
@@ -521,6 +522,73 @@ export const listVaccinations = async (
 
 };
 
+export const listInvoices = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const invoices =
+      await invoiceService.listInvoices({
+        search: req.query.search as string,
+        status: req.query.status as string,
+        fromDate: req.query.fromDate as string,
+        toDate: req.query.toDate as string,
+        page: Number(req.query.page) || 1,
+        limit: Number(req.query.limit) || 10,
+      });
+
+    res.json({
+      success: true,
+      data: invoices,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const getInvoiceByIdAdmin = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const invoice =
+      await invoiceService.getInvoiceByIdAdmin(
+        Number(req.params.id)
+      );
+
+    res.json({
+      success: true,
+      data: invoice,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const cancelInvoice = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const invoice =
+      await invoiceService.cancelInvoice(
+        Number(req.params.id),
+        req.body.reason
+      );
+
+    res.json({
+      success: true,
+      message: "Invoice cancelled successfully",
+      data: invoice,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 export default {
   getDashboard,
   listUsers,
@@ -536,5 +604,8 @@ export default {
   assignDoctor,
   cancelAppointment,
   listMedicalRecords,
-  listVaccinations
+  listVaccinations,
+  listInvoices,
+  getInvoiceByIdAdmin,
+  cancelInvoice
 };

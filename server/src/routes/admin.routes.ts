@@ -1,30 +1,12 @@
 import { Router } from "express";
-
 import adminController from "../controllers/admin.controller";
-
 import authMiddleware, {
   authorize
 } from "../middleware/auth.middleware";
 
-import {
-  getDashboard,
-  listUsers,
-  createUser,
-  updateUserRole,
-  toggleUserActive,
+import invoiceController from "../controllers/invoice.controller";
+import paymentController from "../controllers/payment.controller";
 
-  listPets,
-  getPetById,
-  updatePet,
-  deletePet,
-
-  listAppointments,
-  listDoctors,
-  assignDoctor,
-  cancelAppointment,
-  
-
-} from "../controllers/admin.controller";
 const router = Router();
 
 router.get(
@@ -106,21 +88,21 @@ router.get(
   "/doctors",
   authMiddleware,
   authorize("admin"),
-  listDoctors
+  adminController.listDoctors
 );
 
 router.put(
   "/appointments/:id/assign",
   authMiddleware,
   authorize("admin"),
-  assignDoctor
+  adminController.assignDoctor
 );
 
 router.put(
   "/appointments/:id/cancel",
   authMiddleware,
   authorize("admin"),
-  cancelAppointment
+  adminController.cancelAppointment
 );
 
 router.get(
@@ -135,5 +117,55 @@ router.get(
   authMiddleware,
   authorize("admin"),
   adminController.listVaccinations
+);
+
+router.get(
+  "/invoices",
+  authMiddleware,
+  authorize("admin"),
+  invoiceController.listInvoices
+);
+
+router.get(
+  "/invoices/:id",
+  authMiddleware,
+  authorize("admin"),
+  invoiceController.getInvoiceByIdAdmin
+);
+
+router.put(
+  "/invoices/:id/cancel",
+  authMiddleware,
+  authorize("admin"),
+  invoiceController.cancelInvoice
+);
+
+router.get(
+  "/payments/:id",
+  authMiddleware,
+  authorize("admin"),
+  paymentController.getPaymentByIdAdmin
+);
+
+router.put(
+  "/payments/:id/confirm",
+  authMiddleware,
+  authorize("admin"),
+  paymentController.confirmPayment
+);
+
+router.put(
+  "/payments/:id/reject",
+  authMiddleware,
+  authorize("admin"),
+  paymentController.rejectPayment
+);
+
+router.post(
+  "/payments/cash",
+  authMiddleware,
+  authorize("admin"),
+  paymentController.createCashPayment
+
 );
 export default router;

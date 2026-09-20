@@ -16,4 +16,24 @@ router.get(
   invoiceController.getInvoiceById
 );
 
+router.get(
+
+  "/admin/list",
+
+  authMiddleware,
+
+  invoiceController.listInvoices
+
+);
+
+router.put(
+
+  "/admin/:id/cancel",
+
+  authMiddleware,
+
+  invoiceController.cancelInvoice
+
+);
+
 export default router;

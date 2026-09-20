@@ -60,7 +60,109 @@ export const getInvoiceById = async (
 
 };
 
+export const listInvoices = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+
+  try {
+
+    const invoices =
+      await invoiceService.listInvoices({
+
+        search: req.query.search as string,
+
+        status: req.query.status as string,
+
+        fromDate: req.query.fromDate as string,
+
+        toDate: req.query.toDate as string,
+
+        page: Number(req.query.page),
+
+        limit: Number(req.query.limit)
+
+      });
+
+    res.json({
+
+      success: true,
+
+      data: invoices
+
+    });
+
+  } catch (error) {
+
+    next(error);
+
+  }
+
+};
+
+export const getInvoiceByIdAdmin = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+
+    const invoiceId = Number(req.params.id);
+
+    const invoice =
+      await invoiceService.getInvoiceByIdAdmin(invoiceId);
+
+    res.json({
+      success: true,
+      data: invoice
+    });
+
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const cancelInvoice = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+
+  try {
+
+    const invoiceId = Number(req.params.id);
+
+    const { reason } = req.body;
+
+    const invoice =
+      await invoiceService.cancelInvoice(
+        invoiceId,
+        reason
+      );
+
+    res.json({
+
+      success: true,
+
+      message: "Invoice cancelled successfully",
+
+      data: invoice
+
+    });
+
+  } catch (error) {
+
+    next(error);
+
+  }
+
+};
+
 export default {
   getInvoicesByOwner,
-  getInvoiceById
+  getInvoiceById,
+  listInvoices,
+  getInvoiceByIdAdmin,
+  cancelInvoice
 };
