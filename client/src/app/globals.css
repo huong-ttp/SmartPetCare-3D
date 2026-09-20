@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+@theme {
+  --color-navy-900: #0F172A;
+  --color-navy-800: #1E293B;
+  --color-teal-500: #00A86B;
+}
+
 /* ============================================
    SmartPetCare 3D — Design System Tokens
    ============================================ */
@@ -50,7 +56,7 @@ html, body {
 body {
   font-family: var(--font-body);
   color: #0f172a;
-  background: var(--color-bg);
+  background: #ffffff;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -95,7 +101,7 @@ h1, h2, h3, h4, h5, h6 {
    Gradient Utilities
    ============================================ */
 .gradient-primary {
-  background: linear-gradient(135deg, #0EA5B7, #22C55E);
+  background: linear-gradient(135deg, #00A86B, #0EA5B7);
 }
 
 .gradient-primary-hr {
@@ -199,7 +205,18 @@ h1, h2, h3, h4, h5, h6 {
    Focus Ring (accessibility)
    ============================================ */
 :focus-visible {
-  outline: 2px solid #0EA5B7;
+  outline: 2px solid #00A86B;
   outline-offset: 2px;
   border-radius: 4px;
+}
+
+/* ============================================
+   Fade-in animation
+   ============================================ */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0);   }
+}
+.animate-fade-in {
+  animation: fadeIn 0.55s ease both;
 }
