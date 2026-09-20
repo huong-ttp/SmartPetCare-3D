@@ -22,15 +22,25 @@ export interface PetVaccination {
   vaccination_id?: number;
   pet_id: string | number;
   pet_name?: string;
+  pet_species?: string;
+  pet_breed?: string;
+  pet_avatar?: string;
+  owner_id?: string | number;
+  owner_name?: string;
+  owner_phone?: string;
+  owner_email?: string;
   vaccine_type_id: string | number;
   vaccine_name?: string;
+  vaccine_type?: string;
   vaccine_description?: string;
   recommended_interval_days?: number;
   medical_record_id?: string | number | null;
   administered_by?: string | number;
   doctor_id?: string | number;
   doctor_name?: string;
-  appointment_id?: string | number;
+  doctor_phone?: string;
+  doctor_email?: string;
+  appointment_id?: string | number | null;
   date_administered: string; // ISO date
   /**
    * READ-ONLY — computed: date_administered + recommended_interval_days.
@@ -59,9 +69,35 @@ export interface CreatePetVaccinationDTO {
   next_due_date?: string;
 }
 
+export interface UpdatePetVaccinationDTO {
+  batch_number?: string;
+  date_administered?: string;
+  notes?: string;
+  administered_by?: string | number;
+}
+
 export interface CreateVaccineTypeDTO {
   name: string;
   description?: string;
   recommended_interval_days: number;
   applicable_species: string[];
 }
+
+export interface AdminVaccinationFilterParams {
+  search?: string;
+  vaccineType?: string | number;
+  dueStatus?: "all" | "upcoming" | "due_soon" | "overdue" | "valid";
+  page?: number;
+  limit?: number;
+}
+
+export interface AdminVaccinationListResult {
+  items: PetVaccination[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+

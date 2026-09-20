@@ -26,7 +26,19 @@ import type {
   AdminMedicalRecordFilterParams,
   AdminMedicalRecordListResult,
 } from "@/types/medical-record.type";
-import { MOCK_USERS, MOCK_PETS, MOCK_APPOINTMENTS, MOCK_MEDICAL_RECORDS } from "@/lib/mock";
+import type {
+  PetVaccination,
+  AdminVaccinationFilterParams,
+  AdminVaccinationListResult,
+} from "@/types/vaccination.type";
+import {
+  MOCK_USERS,
+  MOCK_PETS,
+  MOCK_APPOINTMENTS,
+  MOCK_MEDICAL_RECORDS,
+  MOCK_PET_VACCINATIONS,
+  MOCK_VACCINE_TYPES,
+} from "@/lib/mock";
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === "true";
 function mockDelay<T>(data: T, ms = 400): Promise<T> {
@@ -828,6 +840,179 @@ export const adminService = {
       };
     } catch (err) {
       console.warn("[adminService.listMedicalRecords] API failed, falling back to mock:", err);
+      return mockDelay(filterMock());
+    }
+  },
+
+  async listVaccinations(
+    filters?: AdminVaccinationFilterParams
+  ): Promise<AdminVaccinationListResult> {
+    const filterMock = (): AdminVaccinationListResult => {
+      let list = [...MOCK_PET_VACCINATIONS].map((item) => {
+        // Hydrate relations if missing
+        const pet = MOCK_PETS.find((p) => String(p.id) === String(item.pet_id));
+        const owner = MOCK_USERS.find(
+          (u) => String(u.id) === String(pet?.owner_id || item.owner_id)
+        );
+        const doctor = MOCK_USERS.find(
+          (u) => String(u.id) === String(item.administered_by || item.doctor_id)
+        );
+        const vt = MOCK_VACCINE_TYPES.find(
+          (v) => String(v.id) === String(item.vaccine_type_id)
+        );
+
+        return {
+          ...item,
+          id: String(item.vaccination_id ?? item.id ?? ""),
+          vaccination_id: Number(item.vaccination_id ?? item.id),
+          pet_name: item.pet_name || pet?.name || "Bé thú cưng",
+          pet_species: item.pet_species || pet?.species || "dog",
+          pet_breed: item.pet_breed || pet?.breed || "",
+          owner_id: item.owner_id || owner?.id || "",
+          owner_name: item.owner_name || owner?.full_name || "Chủ nuôi",
+          owner_phone: item.owner_phone || owner?.phone || "",
+          owner_email: item.owner_email || owner?.email || "",
+          doctor_id: item.doctor_id || doctor?.id || "",
+          doctor_name: item.doctor_name || doctor?.full_name || "Bác sĩ phụ trách",
+          vaccine_name: item.vaccine_name || vt?.name || "Vắc xin",
+          vaccine_type: item.vaccine_type || vt?.name || "Vắc xin",
+          recommended_interval_days:
+            item.recommended_interval_days || vt?.recommended_interval_days || 365,
+        };
+      });
+
+      // Filter search
+      if (filters?.search && filters.search.trim()) {
+        const q = filters.search.trim().toLowerCase();
+        list = list.filter((r) => {
+          const petMatch = r.pet_name?.toLowerCase().includes(q);
+          const ownerMatch = r.owner_name?.toLowerCase().includes(q);
+          const docMatch = r.doctor_name?.toLowerCase().includes(q);
+          const batchMatch = (r.batch_number || r.lot_number)?.toLowerCase().includes(q);
+          const vacMatch = r.vaccine_name?.toLowerCase().includes(q);
+          return petMatch || ownerMatch || docMatch || batchMatch || vacMatch;
+        });
+      }
+
+      // Filter vaccine type
+      if (filters?.vaccineType && filters.vaccineType !== "all") {
+        const vtId = String(filters.vaccineType);
+        list = list.filter((r) => String(r.vaccine_type_id) === vtId);
+      }
+
+      // Filter due status
+      if (filters?.dueStatus && filters.dueStatus !== "all") {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        list = list.filter((r) => {
+          if (!r.next_due_date) return false;
+          const due = new Date(r.next_due_date);
+          due.setHours(0, 0, 0, 0);
+          const diffTime = due.getTime() - today.getTime();
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+          if (filters.dueStatus === "overdue") {
+            return diffDays < 0;
+          }
+          if (filters.dueStatus === "due_soon" || filters.dueStatus === "upcoming") {
+            return diffDays >= 0 && diffDays <= 30;
+          }
+          if (filters.dueStatus === "valid") {
+            return diffDays > 30;
+          }
+          return true;
+        });
+      }
+
+      // Sort by next_due_date ascending
+      list.sort((a, b) => {
+        const dateA = new Date(a.next_due_date || a.date_administered || "").getTime();
+        const dateB = new Date(b.next_due_date || b.date_administered || "").getTime();
+        return dateA - dateB;
+      });
+
+      const page = filters?.page || 1;
+      const limit = filters?.limit || 10;
+      const total = list.length;
+      const totalPages = Math.ceil(total / limit) || 1;
+      const offset = (page - 1) * limit;
+      const paginatedItems = list.slice(offset, offset + limit);
+
+      return {
+        items: paginatedItems,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages,
+        },
+      };
+    };
+
+    if (USE_MOCK) {
+      return mockDelay(filterMock());
+    }
+
+    try {
+      const params: Record<string, any> = {};
+      if (filters?.search) params.search = filters.search;
+      if (filters?.vaccineType && filters.vaccineType !== "all") {
+        params.vaccineType = filters.vaccineType;
+      }
+      if (filters?.dueStatus && filters.dueStatus !== "all") {
+        // Support backend values: "upcoming", "overdue", "valid"
+        params.dueStatus =
+          filters.dueStatus === "due_soon" ? "upcoming" : filters.dueStatus;
+      }
+      if (filters?.page) params.page = filters.page;
+      if (filters?.limit) params.limit = filters.limit;
+
+      const res = await axiosClient.get<any>("/admin/vaccinations", { params });
+      const data = res.data?.data ?? res.data;
+
+      if (data && Array.isArray(data.items)) {
+        return {
+          items: data.items.map((item: any) => ({
+            ...item,
+            id: String(item.vaccination_id ?? item.id ?? ""),
+            vaccination_id: Number(item.vaccination_id ?? item.id),
+            vaccine_name: item.vaccine_name || item.vaccine_type || "Vắc xin",
+            batch_number: item.batch_number || item.lot_number || "",
+          })),
+          pagination: data.pagination ?? {
+            page: filters?.page || 1,
+            limit: filters?.limit || 10,
+            total: data.items.length,
+            totalPages: 1,
+          },
+        };
+      }
+
+      if (Array.isArray(data)) {
+        return {
+          items: data.map((item: any) => ({
+            ...item,
+            id: String(item.vaccination_id ?? item.id ?? ""),
+            vaccination_id: Number(item.vaccination_id ?? item.id),
+            vaccine_name: item.vaccine_name || item.vaccine_type || "Vắc xin",
+            batch_number: item.batch_number || item.lot_number || "",
+          })),
+          pagination: {
+            page: filters?.page || 1,
+            limit: filters?.limit || 10,
+            total: data.length,
+            totalPages: 1,
+          },
+        };
+      }
+
+      return {
+        items: [],
+        pagination: { page: 1, limit: 10, total: 0, totalPages: 1 },
+      };
+    } catch (err) {
+      console.warn("[adminService.listVaccinations] API failed, falling back to mock:", err);
       return mockDelay(filterMock());
     }
   },
