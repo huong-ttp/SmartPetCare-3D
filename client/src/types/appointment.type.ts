@@ -40,8 +40,11 @@ export interface Appointment {
   service_duration?: number;
   doctor_name?: string;
   doctor_phone?: string;
+  doctor_email?: string;
+  doctor_assigned_at?: string;
   owner_name?: string;
   owner_phone?: string;
+  owner_email?: string;
   medical_record_id?: number | string;
   invoice_id?: number | string;
   created_at: string;
@@ -89,11 +92,33 @@ export interface AvailableSlot {
 
 // Admin gán/đổi bác sĩ
 export interface AssignDoctorDTO {
-  doctor_id: string;
+  doctor_id: string | number;
 }
 
 // Admin/Doctor thay đổi trạng thái
 export interface UpdateAppointmentStatusDTO {
   status: AppointmentStatus;
+}
+
+export interface AdminAppointmentFilterParams {
+  search?: string;
+  status?: AppointmentStatus | "all" | string;
+  unassigned?: boolean;
+  dateFrom?: string;
+  dateTo?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface AdminAppointmentPagination {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+export interface AdminAppointmentListResult {
+  items: Appointment[];
+  pagination: AdminAppointmentPagination;
 }
 

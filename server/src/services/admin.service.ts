@@ -1300,6 +1300,57 @@ return {
 
 }
 
+async getAppointmentById(appointmentId: number) {
+  const result = await pool.query(
+    `
+    SELECT
+      a.appointment_id,
+      p.pet_id,
+      p.name AS pet_name,
+      p.species AS pet_species,
+      p.breed AS pet_breed,
+      p.gender AS pet_gender,
+      p.weight_kg AS pet_weight,
+      u.user_id AS owner_id,
+      u.full_name AS owner_name,
+      u.phone AS owner_phone,
+      u.email AS owner_email,
+      s.service_id,
+      s.name AS service_name,
+      s.description AS service_description,
+      s.price AS service_price,
+      s.duration_minutes AS service_duration,
+      a.appointment_date,
+      a.start_time,
+      a.end_time,
+      a.reason,
+      a.notes,
+      a.status,
+      a.cancel_reason,
+      a.doctor_id,
+      d.full_name AS doctor_name,
+      d.phone AS doctor_phone,
+      d.email AS doctor_email,
+      a.doctor_assigned_at,
+      a.created_at,
+      a.updated_at
+    FROM appointments a
+    INNER JOIN pets p ON a.pet_id = p.pet_id
+    INNER JOIN users u ON p.owner_id = u.user_id
+    INNER JOIN services s ON a.service_id = s.service_id
+    LEFT JOIN users d ON a.doctor_id = d.user_id
+    WHERE a.appointment_id = $1;
+    `,
+    [appointmentId]
+  );
+
+  if (result.rowCount === 0) {
+    throw new AppError("Appointment not found", 404);
+  }
+
+  return result.rows[0];
+}
+
 async listMedicalRecords(
   filter: MedicalRecordFilter
 ) {

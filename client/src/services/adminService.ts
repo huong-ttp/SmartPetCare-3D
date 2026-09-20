@@ -16,12 +16,144 @@ import type {
   PetListResult,
   UpdatePetDTO,
 } from "@/types/pet.type";
-import { MOCK_USERS, MOCK_PETS } from "@/lib/mock";
+import type {
+  Appointment,
+  AdminAppointmentFilterParams,
+  AdminAppointmentListResult,
+} from "@/types/appointment.type";
+import type {
+  MedicalRecord,
+  AdminMedicalRecordFilterParams,
+  AdminMedicalRecordListResult,
+} from "@/types/medical-record.type";
+import { MOCK_USERS, MOCK_PETS, MOCK_APPOINTMENTS, MOCK_MEDICAL_RECORDS } from "@/lib/mock";
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === "true";
 function mockDelay<T>(data: T, ms = 400): Promise<T> {
   return new Promise((resolve) => setTimeout(() => resolve(data), ms));
 }
+
+export let _adminMockAppointments: Appointment[] = [
+  {
+    id: "a1",
+    appointment_id: 101,
+    pet_id: "p1",
+    owner_id: "u1",
+    service_id: "sv1",
+    doctor_id: "u2",
+    pet_name: "Mochi",
+    pet_species: "dog",
+    pet_breed: "Poodle",
+    owner_name: "Nguyễn Văn An",
+    owner_phone: "0901234567",
+    owner_email: "owner@example.com",
+    doctor_name: "BS. Trần Thị Hoa",
+    doctor_email: "doctor@example.com",
+    doctor_phone: "0912345678",
+    service_name: "Khám tổng quát & Tiêm phòng",
+    status: "confirmed",
+    appointment_date: new Date().toISOString().split("T")[0],
+    start_time: "09:00",
+    end_time: "09:45",
+    reason: "Kiểm tra sức khỏe định kỳ và tiêm nhắc lại vaccine",
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+  {
+    id: "a2",
+    appointment_id: 102,
+    pet_id: "p2",
+    owner_id: "u1",
+    service_id: "sv2",
+    doctor_id: null,
+    pet_name: "Bông",
+    pet_species: "cat",
+    pet_breed: "Mèo Anh lông ngắn",
+    owner_name: "Nguyễn Văn An",
+    owner_phone: "0901234567",
+    owner_email: "owner@example.com",
+    service_name: "Khám da liễu & Cạo vôi răng",
+    status: "confirmed",
+    appointment_date: new Date().toISOString().split("T")[0],
+    start_time: "10:30",
+    end_time: "11:15",
+    reason: "Bé gãi tai nhiều, có mảng đỏ ở vành tai",
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+  {
+    id: "a3",
+    appointment_id: 103,
+    pet_id: "p3",
+    owner_id: "u1",
+    service_id: "sv1",
+    doctor_id: null,
+    pet_name: "Lucky",
+    pet_species: "dog",
+    pet_breed: "Golden Retriever",
+    owner_name: "Lê Minh Tuấn",
+    owner_phone: "0912345678",
+    owner_email: "tuan.le@example.com",
+    service_name: "Khám tổng quát",
+    status: "confirmed",
+    appointment_date: new Date(Date.now() + 86400000).toISOString().split("T")[0],
+    start_time: "14:00",
+    end_time: "14:45",
+    reason: "Bỏ ăn 1 ngày, uể oải, nôn nhẹ buổi sáng",
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+  {
+    id: "a4",
+    appointment_id: 104,
+    pet_id: "p1",
+    owner_id: "u1",
+    service_id: "sv1",
+    doctor_id: "u2",
+    pet_name: "Mochi",
+    pet_species: "dog",
+    pet_breed: "Poodle",
+    owner_name: "Nguyễn Văn An",
+    owner_phone: "0901234567",
+    owner_email: "owner@example.com",
+    doctor_name: "BS. Trần Thị Hoa",
+    doctor_phone: "0912345678",
+    service_name: "Khám sức khỏe tổng quát",
+    status: "completed",
+    appointment_date: new Date(Date.now() - 86400000).toISOString().split("T")[0],
+    start_time: "08:30",
+    end_time: "09:15",
+    reason: "Tẩy giun định kỳ",
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+  {
+    id: "a5",
+    appointment_id: 105,
+    pet_id: "p2",
+    owner_id: "u1",
+    service_id: "sv2",
+    doctor_id: "u2",
+    pet_name: "Bông",
+    pet_species: "cat",
+    pet_breed: "Mèo Anh lông ngắn",
+    owner_name: "Lê Minh Tuấn",
+    owner_phone: "0912345678",
+    owner_email: "tuan.le@example.com",
+    doctor_name: "BS. Trần Thị Hoa",
+    service_name: "Khám tai mũi họng",
+    status: "cancelled",
+    cancel_reason: "Khách hàng bận đi công tác đột xuất",
+    appointment_date: new Date(Date.now() - 172800000).toISOString().split("T")[0],
+    start_time: "15:00",
+    end_time: "15:45",
+    reason: "Khám viêm tai",
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+];
+
+
 
 let _adminMockPets: Pet[] = MOCK_PETS.map((p) => {
   const owner = MOCK_USERS.find((u) => u.id === p.owner_id);
@@ -42,6 +174,43 @@ function normalizePet(item: any): Pet {
     notes: item.notes ?? item.special_notes ?? undefined,
   };
 }
+
+function normalizeAppointment(item: any): Appointment {
+  if (!item) return item;
+  const pet = MOCK_PETS.find((p) => String(p.id) === String(item.pet_id));
+  const owner = MOCK_USERS.find((u) => String(u.id) === String(item.owner_id));
+  const doctor = item.doctor_id
+    ? MOCK_USERS.find((u) => String(u.id) === String(item.doctor_id))
+    : null;
+
+  const rawDate = item.appointment_date || (item.scheduled_at ? item.scheduled_at.split("T")[0] : "");
+  const rawStartTime = item.start_time || (item.scheduled_at ? item.scheduled_at.split("T")[1]?.slice(0, 5) : "09:00");
+
+  return {
+    ...item,
+    id: String(item.id ?? item.appointment_id ?? ""),
+    appointment_id: item.appointment_id ?? item.id,
+    pet_name: item.pet_name || pet?.name || "Thú cưng",
+    pet_species: item.pet_species || pet?.species || "dog",
+    pet_breed: item.pet_breed || pet?.breed || "",
+    pet_weight: item.pet_weight ?? pet?.weight_kg,
+    owner_name: item.owner_name || owner?.full_name || "Chủ nuôi",
+    owner_phone: item.owner_phone || owner?.phone || "",
+    owner_email: item.owner_email || owner?.email || "",
+    doctor_name: item.doctor_name || doctor?.full_name || undefined,
+    doctor_phone: item.doctor_phone || doctor?.phone || undefined,
+    doctor_email: item.doctor_email || doctor?.email || undefined,
+    service_name: item.service_name || "Khám sức khỏe tổng quát",
+    appointment_date: rawDate,
+    start_time: rawStartTime,
+    end_time: item.end_time || "10:00",
+    status: item.status || "confirmed",
+    reason: item.reason || undefined,
+    notes: item.notes || undefined,
+    cancel_reason: item.cancel_reason || undefined,
+  };
+}
+
 
 
 export interface AdminOverview {
@@ -400,6 +569,267 @@ export const adminService = {
     }
     const res = await axiosClient.delete<any>(`/admin/pets/${cleanId}`);
     return res.data;
+  },
+
+  async listAppointments(filters?: AdminAppointmentFilterParams): Promise<AdminAppointmentListResult> {
+    const filterMock = () => {
+      let filtered = _adminMockAppointments.map(normalizeAppointment);
+
+      if (filters?.search) {
+        const s = filters.search.toLowerCase();
+        filtered = filtered.filter(
+          (a) =>
+            a.pet_name?.toLowerCase().includes(s) ||
+            a.owner_name?.toLowerCase().includes(s) ||
+            a.doctor_name?.toLowerCase().includes(s) ||
+            a.service_name?.toLowerCase().includes(s)
+        );
+      }
+
+      if (filters?.status && filters.status !== "all") {
+        filtered = filtered.filter((a) => a.status === filters.status);
+      }
+
+      if (filters?.unassigned) {
+        filtered = filtered.filter((a) => !a.doctor_id);
+      }
+
+      if (filters?.dateFrom) {
+        filtered = filtered.filter((a) => (a.appointment_date || "") >= filters.dateFrom!);
+      }
+
+      if (filters?.dateTo) {
+        filtered = filtered.filter((a) => (a.appointment_date || "") <= filters.dateTo!);
+      }
+
+      const page = filters?.page || 1;
+      const limit = filters?.limit || 10;
+      const total = filtered.length;
+      const totalPages = Math.ceil(total / limit) || 1;
+      const start = (page - 1) * limit;
+      const items = filtered.slice(start, start + limit);
+
+      return {
+        items,
+        pagination: { page, limit, total, totalPages },
+      };
+    };
+
+    if (USE_MOCK) {
+      return mockDelay(filterMock());
+    }
+
+    try {
+      const params = new URLSearchParams();
+      if (filters?.search) params.append("search", filters.search);
+      if (filters?.status && filters.status !== "all") params.append("status", filters.status);
+      if (filters?.unassigned) params.append("unassigned", "true");
+      if (filters?.dateFrom) params.append("dateFrom", filters.dateFrom);
+      if (filters?.dateTo) params.append("dateTo", filters.dateTo);
+      if (filters?.page) params.append("page", String(filters.page));
+      if (filters?.limit) params.append("limit", String(filters.limit));
+
+      const res = await axiosClient.get<any>(`/admin/appointments?${params.toString()}`);
+      const data = res.data?.data;
+      if (data?.items) {
+        return {
+          items: data.items.map(normalizeAppointment),
+          pagination: data.pagination,
+        };
+      }
+      if (Array.isArray(data)) {
+        return {
+          items: data.map(normalizeAppointment),
+          pagination: {
+            page: filters?.page || 1,
+            limit: filters?.limit || 10,
+            total: data.length,
+            totalPages: 1,
+          },
+        };
+      }
+      return {
+        items: [],
+        pagination: { page: 1, limit: 10, total: 0, totalPages: 1 },
+      };
+    } catch (err) {
+      console.warn("[adminService.listAppointments] API call failed, falling back to mock data:", err);
+      return mockDelay(filterMock());
+    }
+  },
+
+  async getAppointmentById(id: string | number): Promise<Appointment> {
+    const cleanId = String(id ?? "").trim();
+    if (USE_MOCK) {
+      const found = _adminMockAppointments.find(
+        (a) => String(a.id) === cleanId || String(a.appointment_id) === cleanId
+      );
+      if (!found) throw new Error("Lịch hẹn không tồn tại.");
+      return mockDelay(normalizeAppointment(found));
+    }
+
+    try {
+      const res = await axiosClient.get<any>(`/admin/appointments/${cleanId}`);
+      const raw = res.data?.data ?? res.data;
+      return normalizeAppointment(raw);
+    } catch (err) {
+      console.warn("[adminService.getAppointmentById] API failed, falling back to mock:", err);
+      const found = _adminMockAppointments.find(
+        (a) => String(a.id) === cleanId || String(a.appointment_id) === cleanId
+      );
+      if (found) return mockDelay(normalizeAppointment(found));
+      throw err;
+    }
+  },
+
+  async listDoctors(params?: { is_active?: boolean }): Promise<User[]> {
+    const getMockDocs = () => {
+      let docs = MOCK_USERS.filter((u) => u.role === "doctor");
+      if (params?.is_active !== undefined) {
+        docs = docs.filter((u) => u.is_active === params.is_active);
+      }
+      return docs;
+    };
+
+    if (USE_MOCK) {
+      return mockDelay(getMockDocs());
+    }
+
+    try {
+      const res = await axiosClient.get<any>("/admin/doctors");
+      const data = res.data?.data ?? res.data;
+      if (Array.isArray(data)) {
+        return data.map((d: any) => ({
+          ...d,
+          id: String(d.id ?? d.user_id ?? ""),
+          role: "doctor" as UserRole,
+          is_active: d.is_active ?? true,
+        }));
+      }
+      return [];
+    } catch (err) {
+      console.warn("[adminService.listDoctors] API failed, falling back to mock:", err);
+      return mockDelay(getMockDocs());
+    }
+  },
+
+  async listMedicalRecords(
+    filters?: AdminMedicalRecordFilterParams
+  ): Promise<AdminMedicalRecordListResult> {
+    const filterMock = (): AdminMedicalRecordListResult => {
+      let list = [...MOCK_MEDICAL_RECORDS];
+
+      if (filters?.search && filters.search.trim()) {
+        const q = filters.search.trim().toLowerCase();
+        list = list.filter((r) => {
+          const petMatch = r.pet_name?.toLowerCase().includes(q);
+          const docMatch = r.doctor_name?.toLowerCase().includes(q);
+          const ownerMatch = r.owner_name?.toLowerCase().includes(q);
+          const diagMatch = r.diagnosis?.toLowerCase().includes(q);
+          return petMatch || docMatch || ownerMatch || diagMatch;
+        });
+      }
+
+      if (filters?.doctorId) {
+        const dId = String(filters.doctorId);
+        list = list.filter((r) => String(r.doctor_id) === dId);
+      }
+
+      if (filters?.dateFrom) {
+        list = list.filter((r) => {
+          const recDate = (r.record_date || r.created_at || "").slice(0, 10);
+          return recDate >= filters.dateFrom!;
+        });
+      }
+
+      if (filters?.dateTo) {
+        list = list.filter((r) => {
+          const recDate = (r.record_date || r.created_at || "").slice(0, 10);
+          return recDate <= filters.dateTo!;
+        });
+      }
+
+      // Sort by record_date descending
+      list.sort((a, b) => {
+        const dateA = new Date(a.record_date || a.created_at || "").getTime();
+        const dateB = new Date(b.record_date || b.created_at || "").getTime();
+        return dateB - dateA;
+      });
+
+      const page = filters?.page || 1;
+      const limit = filters?.limit || 10;
+      const total = list.length;
+      const totalPages = Math.ceil(total / limit) || 1;
+      const offset = (page - 1) * limit;
+      const paginatedItems = list.slice(offset, offset + limit);
+
+      return {
+        items: paginatedItems,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages,
+        },
+      };
+    };
+
+    if (USE_MOCK) {
+      return mockDelay(filterMock());
+    }
+
+    try {
+      const params: Record<string, any> = {};
+      if (filters?.search) params.search = filters.search;
+      if (filters?.doctorId) params.doctorId = filters.doctorId;
+      if (filters?.dateFrom) params.dateFrom = filters.dateFrom;
+      if (filters?.dateTo) params.dateTo = filters.dateTo;
+      if (filters?.page) params.page = filters.page;
+      if (filters?.limit) params.limit = filters.limit;
+
+      const res = await axiosClient.get<any>("/admin/medical-records", { params });
+      const data = res.data?.data ?? res.data;
+
+      if (data && Array.isArray(data.items)) {
+        return {
+          items: data.items.map((item: any) => ({
+            ...item,
+            id: String(item.record_id ?? item.id ?? ""),
+            record_id: Number(item.record_id ?? item.id),
+          })),
+          pagination: data.pagination ?? {
+            page: filters?.page || 1,
+            limit: filters?.limit || 10,
+            total: data.items.length,
+            totalPages: 1,
+          },
+        };
+      }
+
+      if (Array.isArray(data)) {
+        return {
+          items: data.map((item: any) => ({
+            ...item,
+            id: String(item.record_id ?? item.id ?? ""),
+            record_id: Number(item.record_id ?? item.id),
+          })),
+          pagination: {
+            page: filters?.page || 1,
+            limit: filters?.limit || 10,
+            total: data.length,
+            totalPages: 1,
+          },
+        };
+      }
+
+      return {
+        items: [],
+        pagination: { page: 1, limit: 10, total: 0, totalPages: 1 },
+      };
+    } catch (err) {
+      console.warn("[adminService.listMedicalRecords] API failed, falling back to mock:", err);
+      return mockDelay(filterMock());
+    }
   },
 };
 

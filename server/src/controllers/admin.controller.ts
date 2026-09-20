@@ -348,6 +348,24 @@ export const listAppointments = async (
 
 };
 
+export const getAppointmentById = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const appointment = await adminService.getAppointmentById(
+      Number(req.params.id)
+    );
+    res.json({
+      success: true,
+      data: appointment,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 export const listDoctors = async (
   req: Request,
   res: Response,
@@ -622,6 +640,7 @@ export default {
   updatePet,
   deletePet,
   listAppointments,
+  getAppointmentById,
   listDoctors,
   assignDoctor,
   cancelAppointment,

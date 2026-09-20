@@ -95,6 +95,13 @@ router.get(
   adminController.listAppointments
 );
 
+router.get(
+  "/appointments/:id",
+  authMiddleware,
+  authorize("admin"),
+  adminController.getAppointmentById
+);
+
 
 // Appointment Management
 

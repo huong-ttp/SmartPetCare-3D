@@ -30,6 +30,10 @@ export interface MedicalRecord {
   pet_species?: string;
   pet_breed?: string;
   owner_id?: number | string;
+  owner_name?: string;
+  owner_phone?: string;
+  owner_email?: string;
+  pet_avatar_url?: string;
 
   /** Cân nặng tại thời điểm khám (kg) */
   weight_at_visit?: number | string;
@@ -67,6 +71,29 @@ export interface CreateMedicalRecordDTO {
 }
 
 export type UpdateMedicalRecordDTO = Partial<Omit<CreateMedicalRecordDTO, "appointment_id" | "pet_id">>;
+
+// ============================================================
+// ADMIN MEDICAL RECORD FILTER & RESULT
+// ============================================================
+
+export interface AdminMedicalRecordFilterParams {
+  search?: string;
+  doctorId?: string | number;
+  dateFrom?: string;
+  dateTo?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface AdminMedicalRecordListResult {
+  items: MedicalRecord[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
 
 // ============================================================
 // DOCTOR_PATIENT entity type
