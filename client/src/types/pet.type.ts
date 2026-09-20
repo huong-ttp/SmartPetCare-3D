@@ -52,4 +52,26 @@ export interface CreatePetDTO {
   notes?: string;
 }
 
-export type UpdatePetDTO = Partial<CreatePetDTO>;
+export interface UpdatePetDTO extends Partial<CreatePetDTO> {
+  owner_id?: string;
+}
+
+export interface PetFilterParams {
+  search?: string;
+  species?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface PetPagination {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+export interface PetListResult {
+  items: Pet[];
+  pagination: PetPagination;
+}
+

@@ -11,6 +11,9 @@ import userRoutes from "./user.routes";
 import vaccinationRoutes from "./vaccination.routes";
 import vaccineTypeRoutes from "./vaccineType.routes";
 import serviceRoutes from "./service.routes";
+import adminRoutes from "./admin.routes";
+import invoiceRoutes from "./invoice.routes";
+import notificationRoutes from "./notification.routes";
 
 const router = Router();
 
@@ -25,4 +28,7 @@ router.use("/users", userRoutes);
 router.use("/vaccinations", vaccinationRoutes);
 router.use("/vaccine-types", vaccineTypeRoutes);
 router.use("/services", serviceRoutes);
+router.use("/admin", adminRoutes);
+router.use("/invoices", invoiceRoutes);
+router.use("/notifications", notificationRoutes);
 export default router;

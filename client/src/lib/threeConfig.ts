@@ -3,14 +3,14 @@
  * Constants & scene configuration cho SmartPetCare 3D.
  */
 
-/** Background color của canvas (dark navy theo brand) */
-export const CANVAS_BG = "#0F172A";
+/** Background color của canvas (light mint để đồng nhất hero section) */
+export const CANVAS_BG = "#E8FAF4";
 
-/** Bloom post-processing defaults */
+/** Bloom post-processing defaults (giảm intensity cho nền sáng) */
 export const BLOOM_CONFIG = {
-  luminanceThreshold: 0.5,
+  luminanceThreshold: 0.6,
   luminanceSmoothing: 0.9,
-  intensity: 0.35,
+  intensity: 0.25,
 } as const;
 
 /** Màu sắc brand cho 3D objects */
@@ -27,6 +27,18 @@ export const BRAND_COLORS = {
   plant: "#6ee7b7",
   dog: "#d97706",
   cat: "#60a5fa",
+  // Smart Feeder & Zero-Gravity Showcase Tokens
+  tealPrimary: "#00A86B",
+  tealGlow: "#00E599",
+  tealDark: "#007A4D",
+  plasticWhite: "#F0FDF4",       // nhẹ mint-white, tránh lẫn nền sáng
+  plasticOffWhite: "#E2F5EC",
+  kibbleBrown: "#7A5533",        // tối hơn để tương phản nền sáng
+  accentCyan: "#0EA5E9",         // đậm hơn cho nền sáng
+  accentAmber: "#D97706",        // đậm hơn cho nền sáng
+  accentRose: "#E11D48",
+  darkLens: "#0B0F19",
+  heroBackground: "#E8FAF4",     // nền hero section đồng nhất
 } as const;
 
 /** Canvas performance settings */

@@ -145,10 +145,148 @@ export const updatePaymentStatus = async (
 
 };
 
+export const getPaymentByIdAdmin = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+
+  try {
+
+    const paymentId =
+      Number(req.params.id);
+
+    const payment =
+      await paymentService.getPaymentByIdAdmin(
+        paymentId
+      );
+
+    res.json({
+
+      success: true,
+
+      data: payment
+
+    });
+
+  } catch (error) {
+
+    next(error);
+
+  }
+
+};
+
+export const confirmPayment = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+
+  try {
+
+    const paymentId =
+      Number(req.params.id);
+
+    const payment =
+      await paymentService.confirmPayment(
+        paymentId
+      );
+
+    res.json({
+
+      success: true,
+
+      message:
+        "Payment confirmed successfully",
+
+      data: payment
+
+    });
+
+  } catch (error) {
+
+    next(error);
+
+  }
+
+};
+
+export const rejectPayment = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+
+  try {
+
+    const paymentId =
+      Number(req.params.id);
+
+    const payment =
+      await paymentService.rejectPayment(
+        paymentId,
+        req.body.reason
+      );
+
+    res.json({
+
+      success: true,
+
+      message:
+        "Payment rejected successfully",
+
+      data: payment
+
+    });
+
+  } catch (error) {
+
+    next(error);
+
+  }
+
+};
+
+export const createCashPayment = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+
+  try {
+
+    const payment =
+      await paymentService.createCashPayment(
+        req.body
+      );
+
+    res.status(201).json({
+
+      success: true,
+
+      message:
+        "Cash payment recorded successfully",
+
+      data: payment
+
+    });
+
+  } catch (err) {
+
+    next(err);
+
+  }
+
+};
 export default {
     createPayment,
     getPaymentByInvoice,
     getPaymentsByOwner,
     getPaymentById,
-    updatePaymentStatus
+    updatePaymentStatus,
+    getPaymentByIdAdmin,
+    confirmPayment,
+    rejectPayment,
+    createCashPayment
 };

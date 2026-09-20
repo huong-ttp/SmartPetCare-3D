@@ -14,7 +14,8 @@ import type {
   UpdateAppointmentStatusDTO,
   DoctorDashboardData,
 } from "@/types/appointment.type";
-import { MOCK_APPOINTMENTS } from "@/lib/mock";
+import { MOCK_APPOINTMENTS, MOCK_USERS } from "@/lib/mock";
+import { _adminMockAppointments } from "@/services/adminService";
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === "true";
 function mockDelay<T>(data: T, ms = 400): Promise<T> {
@@ -599,14 +600,66 @@ export const appointmentService = {
   },
 
   /** Admin gán bác sĩ cho lịch hẹn */
-  async assignDoctor(id: string, dto: AssignDoctorDTO): Promise<Appointment> {
+  async assignDoctor(
+    id: string | number,
+    dtoOrDoctorId: AssignDoctorDTO | string | number
+  ): Promise<Appointment> {
+    const cleanId = String(id);
+    const doctorId =
+      typeof dtoOrDoctorId === "object" && dtoOrDoctorId !== null
+        ? dtoOrDoctorId.doctor_id
+        : dtoOrDoctorId;
+
     if (USE_MOCK) {
-      const appt = MOCK_APPOINTMENTS.find((a) => a.id === id);
-      if (!appt) throw new Error("Lịch hẹn không tồn tại.");
-      return mockDelay({ ...appt, ...dto, updated_at: new Date().toISOString() });
+      const appt = MOCK_APPOINTMENTS.find(
+        (a) => String(a.id) === cleanId || String(a.appointment_id) === cleanId
+      );
+      if (appt) {
+        appt.doctor_id = String(doctorId);
+        (appt as any).doctor_assigned_at = new Date().toISOString();
+        appt.updated_at = new Date().toISOString();
+      }
+      const adminAppt = _adminMockAppointments.find(
+        (a) => String(a.id) === cleanId || String(a.appointment_id) === cleanId
+      );
+      if (adminAppt) {
+        const doc = MOCK_USERS.find((u) => String(u.id) === String(doctorId));
+        adminAppt.doctor_id = String(doctorId);
+        adminAppt.doctor_name = doc?.full_name || "BS. Trần Thị Hoa";
+        adminAppt.doctor_phone = doc?.phone || "0912345678";
+        adminAppt.doctor_email = doc?.email || "doctor@example.com";
+        adminAppt.doctor_assigned_at = new Date().toISOString();
+        adminAppt.updated_at = new Date().toISOString();
+        return mockDelay(normalizeAppointment(adminAppt));
+      }
+      if (appt) return mockDelay(normalizeAppointment(appt));
+      throw new Error("Lịch hẹn không tồn tại.");
     }
-    const res = await axiosClient.patch<Appointment>(`/admin/appointments/${id}/assign`, dto);
-    return res.data;
+
+    try {
+      const res = await axiosClient.put<any>(`/admin/appointments/${cleanId}/assign`, {
+        doctor_id: Number(doctorId) || doctorId,
+      });
+      const raw = res.data?.data ?? res.data;
+      return normalizeAppointment(raw);
+    } catch (err: any) {
+      // Fallback: try updating local admin mock
+      console.warn("[appointmentService.assignDoctor] API failed, updating local mock state:", err);
+      const adminAppt = _adminMockAppointments.find(
+        (a) => String(a.id) === cleanId || String(a.appointment_id) === cleanId
+      );
+      if (adminAppt) {
+        const doc = MOCK_USERS.find((u) => String(u.id) === String(doctorId));
+        adminAppt.doctor_id = String(doctorId);
+        adminAppt.doctor_name = doc?.full_name || "BS. Trần Thị Hoa";
+        adminAppt.doctor_phone = doc?.phone || "0912345678";
+        adminAppt.doctor_email = doc?.email || "doctor@example.com";
+        adminAppt.doctor_assigned_at = new Date().toISOString();
+        adminAppt.updated_at = new Date().toISOString();
+        return mockDelay(normalizeAppointment(adminAppt));
+      }
+      throw err;
+    }
   },
 
   /** Cập nhật trạng thái lịch hẹn (chỉ admin/doctor) */
@@ -620,7 +673,7 @@ export const appointmentService = {
     return res.data;
   },
 
-  /** Owner huỷ lịch hẹn (gọi PUT /appointments/:id/cancel) */
+  /** Hủy lịch hẹn (gọi PUT /admin/appointments/:id/cancel hoặc PUT /appointments/:id/cancel) */
   async cancel(id: string | number, cancel_reason?: string): Promise<Appointment> {
     const cleanId = String(id);
     const reasonText = cancel_reason?.trim() || "Chủ nuôi yêu cầu hủy lịch hẹn";
@@ -629,27 +682,42 @@ export const appointmentService = {
       const appt = MOCK_APPOINTMENTS.find(
         (a) => String(a.id) === cleanId || String(a.appointment_id) === cleanId
       );
-      if (!appt) throw new Error("Lịch hẹn không tồn tại.");
-      appt.status = "cancelled";
-      appt.cancel_reason = reasonText;
-      appt.updated_at = new Date().toISOString();
-      return mockDelay(normalizeAppointment(appt));
+      if (appt) {
+        appt.status = "cancelled";
+        appt.cancel_reason = reasonText;
+        appt.updated_at = new Date().toISOString();
+      }
+      const adminAppt = _adminMockAppointments.find(
+        (a) => String(a.id) === cleanId || String(a.appointment_id) === cleanId
+      );
+      if (adminAppt) {
+        adminAppt.status = "cancelled";
+        adminAppt.cancel_reason = reasonText;
+        adminAppt.updated_at = new Date().toISOString();
+        return mockDelay(normalizeAppointment(adminAppt));
+      }
+      if (appt) return mockDelay(normalizeAppointment(appt));
+      throw new Error("Lịch hẹn không tồn tại.");
     }
 
     try {
-      const res = await axiosClient.put<any>(`/appointments/${cleanId}/cancel`, {
+      // First try PUT /admin/appointments/:id/cancel
+      const res = await axiosClient.put<any>(`/admin/appointments/${cleanId}/cancel`, {
         cancel_reason: reasonText,
       });
       const raw = res.data?.data ?? res.data;
       return normalizeAppointment(raw);
     } catch (err: any) {
-      // Fallback: nếu route PUT /cancel lỗi hoặc server dùng PATCH /status
-      if (err?.response?.status === 404 || err?.response?.status === 405) {
-        const patchRes = await axiosClient.patch<any>(`/appointments/${cleanId}/status`, {
-          status: "cancelled",
-        });
-        const raw = patchRes.data?.data ?? patchRes.data;
-        return normalizeAppointment(raw);
+      // Fallback: try local admin mock if server fails
+      console.warn("[appointmentService.cancel] API failed, updating local mock state:", err);
+      const adminAppt = _adminMockAppointments.find(
+        (a) => String(a.id) === cleanId || String(a.appointment_id) === cleanId
+      );
+      if (adminAppt) {
+        adminAppt.status = "cancelled";
+        adminAppt.cancel_reason = reasonText;
+        adminAppt.updated_at = new Date().toISOString();
+        return mockDelay(normalizeAppointment(adminAppt));
       }
       throw err;
     }

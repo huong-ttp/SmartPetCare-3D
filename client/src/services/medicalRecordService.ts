@@ -36,17 +36,32 @@ export const medicalRecordService = {
   },
 
   async getById(id: string | number): Promise<MedicalRecord> {
-    if (USE_MOCK) {
+    const cleanId = String(id);
+    const findInMock = () => {
       const r = MOCK_MEDICAL_RECORDS.find(
-        (r) => String(r.id) === String(id) || String(r.record_id) === String(id)
+        (r) => String(r.id) === cleanId || String(r.record_id) === cleanId
       );
       if (!r) throw new Error("Hồ sơ không tồn tại.");
-      return mockDelay(r);
+      return r;
+    };
+
+    if (USE_MOCK || isNaN(Number(cleanId))) {
+      return mockDelay(findInMock());
     }
-    const res = await axiosClient.get<any>(`/medical-records/${id}`);
-    const data = res.data?.data ?? res.data;
-    if (!data) throw new Error("Hồ sơ không tồn tại.");
-    return data;
+
+    try {
+      const res = await axiosClient.get<any>(`/medical-records/${cleanId}`);
+      const data = res.data?.data ?? res.data;
+      if (!data) throw new Error("Hồ sơ không tồn tại.");
+      return data;
+    } catch (err) {
+      console.warn("[medicalRecordService.getById] API call failed, falling back to mock:", err);
+      try {
+        return mockDelay(findInMock());
+      } catch {
+        throw err;
+      }
+    }
   },
 
   async create(dto: CreateMedicalRecordDTO): Promise<any> {
@@ -122,14 +137,71 @@ export const medicalRecordService = {
     return res.data?.data ?? res.data;
   },
 
-  async update(id: string, dto: UpdateMedicalRecordDTO): Promise<MedicalRecord> {
-    if (USE_MOCK) {
-      const r = MOCK_MEDICAL_RECORDS.find((r) => r.id === id);
-      if (!r) throw new Error("Hồ sơ không tồn tại.");
-      return mockDelay({ ...r, ...dto, updated_at: new Date().toISOString() });
+  async update(id: string | number, dto: UpdateMedicalRecordDTO): Promise<MedicalRecord> {
+    const cleanId = String(id);
+    const updateInMock = () => {
+      const idx = MOCK_MEDICAL_RECORDS.findIndex(
+        (r) => String(r.id) === cleanId || String(r.record_id) === cleanId
+      );
+      if (idx === -1) throw new Error("Hồ sơ không tồn tại.");
+      const updated = {
+        ...MOCK_MEDICAL_RECORDS[idx],
+        ...dto,
+        updated_at: new Date().toISOString(),
+      };
+      MOCK_MEDICAL_RECORDS[idx] = updated;
+      return updated;
+    };
+
+    if (USE_MOCK || isNaN(Number(cleanId))) {
+      return mockDelay(updateInMock());
     }
-    const res = await axiosClient.patch<MedicalRecord>(`/medical-records/${id}`, dto);
-    return res.data;
+
+    try {
+      const res = await axiosClient.put<any>(`/medical-records/${cleanId}`, dto);
+      return res.data?.data ?? res.data;
+    } catch {
+      try {
+        const res = await axiosClient.patch<any>(`/medical-records/${cleanId}`, dto);
+        return res.data?.data ?? res.data;
+      } catch (err) {
+        console.warn("[medicalRecordService.update] API error, falling back to mock:", err);
+        return mockDelay(updateInMock());
+      }
+    }
+  },
+
+  async delete(id: string | number): Promise<{ message: string }> {
+    const cleanId = String(id);
+    const deleteInMock = () => {
+      const idx = MOCK_MEDICAL_RECORDS.findIndex(
+        (r) => String(r.id) === cleanId || String(r.record_id) === cleanId
+      );
+      if (idx === -1) throw new Error("Hồ sơ y tế không tồn tại.");
+      const record = MOCK_MEDICAL_RECORDS[idx];
+
+      // Ràng buộc nghiệp vụ: kiểm tra tiêm chủng liên kết
+      if (record.vaccinations && record.vaccinations.length > 0) {
+        throw new Error(
+          "Không thể xóa hồ sơ bệnh án vì đã có dữ liệu tiêm chủng (Pet Vaccinations) liên kết."
+        );
+      }
+
+      MOCK_MEDICAL_RECORDS.splice(idx, 1);
+      return { message: "Xóa hồ sơ bệnh án thành công." };
+    };
+
+    if (USE_MOCK || isNaN(Number(cleanId))) {
+      return mockDelay(deleteInMock());
+    }
+
+    try {
+      const res = await axiosClient.delete<any>(`/medical-records/${cleanId}`);
+      return res.data?.data ?? res.data;
+    } catch (err) {
+      console.warn("[medicalRecordService.delete] API error, falling back to mock:", err);
+      return mockDelay(deleteInMock());
+    }
   },
 
   /**

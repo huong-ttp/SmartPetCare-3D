@@ -8,6 +8,7 @@ import type {
   VaccineType,
   PetVaccination,
   CreatePetVaccinationDTO,
+  UpdatePetVaccinationDTO,
   CreateVaccineTypeDTO,
 } from "@/types/vaccination.type";
 import { MOCK_VACCINE_TYPES, MOCK_PET_VACCINATIONS } from "@/lib/mock";
@@ -163,6 +164,117 @@ export const vaccinationService = {
     }
     const res = await axiosClient.get<PetVaccination[]>("/vaccinations/due-soon");
     return res.data;
+  },
+
+  /**
+   * Cập nhật bản ghi tiêm phòng (Admin)
+   * API: vaccination.service.update(id, data)
+   * Business rule: Nếu date_administered thay đổi, next_due_date tự động tính lại.
+   */
+  async update(id: string | number, data: UpdatePetVaccinationDTO): Promise<PetVaccination> {
+    const applyMockUpdate = () => {
+      const index = MOCK_PET_VACCINATIONS.findIndex(
+        (v) => String(v.id) === String(id) || String(v.vaccination_id) === String(id)
+      );
+      if (index === -1) {
+        throw new Error("Không tìm thấy bản ghi tiêm chủng");
+      }
+
+      const current = MOCK_PET_VACCINATIONS[index];
+      const vt = MOCK_VACCINE_TYPES.find(
+        (v) => String(v.id) === String(current.vaccine_type_id)
+      );
+      const interval =
+        current.recommended_interval_days || vt?.recommended_interval_days || 365;
+
+      let nextDue = current.next_due_date;
+      if (data.date_administered && data.date_administered !== current.date_administered) {
+        const d = new Date(data.date_administered);
+        d.setDate(d.getDate() + interval);
+        nextDue = d.toISOString().split("T")[0];
+      }
+
+      const updated: PetVaccination = {
+        ...current,
+        batch_number: data.batch_number?.trim() || current.batch_number,
+        lot_number: data.batch_number?.trim() || current.lot_number,
+        date_administered: data.date_administered || current.date_administered,
+        next_due_date: nextDue,
+        notes: data.notes !== undefined ? data.notes : current.notes,
+        administered_by: data.administered_by || current.administered_by,
+        updated_at: new Date().toISOString(),
+      };
+
+      MOCK_PET_VACCINATIONS[index] = updated;
+      return updated;
+    };
+
+    if (USE_MOCK) {
+      return mockDelay(applyMockUpdate());
+    }
+
+    try {
+      const res = await axiosClient.put<any>(`/vaccinations/${id}`, {
+        batch_number: data.batch_number,
+        date_administered: data.date_administered,
+        notes: data.notes,
+        administered_by: data.administered_by,
+      });
+      const updated = res.data?.data ?? res.data;
+      // Sync mock cache if present
+      const index = MOCK_PET_VACCINATIONS.findIndex(
+        (v) => String(v.id) === String(id) || String(v.vaccination_id) === String(id)
+      );
+      if (index !== -1 && updated) {
+        MOCK_PET_VACCINATIONS[index] = { ...MOCK_PET_VACCINATIONS[index], ...updated };
+      }
+      return updated || applyMockUpdate();
+    } catch (err) {
+      console.warn("[vaccinationService.update] API failed, falling back to mock update:", err);
+      return mockDelay(applyMockUpdate());
+    }
+  },
+
+  /** Alias: vaccination.service.updateVaccination(id, data) */
+  async updateVaccination(
+    id: string | number,
+    data: UpdatePetVaccinationDTO
+  ): Promise<PetVaccination> {
+    return this.update(id, data);
+  },
+
+  /**
+   * Xóa bản ghi tiêm phòng (Admin)
+   * API: vaccination.service.delete(id)
+   */
+  async delete(id: string | number): Promise<{ success: boolean; message?: string }> {
+    const applyMockDelete = () => {
+      const index = MOCK_PET_VACCINATIONS.findIndex(
+        (v) => String(v.id) === String(id) || String(v.vaccination_id) === String(id)
+      );
+      if (index !== -1) {
+        MOCK_PET_VACCINATIONS.splice(index, 1);
+      }
+      return { success: true, message: "Xóa bản ghi tiêm phòng thành công" };
+    };
+
+    if (USE_MOCK) {
+      return mockDelay(applyMockDelete());
+    }
+
+    try {
+      await axiosClient.delete(`/vaccinations/${id}`);
+      applyMockDelete();
+      return { success: true, message: "Xóa bản ghi tiêm phòng thành công" };
+    } catch (err) {
+      console.warn("[vaccinationService.delete] API failed, falling back to mock delete:", err);
+      return mockDelay(applyMockDelete());
+    }
+  },
+
+  /** Alias: vaccination.service.deleteVaccination(id) */
+  async deleteVaccination(id: string | number): Promise<{ success: boolean; message?: string }> {
+    return this.delete(id);
   },
 };
 

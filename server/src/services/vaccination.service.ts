@@ -11,6 +11,11 @@ export interface CreateVaccinationData {
   date_administered?: string;
 }
 
+interface UpdateVaccinationData {
+  batch_number: string;
+  date_administered: string;
+}
+
 class VaccinationService {
   async getVaccinationsByPet(ownerId: number, petId: number, userRole?: string) {
     // Verify that the pet belongs to the requesting owner or user is doctor/admin
@@ -203,6 +208,131 @@ class VaccinationService {
     return {
       vaccination,
       message: "Vaccination created successfully."
+    };
+  }
+
+  async updateVaccination(
+    vaccinationId: number,
+    data: UpdateVaccinationData
+  ) {
+    if (!data.batch_number?.trim()) {
+      throw new AppError(
+        "Batch number is required",
+        400
+      );
+    }
+
+    if (!data.date_administered) {
+      throw new AppError(
+        "Date administered is required",
+        400
+      );
+    }
+
+    // Vaccine tồn tại?
+    const vaccinationResult =
+      await pool.query(
+        `
+        SELECT
+          pv.*,
+          vt.recommended_interval_days
+        FROM pet_vaccinations pv
+
+        INNER JOIN vaccine_types vt
+          ON pv.vaccine_type_id =
+             vt.vaccine_type_id
+
+        WHERE vaccination_id = $1;
+        `,
+        [vaccinationId]
+      );
+
+    if (vaccinationResult.rowCount === 0) {
+      throw new AppError(
+        "Vaccination not found",
+        404
+      );
+    }
+
+    const vaccination =
+      vaccinationResult.rows[0];
+    const interval =
+      vaccination.recommended_interval_days;
+
+    const nextDueResult =
+      await pool.query(
+        `
+        SELECT
+          ($1::date + ($2 || ' days')::interval)::date
+            AS next_due_date;
+        `,
+        [
+          data.date_administered,
+          interval
+        ]
+      );
+
+    const nextDueDate =
+      nextDueResult.rows[0].next_due_date;
+
+    const result =
+      await pool.query(
+        `
+        UPDATE pet_vaccinations
+
+        SET
+          batch_number = $1,
+
+          date_administered = $2,
+
+          next_due_date = $3
+
+        WHERE vaccination_id = $4
+
+        RETURNING *;
+        `,
+        [
+          data.batch_number,
+          data.date_administered,
+          nextDueDate,
+          vaccinationId
+        ]
+      );
+
+    return result.rows[0];
+  }
+
+  async deleteVaccination(
+    vaccinationId: number
+  ) {
+    const existed = await pool.query(
+      `
+      SELECT vaccination_id
+      FROM pet_vaccinations
+      WHERE vaccination_id = $1;
+      `,
+      [vaccinationId]
+    );
+
+    if (existed.rowCount === 0) {
+      throw new AppError(
+        "Vaccination not found",
+        404
+      );
+    }
+
+    await pool.query(
+      `
+      DELETE
+      FROM pet_vaccinations
+      WHERE vaccination_id = $1;
+      `,
+      [vaccinationId]
+    );
+
+    return {
+      message:
+        "Vaccination deleted successfully"
     };
   }
 }
