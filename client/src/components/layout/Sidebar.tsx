@@ -14,7 +14,12 @@ import {
   Users,
   Activity,
   Sparkles,
-  BellRing
+  BellRing,
+  Syringe,
+  Receipt,
+  Wallet,
+  ShieldCheck,
+  LayoutDashboard
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 
@@ -43,10 +48,17 @@ const DOCTOR_NAV: NavItem[] = [
 ];
 
 const ADMIN_NAV: NavItem[] = [
-  { name: "Thống kê", href: "/admin/dashboard", icon: <Home size={20} /> },
-  { name: "Quản lý Bác sĩ", href: "/admin/doctors", icon: <Users size={20} /> },
-  { name: "Quản lý Lịch hẹn", href: "/admin/appointments", icon: <Calendar size={20} /> },
-  { name: "Quản lý Dịch vụ", href: "/admin/services", icon: <Settings size={20} /> },
+  { name: "Dashboard 3D", href: "/admin/dashboard", icon: <LayoutDashboard size={20} /> },
+  { name: "Users", href: "/admin/users", icon: <Users size={20} /> },
+  { name: "Pets", href: "/admin/pets", icon: <Dog size={20} /> },
+  { name: "Appointments", href: "/admin/appointments", icon: <Calendar size={20} /> },
+  { name: "Services", href: "/admin/services", icon: <Settings size={20} /> },
+  { name: "Vaccine Types", href: "/admin/vaccine-types", icon: <Syringe size={20} /> },
+  { name: "Medical Records", href: "/admin/medical-records", icon: <FileText size={20} /> },
+  { name: "Vaccinations", href: "/admin/vaccinations", icon: <ShieldCheck size={20} /> },
+  { name: "Invoices", href: "/admin/invoices", icon: <Receipt size={20} /> },
+  { name: "Payments", href: "/admin/payments", icon: <Wallet size={20} /> },
+  { name: "Notifications", href: "/admin/notifications", icon: <BellRing size={20} /> },
 ];
 
 export const Sidebar: React.FC = () => {

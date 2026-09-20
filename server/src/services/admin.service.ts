@@ -888,6 +888,52 @@ async toggleUserActive(
   return result.rows[0];
 }
 
+async updateUser(
+  userId: number,
+  data: { full_name?: string; phone?: string | null; address?: string | null }
+) {
+  const existed = await pool.query(
+    `SELECT user_id, full_name, phone, address FROM users WHERE user_id = $1;`,
+    [userId]
+  );
+
+  if (existed.rowCount === 0) {
+    throw new AppError("User not found", 404);
+  }
+
+  const current = existed.rows[0];
+  const fullName = data.full_name !== undefined ? data.full_name.trim() : current.full_name;
+  const phone = data.phone !== undefined ? data.phone : current.phone;
+  const address = data.address !== undefined ? data.address : current.address;
+
+  const result = await pool.query(
+    `
+    UPDATE users
+    SET
+      full_name = $1,
+      phone = $2,
+      address = $3,
+      updated_at = NOW()
+    WHERE user_id = $4
+    RETURNING
+      user_id,
+      full_name,
+      email,
+      phone,
+      address,
+      role,
+      is_active,
+      created_at,
+      updated_at,
+      role_updated_by,
+      role_updated_at;
+    `,
+    [fullName, phone, address, userId]
+  );
+
+  return result.rows[0];
+}
+
 async updatePet(
   petId: number,
   data: UpdatePetData

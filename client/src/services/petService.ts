@@ -97,9 +97,10 @@ export const petService = {
    * Cập nhật thông tin thú cưng.
    * KHÔNG bao gồm weight_kg — trường này read-only.
    */
-  async updatePet(id: string, dto: UpdatePetDTO): Promise<Pet> {
+  async updatePet(id: string | number, dto: UpdatePetDTO): Promise<Pet> {
+    const cleanId = String(id ?? "").trim();
     if (USE_MOCK) {
-      const idx = _mockPets.findIndex((p) => p.id === id);
+      const idx = _mockPets.findIndex((p) => String(p.id) === cleanId);
       if (idx === -1) throw new Error("NOT_FOUND");
       const updated: Pet = {
         ..._mockPets[idx],
@@ -107,7 +108,7 @@ export const petService = {
         species: (dto.species as PetSpecies) || _mockPets[idx].species,
         updated_at: new Date().toISOString(),
       };
-      _mockPets = _mockPets.map((p) => (p.id === id ? updated : p));
+      _mockPets = _mockPets.map((p) => (String(p.id) === cleanId ? updated : p));
       return mockDelay(updated);
     }
     const payload = {
@@ -115,27 +116,46 @@ export const petService = {
       microchip_id: (dto as any).microchip_id ?? dto.microchip_number,
       special_notes: (dto as any).special_notes ?? dto.notes,
     };
-    const res = await axiosClient.patch<any>(`/pets/${id}`, payload);
-    const raw = res.data?.data !== undefined ? res.data.data : res.data;
-    return normalizePet(raw);
+    try {
+      const res = await axiosClient.patch<any>(`/pets/${cleanId}`, payload);
+      const raw = res.data?.data !== undefined ? res.data.data : res.data;
+      return normalizePet(raw);
+    } catch (err: any) {
+      // If 403 Forbidden or 404 from /pets/:id (e.g. user is admin editing someone else's pet), try admin route
+      if (err?.response?.status === 403 || err?.response?.status === 404) {
+        const adminRes = await axiosClient.put<any>(`/admin/pets/${cleanId}`, payload);
+        const adminRaw = adminRes.data?.data !== undefined ? adminRes.data.data : adminRes.data;
+        return normalizePet(adminRaw);
+      }
+      throw err;
+    }
   },
 
   /** Alias: updatePet */
-  async update(id: string, dto: UpdatePetDTO): Promise<Pet> {
+  async update(id: string | number, dto: UpdatePetDTO): Promise<Pet> {
     return petService.updatePet(id, dto);
   },
 
   /** Xóa thú cưng */
-  async deletePet(id: string): Promise<void> {
+  async deletePet(id: string | number): Promise<void> {
+    const cleanId = String(id ?? "").trim();
     if (USE_MOCK) {
-      _mockPets = _mockPets.filter((p) => p.id !== id);
+      _mockPets = _mockPets.filter((p) => String(p.id) !== cleanId);
       return mockDelay(undefined);
     }
-    await axiosClient.delete(`/pets/${id}`);
+    try {
+      await axiosClient.delete(`/pets/${cleanId}`);
+    } catch (err: any) {
+      if (err?.response?.status === 403 || err?.response?.status === 404) {
+        await axiosClient.delete(`/admin/pets/${cleanId}`);
+        return;
+      }
+      throw err;
+    }
   },
 
   /** Alias: deletePet (cho phép gọi petService.delete(id)) */
-  async delete(id: string): Promise<void> {
+  async delete(id: string | number): Promise<void> {
     return petService.deletePet(id);
   },
 };

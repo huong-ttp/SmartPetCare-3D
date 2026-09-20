@@ -17,6 +17,8 @@ export interface User {
   is_active: boolean;
   created_at: string; // ISO 8601
   updated_at: string;
+  role_updated_by?: string | number | null;
+  role_updated_at?: string | null;
 }
 
 // DTO khi đăng ký (owner tự đăng ký)
@@ -52,6 +54,43 @@ export interface CreateDoctorDTO {
   password: string;
 }
 
+// DTO admin tạo doctor hoặc admin trực tiếp
+export interface CreateAdminUserDTO {
+  full_name: string;
+  email: string;
+  password: string;
+  phone?: string;
+  address?: string;
+  role: "doctor" | "admin";
+}
+
+// DTO cập nhật thông tin user bởi admin
+export interface UpdateAdminUserDTO {
+  full_name?: string;
+  phone?: string;
+  address?: string;
+}
+
+export interface UserFilterParams {
+  search?: string;
+  role?: string;
+  status?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface UserPagination {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+export interface UserListResult {
+  items: User[];
+  pagination: UserPagination;
+}
+
 export interface UpdateProfileDTO {
   full_name?: string;
   phone?: string;
@@ -64,4 +103,5 @@ export interface ChangePasswordDTO {
   new_password: string;
   confirm_password?: string;
 }
+
 

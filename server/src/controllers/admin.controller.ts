@@ -145,6 +145,27 @@ export const toggleUserActive = async (
 
 };
 
+export const updateUser = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const userId = Number(req.params.id);
+    const user = await adminService.updateUser(
+      userId,
+      req.body
+    );
+
+    res.json({
+      success: true,
+      data: user
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const listPets = async (
   req: Request,
   res: Response,
@@ -593,6 +614,7 @@ export default {
   getDashboard,
   listUsers,
   createUser,
+  updateUser,
   updateUserRole,
   toggleUserActive,
   listPets,

@@ -19,6 +19,13 @@ router.get(
 );
 
 router.get(
+  "/stats",
+  authMiddleware,
+  authorize("admin"),
+  adminController.getDashboard
+);
+
+router.get(
   "/users",
   authMiddleware,
   authorize("admin"),
@@ -30,6 +37,13 @@ router.post(
   authMiddleware,
   authorize("admin"),
   adminController.createUser
+);
+
+router.put(
+  "/users/:id",
+  authMiddleware,
+  authorize("admin"),
+  adminController.updateUser
 );
 
 router.put(
