@@ -3,6 +3,11 @@
 // ============================================================
 
 export type ServiceCategory =
+  | "examination"
+  | "vaccination"
+  | "surgery"
+  | "grooming"
+  | "other"
   | "Examination"
   | "Vaccination"
   | "Surgery"
@@ -31,4 +36,24 @@ export interface CreateServiceDTO {
 }
 
 export type UpdateServiceDTO = Partial<CreateServiceDTO>;
+
+export interface ServiceFilterParams {
+  search?: string;
+  category?: string;
+  status?: string; // 'all' | 'active' | 'inactive'
+  page?: number;
+  limit?: number;
+}
+
+export interface ServicePagination {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+export interface ServiceListResult {
+  items: Service[];
+  pagination: ServicePagination;
+}
 

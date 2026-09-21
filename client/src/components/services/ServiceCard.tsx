@@ -25,9 +25,9 @@ export interface CategoryMeta {
   accentBorder: string;
 }
 
-export const CATEGORY_META: Record<ServiceCategory, CategoryMeta> = {
+const BASE_META = {
   Examination: {
-    key: "Examination",
+    key: "Examination" as ServiceCategory,
     label: "Khám bệnh",
     icon: <Stethoscope size={14} className="shrink-0" />,
     badgeClass: "bg-sky-50 text-sky-700 border-sky-200/80 hover:bg-sky-100/70",
@@ -35,7 +35,7 @@ export const CATEGORY_META: Record<ServiceCategory, CategoryMeta> = {
     accentBorder: "group-hover:border-sky-300",
   },
   Vaccination: {
-    key: "Vaccination",
+    key: "Vaccination" as ServiceCategory,
     label: "Tiêm chủng",
     icon: <Syringe size={14} className="shrink-0" />,
     badgeClass: "bg-emerald-50 text-emerald-700 border-emerald-200/80 hover:bg-emerald-100/70",
@@ -43,7 +43,7 @@ export const CATEGORY_META: Record<ServiceCategory, CategoryMeta> = {
     accentBorder: "group-hover:border-emerald-300",
   },
   Surgery: {
-    key: "Surgery",
+    key: "Surgery" as ServiceCategory,
     label: "Phẫu thuật",
     icon: <Scissors size={14} className="shrink-0" />,
     badgeClass: "bg-amber-50 text-amber-700 border-amber-200/80 hover:bg-amber-100/70",
@@ -51,7 +51,7 @@ export const CATEGORY_META: Record<ServiceCategory, CategoryMeta> = {
     accentBorder: "group-hover:border-amber-300",
   },
   Grooming: {
-    key: "Grooming",
+    key: "Grooming" as ServiceCategory,
     label: "Spa & Làm đẹp",
     icon: <Sparkles size={14} className="shrink-0" />,
     badgeClass: "bg-purple-50 text-purple-700 border-purple-200/80 hover:bg-purple-100/70",
@@ -59,7 +59,7 @@ export const CATEGORY_META: Record<ServiceCategory, CategoryMeta> = {
     accentBorder: "group-hover:border-purple-300",
   },
   Other: {
-    key: "Other",
+    key: "Other" as ServiceCategory,
     label: "Dịch vụ khác",
     icon: <Layers size={14} className="shrink-0" />,
     badgeClass: "bg-indigo-50 text-indigo-700 border-indigo-200/80 hover:bg-indigo-100/70",
@@ -67,6 +67,16 @@ export const CATEGORY_META: Record<ServiceCategory, CategoryMeta> = {
     accentBorder: "group-hover:border-indigo-300",
   },
 };
+
+export const CATEGORY_META: Record<ServiceCategory, CategoryMeta> = {
+  ...BASE_META,
+  examination: BASE_META.Examination,
+  vaccination: BASE_META.Vaccination,
+  surgery: BASE_META.Surgery,
+  grooming: BASE_META.Grooming,
+  other: BASE_META.Other,
+} as Record<ServiceCategory, CategoryMeta>;
+
 
 function formatDuration(minutes?: number): string {
   if (!minutes || minutes <= 0) return "30 phút";
