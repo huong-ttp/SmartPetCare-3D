@@ -279,6 +279,30 @@ export const createCashPayment = async (
   }
 
 };
+
+export const listPayments = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const payments = await paymentService.listPayments({
+      search: req.query.search as string,
+      status: req.query.status as string,
+      method: req.query.method as string,
+      page: req.query.page ? Number(req.query.page) : undefined,
+      limit: req.query.limit ? Number(req.query.limit) : undefined,
+    });
+
+    res.json({
+      success: true,
+      data: payments,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export default {
     createPayment,
     getPaymentByInvoice,
@@ -288,5 +312,6 @@ export default {
     getPaymentByIdAdmin,
     confirmPayment,
     rejectPayment,
-    createCashPayment
+    createCashPayment,
+    listPayments
 };

@@ -173,7 +173,10 @@ export const listNotifications = async (
           Number(req.query.page) || 1,
 
         limit:
-          Number(req.query.limit) || 10
+          Number(req.query.limit) || 10,
+
+        userId:
+          req.query.userId ? Number(req.query.userId) : undefined
 
       });
 

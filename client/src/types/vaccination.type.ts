@@ -80,7 +80,14 @@ export interface CreateVaccineTypeDTO {
   name: string;
   description?: string;
   recommended_interval_days: number;
-  applicable_species: string[];
+  applicable_species?: string[];
+}
+
+export interface UpdateVaccineTypeDTO {
+  name?: string;
+  description?: string;
+  recommended_interval_days?: number;
+  applicable_species?: string[];
 }
 
 export interface AdminVaccinationFilterParams {

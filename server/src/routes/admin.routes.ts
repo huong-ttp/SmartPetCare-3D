@@ -164,6 +164,13 @@ router.put(
 );
 
 router.get(
+  "/payments",
+  authMiddleware,
+  authorize("admin"),
+  paymentController.listPayments
+);
+
+router.get(
   "/payments/:id",
   authMiddleware,
   authorize("admin"),

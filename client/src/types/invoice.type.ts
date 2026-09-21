@@ -67,6 +67,8 @@ export interface Invoice {
   // Items & Payment
   items?: InvoiceItem[];
   payment?: InvoicePaymentInfo | null;
+  payments?: InvoicePaymentInfo[];
+  cancel_reason?: string | null;
 
   created_at: string;
   updated_at?: string;
@@ -79,5 +81,24 @@ export interface InvoiceFilterDTO {
 
 export interface UpdateInvoiceStatusDTO {
   status: InvoiceStatus;
+}
+
+export interface AdminInvoiceFilterParams {
+  search?: string;
+  status?: InvoiceStatus | "all" | string;
+  fromDate?: string;
+  toDate?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface AdminInvoiceListResponse {
+  items: Invoice[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
 }
 

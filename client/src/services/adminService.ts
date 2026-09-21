@@ -31,6 +31,22 @@ import type {
   AdminVaccinationFilterParams,
   AdminVaccinationListResult,
 } from "@/types/vaccination.type";
+import type {
+  Invoice,
+  AdminInvoiceFilterParams,
+  AdminInvoiceListResponse,
+} from "@/types/invoice.type";
+import type {
+  Payment,
+  AdminPaymentFilterParams,
+  AdminPaymentListResult,
+} from "@/types/payment.type";
+import type {
+  AdminNotificationItem,
+  AdminNotificationFilterParams,
+  AdminNotificationListResult,
+  SendSystemNotificationDTO,
+} from "@/types/notification.type";
 import {
   MOCK_USERS,
   MOCK_PETS,
@@ -38,12 +54,38 @@ import {
   MOCK_MEDICAL_RECORDS,
   MOCK_PET_VACCINATIONS,
   MOCK_VACCINE_TYPES,
+  MOCK_INVOICES,
+  MOCK_PAYMENTS,
+  MOCK_NOTIFICATIONS,
 } from "@/lib/mock";
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === "true";
 function mockDelay<T>(data: T, ms = 400): Promise<T> {
   return new Promise((resolve) => setTimeout(() => resolve(data), ms));
 }
+
+export let _adminMockNotifications: AdminNotificationItem[] = MOCK_NOTIFICATIONS.map((n, idx) => {
+  const user = MOCK_USERS.find(
+    (u) => String(u.id) === String(n.user_id) || String(u.user_id) === String(n.user_id)
+  );
+  return {
+    notification_id: n.id ?? idx + 1,
+    id: n.id ?? idx + 1,
+    user_id: n.user_id,
+    full_name: user?.full_name || "Nguyễn Văn An",
+    user_email: user?.email || "owner@example.com",
+    pet_id: n.pet_id ?? null,
+    pet_name: n.pet_name ?? null,
+    type: n.type,
+    title: n.title,
+    content: n.content || n.message || "",
+    message: n.message || n.content || "",
+    is_read: Boolean(n.is_read),
+    scheduled_at: n.scheduled_at ?? null,
+    sent_at: n.created_at,
+    created_at: n.created_at,
+  };
+});
 
 export let _adminMockAppointments: Appointment[] = [
   {
@@ -1014,6 +1056,517 @@ export const adminService = {
     } catch (err) {
       console.warn("[adminService.listVaccinations] API failed, falling back to mock:", err);
       return mockDelay(filterMock());
+    }
+  },
+
+  /** Quản lý danh sách hóa đơn Admin */
+  async listInvoices(
+    filters?: AdminInvoiceFilterParams
+  ): Promise<AdminInvoiceListResponse> {
+    const normalizeAdminInvoice = (raw: any): Invoice => {
+      const cleanId = String(raw.invoice_id ?? raw.id ?? "");
+      return {
+        ...raw,
+        id: cleanId,
+        invoice_id: raw.invoice_id ?? raw.id,
+        appointment_id: String(raw.appointment_id ?? ""),
+        owner_id: String(raw.owner_id ?? raw.user_id ?? ""),
+        owner_name: raw.owner_name || "Khách hàng",
+        owner_phone: raw.owner_phone,
+        owner_email: raw.owner_email,
+        pet_id: raw.pet_id,
+        pet_name: raw.pet_name || "Thú cưng",
+        pet_species: raw.pet_species,
+        pet_breed: raw.pet_breed,
+        status: raw.status || "unpaid",
+        total_amount: Number(raw.total_amount || 0),
+        issued_date: raw.issued_date || raw.issued_at || raw.created_at,
+        cancel_reason: raw.cancel_reason,
+        items: Array.isArray(raw.items) ? raw.items : [],
+        payments: Array.isArray(raw.payments) ? raw.payments : [],
+        created_at: raw.created_at || raw.issued_date || new Date().toISOString(),
+      };
+    };
+
+    const filterMock = (): AdminInvoiceListResponse => {
+      let filtered = MOCK_INVOICES.map((inv: any) => {
+        const user = MOCK_USERS.find((u) => String(u.id) === String(inv.owner_id));
+        const appt = MOCK_APPOINTMENTS.find((a) => String(a.id) === String(inv.appointment_id));
+        const pet = appt ? MOCK_PETS.find((p) => String(p.id) === String(appt.pet_id)) : undefined;
+        return normalizeAdminInvoice({
+          ...inv,
+          owner_name: inv.owner_name || user?.full_name || "Khách hàng",
+          owner_phone: inv.owner_phone || user?.phone,
+          owner_email: inv.owner_email || user?.email,
+          pet_id: inv.pet_id || pet?.id,
+          pet_name: inv.pet_name || pet?.name || "Bé cưng",
+          pet_species: inv.pet_species || pet?.species || "Chó",
+          pet_breed: inv.pet_breed || pet?.breed,
+        });
+      });
+
+      if (filters?.search) {
+        const q = filters.search.toLowerCase();
+        filtered = filtered.filter(
+          (i) =>
+            (i.owner_name && i.owner_name.toLowerCase().includes(q)) ||
+            (i.pet_name && i.pet_name.toLowerCase().includes(q)) ||
+            String(i.invoice_id ?? i.id).includes(q)
+        );
+      }
+
+      if (filters?.status && filters.status !== "all") {
+        filtered = filtered.filter((i) => i.status === filters.status);
+      }
+
+      if (filters?.fromDate) {
+        const from = new Date(filters.fromDate).getTime();
+        filtered = filtered.filter((i) => new Date(i.issued_date || i.created_at).getTime() >= from);
+      }
+
+      if (filters?.toDate) {
+        const to = new Date(filters.toDate).getTime() + 86400000;
+        filtered = filtered.filter((i) => new Date(i.issued_date || i.created_at).getTime() <= to);
+      }
+
+      const total = filtered.length;
+      const page = filters?.page || 1;
+      const limit = filters?.limit || 10;
+      const totalPages = Math.ceil(total / limit) || 1;
+      const start = (page - 1) * limit;
+      const items = filtered.slice(start, start + limit);
+
+      return {
+        items,
+        pagination: { page, limit, total, totalPages },
+      };
+    };
+
+    if (USE_MOCK) {
+      return mockDelay(filterMock());
+    }
+
+    try {
+      const res = await axiosClient.get<any>("/admin/invoices", {
+        params: {
+          search: filters?.search || undefined,
+          status: filters?.status !== "all" ? filters?.status : undefined,
+          fromDate: filters?.fromDate || undefined,
+          toDate: filters?.toDate || undefined,
+          page: filters?.page || 1,
+          limit: filters?.limit || 10,
+        },
+      });
+
+      const data = res.data?.data ?? res.data;
+      if (data && Array.isArray(data.items)) {
+        return {
+          items: data.items.map(normalizeAdminInvoice),
+          pagination: data.pagination ?? {
+            page: filters?.page || 1,
+            limit: filters?.limit || 10,
+            total: data.items.length,
+            totalPages: 1,
+          },
+        };
+      }
+
+      if (Array.isArray(data)) {
+        return {
+          items: data.map(normalizeAdminInvoice),
+          pagination: {
+            page: filters?.page || 1,
+            limit: filters?.limit || 10,
+            total: data.length,
+            totalPages: 1,
+          },
+        };
+      }
+
+      return {
+        items: [],
+        pagination: { page: 1, limit: 10, total: 0, totalPages: 1 },
+      };
+    } catch (err) {
+      console.warn("[adminService.listInvoices] API failed, falling back to mock:", err);
+      return mockDelay(filterMock());
+    }
+  },
+
+  /** Lấy chi tiết hóa đơn theo ID dành cho Admin */
+  async getInvoiceById(id: string | number): Promise<Invoice> {
+    const cleanId = String(id);
+    const normalizeAdminInvoice = (raw: any): Invoice => ({
+      ...raw,
+      id: String(raw.invoice_id ?? raw.id ?? ""),
+      invoice_id: raw.invoice_id ?? raw.id,
+      appointment_id: String(raw.appointment_id ?? ""),
+      owner_id: String(raw.owner_id ?? raw.user_id ?? ""),
+      owner_name: raw.owner_name || "Khách hàng",
+      owner_phone: raw.owner_phone,
+      owner_email: raw.owner_email,
+      pet_id: raw.pet_id,
+      pet_name: raw.pet_name || "Thú cưng",
+      pet_species: raw.pet_species,
+      pet_breed: raw.pet_breed,
+      status: raw.status || "unpaid",
+      total_amount: Number(raw.total_amount || 0),
+      issued_date: raw.issued_date || raw.issued_at || raw.created_at,
+      cancel_reason: raw.cancel_reason,
+      items: Array.isArray(raw.items) ? raw.items : [],
+      payments: Array.isArray(raw.payments) ? raw.payments : [],
+      created_at: raw.created_at || raw.issued_date || new Date().toISOString(),
+    });
+
+    if (USE_MOCK) {
+      const inv = MOCK_INVOICES.find(
+        (i) => String(i.id) === cleanId || String(i.invoice_id) === cleanId
+      );
+      if (!inv) throw new Error("Hóa đơn không tồn tại.");
+      return mockDelay(normalizeAdminInvoice(inv));
+    }
+
+    try {
+      const res = await axiosClient.get<any>(`/admin/invoices/${cleanId}`);
+      const raw = res.data?.data ?? res.data;
+      if (!raw) throw new Error("Hóa đơn không tồn tại.");
+      return normalizeAdminInvoice(raw);
+    } catch (err) {
+      console.warn("[adminService.getInvoiceById] API failed, trying fallback:", err);
+      const inv = MOCK_INVOICES.find(
+        (i) => String(i.id) === cleanId || String(i.invoice_id) === cleanId
+      );
+      if (inv) return mockDelay(normalizeAdminInvoice(inv));
+      throw err;
+    }
+  },
+
+  /** Hủy hóa đơn với lý do (Admin action) */
+  async cancelInvoice(id: string | number, reason: string): Promise<Invoice> {
+    const cleanId = String(id);
+    const normalizeAdminInvoice = (raw: any): Invoice => ({
+      ...raw,
+      id: String(raw.invoice_id ?? raw.id ?? ""),
+      invoice_id: raw.invoice_id ?? raw.id,
+      status: raw.status || "cancelled",
+      cancel_reason: raw.cancel_reason || reason,
+    });
+
+    if (USE_MOCK) {
+      const inv = MOCK_INVOICES.find(
+        (i) => String(i.id) === cleanId || String(i.invoice_id) === cleanId
+      );
+      if (!inv) throw new Error("Hóa đơn không tồn tại.");
+      if (inv.status === "paid") throw new Error("Không thể hủy hóa đơn đã thanh toán.");
+      inv.status = "cancelled";
+      inv.cancel_reason = reason;
+      return mockDelay(normalizeAdminInvoice(inv));
+    }
+
+    const res = await axiosClient.put<any>(`/admin/invoices/${cleanId}/cancel`, { reason });
+    const raw = res.data?.data ?? res.data;
+    return normalizeAdminInvoice(raw);
+  },
+
+  /** Danh sách thanh toán dành cho Admin */
+  async listPayments(params?: AdminPaymentFilterParams): Promise<AdminPaymentListResult> {
+    const page = params?.page ?? 1;
+    const limit = params?.limit ?? 10;
+
+    const normalizeAdminPayment = (raw: any): Payment => ({
+      ...raw,
+      id: String(raw.payment_id ?? raw.id ?? ""),
+      payment_id: raw.payment_id ?? raw.id,
+      invoice_id: String(raw.invoice_id ?? ""),
+      owner_id: String(raw.owner_id ?? raw.user_id ?? ""),
+      owner_name: raw.owner_name || "Khách hàng",
+      pet_id: raw.pet_id,
+      pet_name: raw.pet_name,
+      amount: Number(raw.amount || 0),
+      payment_method: raw.payment_method || "cash",
+      status: raw.status || "pending",
+      transaction_ref: raw.transaction_ref,
+      reject_reason: raw.reject_reason,
+      payment_date: raw.payment_date || raw.created_at,
+      paid_at: raw.paid_at,
+      created_at: raw.created_at || raw.payment_date || new Date().toISOString(),
+      updated_at: raw.updated_at || new Date().toISOString(),
+    });
+
+    const filterMock = (): AdminPaymentListResult => {
+      let list = [...MOCK_PAYMENTS];
+      if (params?.status) {
+        list = list.filter((p) => p.status === params.status);
+      }
+      if (params?.method) {
+        list = list.filter((p) => p.payment_method === params.method);
+      }
+      if (params?.search) {
+        const q = params.search.toLowerCase();
+        list = list.filter(
+          (p) =>
+            p.owner_name?.toLowerCase().includes(q) ||
+            p.pet_name?.toLowerCase().includes(q) ||
+            String(p.invoice_id).toLowerCase().includes(q) ||
+            p.transaction_ref?.toLowerCase().includes(q)
+        );
+      }
+      list.sort((a, b) => {
+        const da = new Date(a.payment_date || a.created_at).getTime();
+        const db = new Date(b.payment_date || b.created_at).getTime();
+        return db - da;
+      });
+      const total = list.length;
+      const start = (page - 1) * limit;
+      const items = list.slice(start, start + limit).map(normalizeAdminPayment);
+      return {
+        items,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit) || 1,
+        },
+      };
+    };
+
+    if (USE_MOCK) {
+      return mockDelay(filterMock());
+    }
+
+    try {
+      const res = await axiosClient.get<any>("/admin/payments", { params });
+      const rawData = res.data?.data;
+      if (rawData?.items && Array.isArray(rawData.items)) {
+        return {
+          items: rawData.items.map(normalizeAdminPayment),
+          pagination: rawData.pagination ?? {
+            page,
+            limit,
+            total: rawData.items.length,
+            totalPages: Math.ceil(rawData.items.length / limit) || 1,
+          },
+        };
+      }
+      if (Array.isArray(rawData)) {
+        return {
+          items: rawData.map(normalizeAdminPayment),
+          pagination: {
+            page,
+            limit,
+            total: rawData.length,
+            totalPages: Math.ceil(rawData.length / limit) || 1,
+          },
+        };
+      }
+      return {
+        items: [],
+        pagination: { page: 1, limit: 10, total: 0, totalPages: 1 },
+      };
+    } catch (err) {
+      console.warn("[adminService.listPayments] API failed, falling back to mock:", err);
+      return mockDelay(filterMock());
+    }
+  },
+
+  /** Danh sách toàn bộ thông báo trong hệ thống cho Admin */
+  async listNotifications(
+    params?: AdminNotificationFilterParams
+  ): Promise<AdminNotificationListResult> {
+    const page = params?.page ?? 1;
+    const limit = params?.limit ?? 10;
+
+    const normalizeAdminNotification = (raw: any): AdminNotificationItem => {
+      const id = raw.notification_id ?? raw.id ?? `notif_${Date.now()}`;
+      const user = MOCK_USERS.find(
+        (u) =>
+          String(u.id) === String(raw.user_id) ||
+          String(u.user_id) === String(raw.user_id)
+      );
+      return {
+        ...raw,
+        notification_id: id,
+        id,
+        user_id: raw.user_id,
+        full_name: raw.full_name || user?.full_name || "Người dùng",
+        user_email: raw.user_email || user?.email || "",
+        pet_id: raw.pet_id ?? null,
+        pet_name: raw.pet_name ?? null,
+        type: raw.type || "system",
+        title: raw.title || "Thông báo",
+        content: raw.content || raw.message || "",
+        message: raw.message || raw.content || "",
+        is_read: Boolean(raw.is_read),
+        scheduled_at: raw.scheduled_at ?? null,
+        sent_at: raw.sent_at ?? raw.created_at ?? null,
+        created_at: raw.created_at || new Date().toISOString(),
+      };
+    };
+
+    const filterMock = (): AdminNotificationListResult => {
+      let list = [..._adminMockNotifications];
+      if (params?.type && params.type !== "all") {
+        list = list.filter((n) => n.type === params.type);
+      }
+      if (params?.userId && params.userId !== "all") {
+        list = list.filter((n) => String(n.user_id) === String(params.userId));
+      }
+      if (params?.search) {
+        const q = params.search.toLowerCase();
+        list = list.filter(
+          (n) =>
+            n.full_name?.toLowerCase().includes(q) ||
+            n.user_email?.toLowerCase().includes(q) ||
+            n.title.toLowerCase().includes(q) ||
+            n.content.toLowerCase().includes(q) ||
+            (n.pet_name && n.pet_name.toLowerCase().includes(q))
+        );
+      }
+      if (params?.fromDate) {
+        const fromTime = new Date(params.fromDate).getTime();
+        list = list.filter((n) => new Date(n.created_at).getTime() >= fromTime);
+      }
+      if (params?.toDate) {
+        const toDateStr = params.toDate.includes("T")
+          ? params.toDate
+          : `${params.toDate}T23:59:59.999Z`;
+        const toTime = new Date(toDateStr).getTime();
+        list = list.filter((n) => new Date(n.created_at).getTime() <= toTime);
+      }
+      list.sort(
+        (a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+      const total = list.length;
+      const start = (page - 1) * limit;
+      const items = list
+        .slice(start, start + limit)
+        .map(normalizeAdminNotification);
+      return {
+        items,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit) || 1,
+        },
+      };
+    };
+
+    if (USE_MOCK) {
+      return mockDelay(filterMock());
+    }
+
+    try {
+      const res = await axiosClient.get<any>("/admin/notifications", {
+        params,
+      });
+      const rawData = res.data?.data;
+      if (rawData?.items && Array.isArray(rawData.items)) {
+        return {
+          items: rawData.items.map(normalizeAdminNotification),
+          pagination: rawData.pagination ?? {
+            page,
+            limit,
+            total: rawData.items.length,
+            totalPages: Math.ceil(rawData.items.length / limit) || 1,
+          },
+        };
+      }
+      if (Array.isArray(rawData)) {
+        return {
+          items: rawData.map(normalizeAdminNotification),
+          pagination: {
+            page,
+            limit,
+            total: rawData.length,
+            totalPages: Math.ceil(rawData.length / limit) || 1,
+          },
+        };
+      }
+      return {
+        items: [],
+        pagination: { page: 1, limit: 10, total: 0, totalPages: 1 },
+      };
+    } catch (err) {
+      console.warn(
+        "[adminService.listNotifications] API failed, falling back to mock:",
+        err
+      );
+      return mockDelay(filterMock());
+    }
+  },
+
+  /** Gửi thông báo hệ thống (Admin action) */
+  async sendSystemNotification(
+    data: SendSystemNotificationDTO
+  ): Promise<{
+    success: boolean;
+    data?: { recipients: number };
+    message?: string;
+  }> {
+    const handleMockSend = () => {
+      let targetUsers = [...MOCK_USERS].filter((u) => u.is_active !== false);
+      if (data.target === "role" && data.role) {
+        targetUsers = targetUsers.filter((u) => u.role === data.role);
+      } else if (data.target === "user" && data.user_id) {
+        targetUsers = targetUsers.filter(
+          (u) =>
+            String(u.id) === String(data.user_id) ||
+            String(u.user_id) === String(data.user_id)
+        );
+      }
+
+      const now = new Date().toISOString();
+      const createdItems: AdminNotificationItem[] = targetUsers.map(
+        (u, idx) => ({
+          id: `sys_${Date.now()}_${idx}`,
+          notification_id: Date.now() + idx,
+          user_id: u.id || u.user_id || `u_${idx}`,
+          full_name: u.full_name,
+          user_email: u.email,
+          pet_id: null,
+          pet_name: null,
+          type: "system",
+          title: data.title,
+          content: data.content,
+          message: data.content,
+          is_read: false,
+          sent_at: now,
+          created_at: now,
+        })
+      );
+
+      _adminMockNotifications.unshift(...createdItems);
+
+      return {
+        success: true,
+        message: "Thông báo hệ thống đã được gửi thành công!",
+        data: { recipients: targetUsers.length },
+      };
+    };
+
+    if (USE_MOCK) {
+      return mockDelay(handleMockSend());
+    }
+
+    try {
+      const res = await axiosClient.post<any>(
+        "/admin/notifications/system",
+        data
+      );
+      return {
+        success: true,
+        message:
+          res.data?.message || "Thông báo hệ thống đã được gửi thành công!",
+        data: res.data?.data,
+      };
+    } catch (err) {
+      console.warn(
+        "[adminService.sendSystemNotification] API failed, falling back to mock:",
+        err
+      );
+      return mockDelay(handleMockSend());
     }
   },
 };

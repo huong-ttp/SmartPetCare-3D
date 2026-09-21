@@ -5,8 +5,8 @@
  */
 
 import axiosClient from "@/lib/axiosClient";
-import type { VaccineType, CreateVaccineTypeDTO } from "@/types/vaccination.type";
-import { MOCK_VACCINE_TYPES } from "@/lib/mock";
+import type { VaccineType, CreateVaccineTypeDTO, UpdateVaccineTypeDTO } from "@/types/vaccination.type";
+import { MOCK_VACCINE_TYPES, MOCK_PET_VACCINATIONS } from "@/lib/mock";
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === "true";
 
@@ -41,10 +41,10 @@ export const vaccineTypeService = {
     try {
       const res = await axiosClient.get<any>("/vaccine-types");
       const rawList = Array.isArray(res.data) ? res.data : (res.data?.data ?? []);
-      if (Array.isArray(rawList) && rawList.length > 0) {
+      if (Array.isArray(rawList)) {
         return rawList.map(normalizeVaccineType);
       }
-      return MOCK_VACCINE_TYPES.map(normalizeVaccineType);
+      return [];
     } catch (err) {
       console.warn("[vaccineTypeService.list] Failed to fetch from API, falling back to mock:", err);
       return MOCK_VACCINE_TYPES.map(normalizeVaccineType);
@@ -81,16 +81,88 @@ export const vaccineTypeService = {
       return mockDelay(normalizeVaccineType(newType));
     }
 
-    const res = await axiosClient.post<any>("/vaccine-types", dto);
+    const payload = {
+      name: dto.name.trim(),
+      description: dto.description?.trim() || null,
+      recommended_interval_days: Number(dto.recommended_interval_days),
+    };
+
+    const res = await axiosClient.post<any>("/vaccine-types", payload);
     const raw = res.data?.data ?? res.data;
     return normalizeVaccineType(raw);
+  },
+
+  /** Cập nhật thông tin loại vắc xin (admin) */
+  async update(id: string | number, dto: UpdateVaccineTypeDTO): Promise<VaccineType> {
+    if (USE_MOCK) {
+      const cleanId = String(id);
+      const index = MOCK_VACCINE_TYPES.findIndex(
+        (v) => String(v.id) === cleanId || String(v.vaccine_type_id) === cleanId
+      );
+      if (index !== -1) {
+        MOCK_VACCINE_TYPES[index] = {
+          ...MOCK_VACCINE_TYPES[index],
+          ...dto,
+          updated_at: new Date().toISOString(),
+        };
+        return mockDelay(normalizeVaccineType(MOCK_VACCINE_TYPES[index]));
+      }
+      throw new Error("Không tìm thấy loại vắc xin");
+    }
+
+    const payload = {
+      name: dto.name?.trim(),
+      description: dto.description?.trim() || null,
+      recommended_interval_days: dto.recommended_interval_days !== undefined ? Number(dto.recommended_interval_days) : undefined,
+    };
+
+    const res = await axiosClient.put<any>(`/vaccine-types/${id}`, payload);
+    const raw = res.data?.data ?? res.data;
+    return normalizeVaccineType(raw);
+  },
+
+  /** Xóa loại vắc xin (admin) */
+  async delete(id: string | number): Promise<void> {
+    if (USE_MOCK) {
+      const cleanId = String(id);
+      // Kiểm tra xem có hồ sơ tiêm chủng nào đang sử dụng loại vaccine này không
+      const hasLinked = MOCK_PET_VACCINATIONS.some(
+        (pv) => String(pv.vaccine_type_id) === cleanId
+      );
+      if (hasLinked) {
+        throw new Error("Cannot delete vaccine type because vaccination records are linked.");
+      }
+
+      const index = MOCK_VACCINE_TYPES.findIndex(
+        (v) => String(v.id) === cleanId || String(v.vaccine_type_id) === cleanId
+      );
+      if (index !== -1) {
+        MOCK_VACCINE_TYPES.splice(index, 1);
+      }
+      return mockDelay(undefined);
+    }
+
+    try {
+      await axiosClient.delete(`/vaccine-types/${id}`);
+    } catch (error: any) {
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Không thể xóa loại vắc xin.";
+      throw new Error(message);
+    }
   },
 };
 
 /**
- * Thỏa mãn cả cú pháp: vaccine-type.service.list()
+ * Thỏa mãn cả cú pháp: vaccineType.service.list(), vaccine-type.service.list()
  */
 export const vaccineType = {
+  service: vaccineTypeService,
+};
+
+// Export thêm alias cho quy chuẩn vaccine-type
+export const vaccineTypeApi = {
   service: vaccineTypeService,
 };
 
