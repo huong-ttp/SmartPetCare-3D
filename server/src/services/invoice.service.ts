@@ -176,12 +176,14 @@ class InvoiceService {
         i.issued_date,
         i.total_amount,
         i.status,
+        i.cancel_reason,
 
         u.user_id,
         u.full_name AS owner_name,
 
         p.pet_id,
         p.name AS pet_name,
+        p.species AS pet_species,
 
         a.appointment_id,
         a.status AS appointment_status
@@ -321,15 +323,21 @@ class InvoiceService {
         i.issued_date,
         i.total_amount,
         i.status,
+        i.cancel_reason,
 
         u.user_id,
         u.full_name AS owner_name,
+        u.phone AS owner_phone,
+        u.email AS owner_email,
 
         p.pet_id,
         p.name AS pet_name,
+        p.species AS pet_species,
+        p.breed AS pet_breed,
 
         a.appointment_date,
         a.start_time,
+        a.reason,
         a.status AS appointment_status
 
       FROM invoices i

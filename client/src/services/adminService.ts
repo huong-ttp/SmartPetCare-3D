@@ -31,6 +31,11 @@ import type {
   AdminVaccinationFilterParams,
   AdminVaccinationListResult,
 } from "@/types/vaccination.type";
+import type {
+  Invoice,
+  AdminInvoiceFilterParams,
+  AdminInvoiceListResponse,
+} from "@/types/invoice.type";
 import {
   MOCK_USERS,
   MOCK_PETS,
@@ -38,6 +43,7 @@ import {
   MOCK_MEDICAL_RECORDS,
   MOCK_PET_VACCINATIONS,
   MOCK_VACCINE_TYPES,
+  MOCK_INVOICES,
 } from "@/lib/mock";
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === "true";
@@ -1015,6 +1021,215 @@ export const adminService = {
       console.warn("[adminService.listVaccinations] API failed, falling back to mock:", err);
       return mockDelay(filterMock());
     }
+  },
+
+  /** Quản lý danh sách hóa đơn Admin */
+  async listInvoices(
+    filters?: AdminInvoiceFilterParams
+  ): Promise<AdminInvoiceListResponse> {
+    const normalizeAdminInvoice = (raw: any): Invoice => {
+      const cleanId = String(raw.invoice_id ?? raw.id ?? "");
+      return {
+        ...raw,
+        id: cleanId,
+        invoice_id: raw.invoice_id ?? raw.id,
+        appointment_id: String(raw.appointment_id ?? ""),
+        owner_id: String(raw.owner_id ?? raw.user_id ?? ""),
+        owner_name: raw.owner_name || "Khách hàng",
+        owner_phone: raw.owner_phone,
+        owner_email: raw.owner_email,
+        pet_id: raw.pet_id,
+        pet_name: raw.pet_name || "Thú cưng",
+        pet_species: raw.pet_species,
+        pet_breed: raw.pet_breed,
+        status: raw.status || "unpaid",
+        total_amount: Number(raw.total_amount || 0),
+        issued_date: raw.issued_date || raw.issued_at || raw.created_at,
+        cancel_reason: raw.cancel_reason,
+        items: Array.isArray(raw.items) ? raw.items : [],
+        payments: Array.isArray(raw.payments) ? raw.payments : [],
+        created_at: raw.created_at || raw.issued_date || new Date().toISOString(),
+      };
+    };
+
+    const filterMock = (): AdminInvoiceListResponse => {
+      let filtered = MOCK_INVOICES.map((inv: any) => {
+        const user = MOCK_USERS.find((u) => String(u.id) === String(inv.owner_id));
+        const appt = MOCK_APPOINTMENTS.find((a) => String(a.id) === String(inv.appointment_id));
+        const pet = appt ? MOCK_PETS.find((p) => String(p.id) === String(appt.pet_id)) : undefined;
+        return normalizeAdminInvoice({
+          ...inv,
+          owner_name: inv.owner_name || user?.full_name || "Khách hàng",
+          owner_phone: inv.owner_phone || user?.phone,
+          owner_email: inv.owner_email || user?.email,
+          pet_id: inv.pet_id || pet?.id,
+          pet_name: inv.pet_name || pet?.name || "Bé cưng",
+          pet_species: inv.pet_species || pet?.species || "Chó",
+          pet_breed: inv.pet_breed || pet?.breed,
+        });
+      });
+
+      if (filters?.search) {
+        const q = filters.search.toLowerCase();
+        filtered = filtered.filter(
+          (i) =>
+            (i.owner_name && i.owner_name.toLowerCase().includes(q)) ||
+            (i.pet_name && i.pet_name.toLowerCase().includes(q)) ||
+            String(i.invoice_id ?? i.id).includes(q)
+        );
+      }
+
+      if (filters?.status && filters.status !== "all") {
+        filtered = filtered.filter((i) => i.status === filters.status);
+      }
+
+      if (filters?.fromDate) {
+        const from = new Date(filters.fromDate).getTime();
+        filtered = filtered.filter((i) => new Date(i.issued_date || i.created_at).getTime() >= from);
+      }
+
+      if (filters?.toDate) {
+        const to = new Date(filters.toDate).getTime() + 86400000;
+        filtered = filtered.filter((i) => new Date(i.issued_date || i.created_at).getTime() <= to);
+      }
+
+      const total = filtered.length;
+      const page = filters?.page || 1;
+      const limit = filters?.limit || 10;
+      const totalPages = Math.ceil(total / limit) || 1;
+      const start = (page - 1) * limit;
+      const items = filtered.slice(start, start + limit);
+
+      return {
+        items,
+        pagination: { page, limit, total, totalPages },
+      };
+    };
+
+    if (USE_MOCK) {
+      return mockDelay(filterMock());
+    }
+
+    try {
+      const res = await axiosClient.get<any>("/admin/invoices", {
+        params: {
+          search: filters?.search || undefined,
+          status: filters?.status !== "all" ? filters?.status : undefined,
+          fromDate: filters?.fromDate || undefined,
+          toDate: filters?.toDate || undefined,
+          page: filters?.page || 1,
+          limit: filters?.limit || 10,
+        },
+      });
+
+      const data = res.data?.data ?? res.data;
+      if (data && Array.isArray(data.items)) {
+        return {
+          items: data.items.map(normalizeAdminInvoice),
+          pagination: data.pagination ?? {
+            page: filters?.page || 1,
+            limit: filters?.limit || 10,
+            total: data.items.length,
+            totalPages: 1,
+          },
+        };
+      }
+
+      if (Array.isArray(data)) {
+        return {
+          items: data.map(normalizeAdminInvoice),
+          pagination: {
+            page: filters?.page || 1,
+            limit: filters?.limit || 10,
+            total: data.length,
+            totalPages: 1,
+          },
+        };
+      }
+
+      return {
+        items: [],
+        pagination: { page: 1, limit: 10, total: 0, totalPages: 1 },
+      };
+    } catch (err) {
+      console.warn("[adminService.listInvoices] API failed, falling back to mock:", err);
+      return mockDelay(filterMock());
+    }
+  },
+
+  /** Lấy chi tiết hóa đơn theo ID dành cho Admin */
+  async getInvoiceById(id: string | number): Promise<Invoice> {
+    const cleanId = String(id);
+    const normalizeAdminInvoice = (raw: any): Invoice => ({
+      ...raw,
+      id: String(raw.invoice_id ?? raw.id ?? ""),
+      invoice_id: raw.invoice_id ?? raw.id,
+      appointment_id: String(raw.appointment_id ?? ""),
+      owner_id: String(raw.owner_id ?? raw.user_id ?? ""),
+      owner_name: raw.owner_name || "Khách hàng",
+      owner_phone: raw.owner_phone,
+      owner_email: raw.owner_email,
+      pet_id: raw.pet_id,
+      pet_name: raw.pet_name || "Thú cưng",
+      pet_species: raw.pet_species,
+      pet_breed: raw.pet_breed,
+      status: raw.status || "unpaid",
+      total_amount: Number(raw.total_amount || 0),
+      issued_date: raw.issued_date || raw.issued_at || raw.created_at,
+      cancel_reason: raw.cancel_reason,
+      items: Array.isArray(raw.items) ? raw.items : [],
+      payments: Array.isArray(raw.payments) ? raw.payments : [],
+      created_at: raw.created_at || raw.issued_date || new Date().toISOString(),
+    });
+
+    if (USE_MOCK) {
+      const inv = MOCK_INVOICES.find(
+        (i) => String(i.id) === cleanId || String(i.invoice_id) === cleanId
+      );
+      if (!inv) throw new Error("Hóa đơn không tồn tại.");
+      return mockDelay(normalizeAdminInvoice(inv));
+    }
+
+    try {
+      const res = await axiosClient.get<any>(`/admin/invoices/${cleanId}`);
+      const raw = res.data?.data ?? res.data;
+      if (!raw) throw new Error("Hóa đơn không tồn tại.");
+      return normalizeAdminInvoice(raw);
+    } catch (err) {
+      console.warn("[adminService.getInvoiceById] API failed, trying fallback:", err);
+      const inv = MOCK_INVOICES.find(
+        (i) => String(i.id) === cleanId || String(i.invoice_id) === cleanId
+      );
+      if (inv) return mockDelay(normalizeAdminInvoice(inv));
+      throw err;
+    }
+  },
+
+  /** Hủy hóa đơn với lý do (Admin action) */
+  async cancelInvoice(id: string | number, reason: string): Promise<Invoice> {
+    const cleanId = String(id);
+    const normalizeAdminInvoice = (raw: any): Invoice => ({
+      ...raw,
+      id: String(raw.invoice_id ?? raw.id ?? ""),
+      invoice_id: raw.invoice_id ?? raw.id,
+      status: raw.status || "cancelled",
+      cancel_reason: raw.cancel_reason || reason,
+    });
+
+    if (USE_MOCK) {
+      const inv = MOCK_INVOICES.find(
+        (i) => String(i.id) === cleanId || String(i.invoice_id) === cleanId
+      );
+      if (!inv) throw new Error("Hóa đơn không tồn tại.");
+      if (inv.status === "paid") throw new Error("Không thể hủy hóa đơn đã thanh toán.");
+      inv.status = "cancelled";
+      inv.cancel_reason = reason;
+      return mockDelay(normalizeAdminInvoice(inv));
+    }
+
+    const res = await axiosClient.put<any>(`/admin/invoices/${cleanId}/cancel`, { reason });
+    const raw = res.data?.data ?? res.data;
+    return normalizeAdminInvoice(raw);
   },
 };
 

@@ -5,7 +5,7 @@ import type {
   InvoiceFilterDTO,
   UpdateInvoiceStatusDTO,
 } from "@/types/invoice.type";
-import { MOCK_INVOICES, MOCK_INVOICE_ITEMS } from "@/lib/mock";
+import { MOCK_INVOICES, MOCK_INVOICE_ITEMS, MOCK_PAYMENTS } from "@/lib/mock";
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === "true";
 
@@ -59,6 +59,17 @@ function normalizeInvoice(raw: any): Invoice {
     owner_email: raw.owner_email,
 
     items,
+    payments: Array.isArray(raw.payments)
+      ? raw.payments.map((p: any) => ({
+          payment_id: p.payment_id,
+          invoice_id: p.invoice_id ?? cleanId,
+          amount: Number(p.amount || 0),
+          payment_method: p.payment_method || "cash",
+          payment_date: p.payment_date || p.created_at,
+          transaction_ref: p.transaction_ref,
+          status: p.status || "pending",
+        }))
+      : undefined,
     payment: raw.payment
       ? {
           payment_id: raw.payment.payment_id,
@@ -69,7 +80,18 @@ function normalizeInvoice(raw: any): Invoice {
           transaction_ref: raw.payment.transaction_ref,
           status: raw.payment.status || "success",
         }
+      : Array.isArray(raw.payments) && raw.payments.length > 0
+      ? {
+          payment_id: raw.payments[0].payment_id,
+          invoice_id: raw.payments[0].invoice_id ?? cleanId,
+          amount: Number(raw.payments[0].amount || 0),
+          payment_method: raw.payments[0].payment_method || "cash",
+          payment_date: raw.payments[0].payment_date || raw.payments[0].created_at,
+          transaction_ref: raw.payments[0].transaction_ref,
+          status: raw.payments[0].status || "pending",
+        }
       : null,
+    cancel_reason: raw.cancel_reason,
 
     created_at: raw.created_at || new Date().toISOString(),
     updated_at: raw.updated_at,
@@ -110,26 +132,54 @@ export const invoiceService = {
     return invoiceService.getMyInvoices(filter);
   },
 
-  /** Lấy chi tiết hóa đơn theo ID */
-  async getById(id: string | number): Promise<Invoice> {
+  /** Lấy chi tiết hóa đơn theo ID (tự động thử route admin nếu có quyền) */
+  async getById(id: string | number, asAdmin = false): Promise<Invoice> {
     const cleanId = String(id);
-    if (USE_MOCK) {
+    const getMockInvoice = () => {
       const inv = MOCK_INVOICES.find(
         (i) => String(i.id) === cleanId || String(i.invoice_id) === cleanId
       );
-      if (!inv) throw new Error("Hóa đơn không tồn tại.");
-      return mockDelay(normalizeInvoice(inv));
+      if (!inv) return null;
+      const items = MOCK_INVOICE_ITEMS.filter((it) => String(it.invoice_id) === cleanId);
+      const payments = MOCK_PAYMENTS.filter((p) => String(p.invoice_id) === cleanId);
+      return normalizeInvoice({
+        ...inv,
+        items: items.length ? items : inv.items,
+        payments: payments.length ? payments : inv.payments,
+      });
+    };
+
+    if (USE_MOCK) {
+      const mockInv = getMockInvoice();
+      if (!mockInv) throw new Error("Hóa đơn không tồn tại.");
+      return mockDelay(mockInv);
     }
 
-    const res = await axiosClient.get<any>(`/invoices/${cleanId}`);
-    const raw = res.data?.data ?? res.data;
-    if (!raw) throw new Error("Hóa đơn không tồn tại.");
-    return normalizeInvoice(raw);
+    const endpoint = asAdmin ? `/admin/invoices/${cleanId}` : `/invoices/${cleanId}`;
+    try {
+      const res = await axiosClient.get<any>(endpoint);
+      const raw = res.data?.data ?? res.data;
+      if (!raw) throw new Error("Hóa đơn không tồn tại.");
+      return normalizeInvoice(raw);
+    } catch (err: any) {
+      // Fallback try admin endpoint if owner endpoint failed (e.g. 403 / not owner)
+      if (!asAdmin) {
+        try {
+          const adminRes = await axiosClient.get<any>(`/admin/invoices/${cleanId}`);
+          const adminRaw = adminRes.data?.data ?? adminRes.data;
+          if (adminRaw) return normalizeInvoice(adminRaw);
+        } catch (_) {}
+      }
+      // Fallback to mock data if API call failed
+      const mockInv = getMockInvoice();
+      if (mockInv) return mockDelay(mockInv);
+      throw err;
+    }
   },
 
   /** Alias: getInvoiceById */
-  async getInvoiceById(id: string | number): Promise<Invoice> {
-    return invoiceService.getById(id);
+  async getInvoiceById(id: string | number, asAdmin = false): Promise<Invoice> {
+    return invoiceService.getById(id, asAdmin);
   },
 
   /** Lấy danh sách items của hóa đơn */
@@ -143,6 +193,24 @@ export const invoiceService = {
     const res = await axiosClient.get<any>(`/invoices/${cleanId}/items`);
     const raw = res.data?.data ?? res.data;
     return Array.isArray(raw) ? raw : [];
+  },
+
+  /** Hủy hóa đơn (Admin action) */
+  async cancel(id: string | number, reason: string): Promise<Invoice> {
+    const cleanId = String(id);
+    if (USE_MOCK) {
+      const inv = MOCK_INVOICES.find(
+        (i) => String(i.id) === cleanId || String(i.invoice_id) === cleanId
+      );
+      if (!inv) throw new Error("Hóa đơn không tồn tại.");
+      if (inv.status === "paid") throw new Error("Không thể hủy hóa đơn đã thanh toán.");
+      inv.status = "cancelled";
+      inv.cancel_reason = reason;
+      return mockDelay(normalizeInvoice(inv));
+    }
+    const res = await axiosClient.put<any>(`/admin/invoices/${cleanId}/cancel`, { reason });
+    const raw = res.data?.data ?? res.data;
+    return normalizeInvoice(raw);
   },
 
   /** Cập nhật trạng thái hóa đơn */
