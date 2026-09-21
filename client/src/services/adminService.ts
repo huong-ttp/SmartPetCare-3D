@@ -36,6 +36,11 @@ import type {
   AdminInvoiceFilterParams,
   AdminInvoiceListResponse,
 } from "@/types/invoice.type";
+import type {
+  Payment,
+  AdminPaymentFilterParams,
+  AdminPaymentListResult,
+} from "@/types/payment.type";
 import {
   MOCK_USERS,
   MOCK_PETS,
@@ -44,6 +49,7 @@ import {
   MOCK_PET_VACCINATIONS,
   MOCK_VACCINE_TYPES,
   MOCK_INVOICES,
+  MOCK_PAYMENTS,
 } from "@/lib/mock";
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === "true";
@@ -1230,6 +1236,107 @@ export const adminService = {
     const res = await axiosClient.put<any>(`/admin/invoices/${cleanId}/cancel`, { reason });
     const raw = res.data?.data ?? res.data;
     return normalizeAdminInvoice(raw);
+  },
+
+  /** Danh sách thanh toán dành cho Admin */
+  async listPayments(params?: AdminPaymentFilterParams): Promise<AdminPaymentListResult> {
+    const page = params?.page ?? 1;
+    const limit = params?.limit ?? 10;
+
+    const normalizeAdminPayment = (raw: any): Payment => ({
+      ...raw,
+      id: String(raw.payment_id ?? raw.id ?? ""),
+      payment_id: raw.payment_id ?? raw.id,
+      invoice_id: String(raw.invoice_id ?? ""),
+      owner_id: String(raw.owner_id ?? raw.user_id ?? ""),
+      owner_name: raw.owner_name || "Khách hàng",
+      pet_id: raw.pet_id,
+      pet_name: raw.pet_name,
+      amount: Number(raw.amount || 0),
+      payment_method: raw.payment_method || "cash",
+      status: raw.status || "pending",
+      transaction_ref: raw.transaction_ref,
+      reject_reason: raw.reject_reason,
+      payment_date: raw.payment_date || raw.created_at,
+      paid_at: raw.paid_at,
+      created_at: raw.created_at || raw.payment_date || new Date().toISOString(),
+      updated_at: raw.updated_at || new Date().toISOString(),
+    });
+
+    const filterMock = (): AdminPaymentListResult => {
+      let list = [...MOCK_PAYMENTS];
+      if (params?.status) {
+        list = list.filter((p) => p.status === params.status);
+      }
+      if (params?.method) {
+        list = list.filter((p) => p.payment_method === params.method);
+      }
+      if (params?.search) {
+        const q = params.search.toLowerCase();
+        list = list.filter(
+          (p) =>
+            p.owner_name?.toLowerCase().includes(q) ||
+            p.pet_name?.toLowerCase().includes(q) ||
+            String(p.invoice_id).toLowerCase().includes(q) ||
+            p.transaction_ref?.toLowerCase().includes(q)
+        );
+      }
+      list.sort((a, b) => {
+        const da = new Date(a.payment_date || a.created_at).getTime();
+        const db = new Date(b.payment_date || b.created_at).getTime();
+        return db - da;
+      });
+      const total = list.length;
+      const start = (page - 1) * limit;
+      const items = list.slice(start, start + limit).map(normalizeAdminPayment);
+      return {
+        items,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit) || 1,
+        },
+      };
+    };
+
+    if (USE_MOCK) {
+      return mockDelay(filterMock());
+    }
+
+    try {
+      const res = await axiosClient.get<any>("/admin/payments", { params });
+      const rawData = res.data?.data;
+      if (rawData?.items && Array.isArray(rawData.items)) {
+        return {
+          items: rawData.items.map(normalizeAdminPayment),
+          pagination: rawData.pagination ?? {
+            page,
+            limit,
+            total: rawData.items.length,
+            totalPages: Math.ceil(rawData.items.length / limit) || 1,
+          },
+        };
+      }
+      if (Array.isArray(rawData)) {
+        return {
+          items: rawData.map(normalizeAdminPayment),
+          pagination: {
+            page,
+            limit,
+            total: rawData.length,
+            totalPages: Math.ceil(rawData.length / limit) || 1,
+          },
+        };
+      }
+      return {
+        items: [],
+        pagination: { page: 1, limit: 10, total: 0, totalPages: 1 },
+      };
+    } catch (err) {
+      console.warn("[adminService.listPayments] API failed, falling back to mock:", err);
+      return mockDelay(filterMock());
+    }
   },
 };
 

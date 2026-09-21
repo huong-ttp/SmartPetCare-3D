@@ -349,6 +349,7 @@ async listPayments(
       p.payment_date,
       p.transaction_ref,
       p.status,
+      p.reject_reason,
 
       i.total_amount,
       i.issued_date,
