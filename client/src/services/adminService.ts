@@ -41,6 +41,12 @@ import type {
   AdminPaymentFilterParams,
   AdminPaymentListResult,
 } from "@/types/payment.type";
+import type {
+  AdminNotificationItem,
+  AdminNotificationFilterParams,
+  AdminNotificationListResult,
+  SendSystemNotificationDTO,
+} from "@/types/notification.type";
 import {
   MOCK_USERS,
   MOCK_PETS,
@@ -50,12 +56,36 @@ import {
   MOCK_VACCINE_TYPES,
   MOCK_INVOICES,
   MOCK_PAYMENTS,
+  MOCK_NOTIFICATIONS,
 } from "@/lib/mock";
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === "true";
 function mockDelay<T>(data: T, ms = 400): Promise<T> {
   return new Promise((resolve) => setTimeout(() => resolve(data), ms));
 }
+
+export let _adminMockNotifications: AdminNotificationItem[] = MOCK_NOTIFICATIONS.map((n, idx) => {
+  const user = MOCK_USERS.find(
+    (u) => String(u.id) === String(n.user_id) || String(u.user_id) === String(n.user_id)
+  );
+  return {
+    notification_id: n.id ?? idx + 1,
+    id: n.id ?? idx + 1,
+    user_id: n.user_id,
+    full_name: user?.full_name || "Nguyễn Văn An",
+    user_email: user?.email || "owner@example.com",
+    pet_id: n.pet_id ?? null,
+    pet_name: n.pet_name ?? null,
+    type: n.type,
+    title: n.title,
+    content: n.content || n.message || "",
+    message: n.message || n.content || "",
+    is_read: Boolean(n.is_read),
+    scheduled_at: n.scheduled_at ?? null,
+    sent_at: n.created_at,
+    created_at: n.created_at,
+  };
+});
 
 export let _adminMockAppointments: Appointment[] = [
   {
@@ -1336,6 +1366,207 @@ export const adminService = {
     } catch (err) {
       console.warn("[adminService.listPayments] API failed, falling back to mock:", err);
       return mockDelay(filterMock());
+    }
+  },
+
+  /** Danh sách toàn bộ thông báo trong hệ thống cho Admin */
+  async listNotifications(
+    params?: AdminNotificationFilterParams
+  ): Promise<AdminNotificationListResult> {
+    const page = params?.page ?? 1;
+    const limit = params?.limit ?? 10;
+
+    const normalizeAdminNotification = (raw: any): AdminNotificationItem => {
+      const id = raw.notification_id ?? raw.id ?? `notif_${Date.now()}`;
+      const user = MOCK_USERS.find(
+        (u) =>
+          String(u.id) === String(raw.user_id) ||
+          String(u.user_id) === String(raw.user_id)
+      );
+      return {
+        ...raw,
+        notification_id: id,
+        id,
+        user_id: raw.user_id,
+        full_name: raw.full_name || user?.full_name || "Người dùng",
+        user_email: raw.user_email || user?.email || "",
+        pet_id: raw.pet_id ?? null,
+        pet_name: raw.pet_name ?? null,
+        type: raw.type || "system",
+        title: raw.title || "Thông báo",
+        content: raw.content || raw.message || "",
+        message: raw.message || raw.content || "",
+        is_read: Boolean(raw.is_read),
+        scheduled_at: raw.scheduled_at ?? null,
+        sent_at: raw.sent_at ?? raw.created_at ?? null,
+        created_at: raw.created_at || new Date().toISOString(),
+      };
+    };
+
+    const filterMock = (): AdminNotificationListResult => {
+      let list = [..._adminMockNotifications];
+      if (params?.type && params.type !== "all") {
+        list = list.filter((n) => n.type === params.type);
+      }
+      if (params?.userId && params.userId !== "all") {
+        list = list.filter((n) => String(n.user_id) === String(params.userId));
+      }
+      if (params?.search) {
+        const q = params.search.toLowerCase();
+        list = list.filter(
+          (n) =>
+            n.full_name?.toLowerCase().includes(q) ||
+            n.user_email?.toLowerCase().includes(q) ||
+            n.title.toLowerCase().includes(q) ||
+            n.content.toLowerCase().includes(q) ||
+            (n.pet_name && n.pet_name.toLowerCase().includes(q))
+        );
+      }
+      if (params?.fromDate) {
+        const fromTime = new Date(params.fromDate).getTime();
+        list = list.filter((n) => new Date(n.created_at).getTime() >= fromTime);
+      }
+      if (params?.toDate) {
+        const toDateStr = params.toDate.includes("T")
+          ? params.toDate
+          : `${params.toDate}T23:59:59.999Z`;
+        const toTime = new Date(toDateStr).getTime();
+        list = list.filter((n) => new Date(n.created_at).getTime() <= toTime);
+      }
+      list.sort(
+        (a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+      const total = list.length;
+      const start = (page - 1) * limit;
+      const items = list
+        .slice(start, start + limit)
+        .map(normalizeAdminNotification);
+      return {
+        items,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit) || 1,
+        },
+      };
+    };
+
+    if (USE_MOCK) {
+      return mockDelay(filterMock());
+    }
+
+    try {
+      const res = await axiosClient.get<any>("/admin/notifications", {
+        params,
+      });
+      const rawData = res.data?.data;
+      if (rawData?.items && Array.isArray(rawData.items)) {
+        return {
+          items: rawData.items.map(normalizeAdminNotification),
+          pagination: rawData.pagination ?? {
+            page,
+            limit,
+            total: rawData.items.length,
+            totalPages: Math.ceil(rawData.items.length / limit) || 1,
+          },
+        };
+      }
+      if (Array.isArray(rawData)) {
+        return {
+          items: rawData.map(normalizeAdminNotification),
+          pagination: {
+            page,
+            limit,
+            total: rawData.length,
+            totalPages: Math.ceil(rawData.length / limit) || 1,
+          },
+        };
+      }
+      return {
+        items: [],
+        pagination: { page: 1, limit: 10, total: 0, totalPages: 1 },
+      };
+    } catch (err) {
+      console.warn(
+        "[adminService.listNotifications] API failed, falling back to mock:",
+        err
+      );
+      return mockDelay(filterMock());
+    }
+  },
+
+  /** Gửi thông báo hệ thống (Admin action) */
+  async sendSystemNotification(
+    data: SendSystemNotificationDTO
+  ): Promise<{
+    success: boolean;
+    data?: { recipients: number };
+    message?: string;
+  }> {
+    const handleMockSend = () => {
+      let targetUsers = [...MOCK_USERS].filter((u) => u.is_active !== false);
+      if (data.target === "role" && data.role) {
+        targetUsers = targetUsers.filter((u) => u.role === data.role);
+      } else if (data.target === "user" && data.user_id) {
+        targetUsers = targetUsers.filter(
+          (u) =>
+            String(u.id) === String(data.user_id) ||
+            String(u.user_id) === String(data.user_id)
+        );
+      }
+
+      const now = new Date().toISOString();
+      const createdItems: AdminNotificationItem[] = targetUsers.map(
+        (u, idx) => ({
+          id: `sys_${Date.now()}_${idx}`,
+          notification_id: Date.now() + idx,
+          user_id: u.id || u.user_id || `u_${idx}`,
+          full_name: u.full_name,
+          user_email: u.email,
+          pet_id: null,
+          pet_name: null,
+          type: "system",
+          title: data.title,
+          content: data.content,
+          message: data.content,
+          is_read: false,
+          sent_at: now,
+          created_at: now,
+        })
+      );
+
+      _adminMockNotifications.unshift(...createdItems);
+
+      return {
+        success: true,
+        message: "Thông báo hệ thống đã được gửi thành công!",
+        data: { recipients: targetUsers.length },
+      };
+    };
+
+    if (USE_MOCK) {
+      return mockDelay(handleMockSend());
+    }
+
+    try {
+      const res = await axiosClient.post<any>(
+        "/admin/notifications/system",
+        data
+      );
+      return {
+        success: true,
+        message:
+          res.data?.message || "Thông báo hệ thống đã được gửi thành công!",
+        data: res.data?.data,
+      };
+    } catch (err) {
+      console.warn(
+        "[adminService.sendSystemNotification] API failed, falling back to mock:",
+        err
+      );
+      return mockDelay(handleMockSend());
     }
   },
 };

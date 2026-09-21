@@ -10,6 +10,7 @@ interface NotificationFilter {
   fromDate?: string;
   toDate?: string;
   page?: number;
+  userId?: number;
 }
 
 interface SendSystemNotificationData {
@@ -274,6 +275,7 @@ async listNotifications(
       n.created_at,
 
       u.full_name,
+      u.email AS user_email,
 
       p.name AS pet_name
 
@@ -308,14 +310,32 @@ async listNotifications(
   if (filter.search) {
 
     const condition = `
-      AND LOWER(u.full_name)
-      LIKE LOWER($${index})
+      AND (
+        LOWER(u.full_name) LIKE LOWER($${index})
+        OR LOWER(u.email) LIKE LOWER($${index})
+        OR LOWER(n.title) LIKE LOWER($${index})
+        OR LOWER(n.content) LIKE LOWER($${index})
+      )
     `;
 
     query += condition;
     countQuery += condition;
 
     values.push(`%${filter.search}%`);
+
+    index++;
+  }
+
+  if (filter.userId) {
+
+    const condition = `
+      AND n.user_id = $${index}
+    `;
+
+    query += condition;
+    countQuery += condition;
+
+    values.push(filter.userId);
 
     index++;
   }
@@ -357,7 +377,11 @@ async listNotifications(
     query += condition;
     countQuery += condition;
 
-    values.push(filter.toDate);
+    const toDateVal = filter.toDate.includes(" ") || filter.toDate.includes("T")
+      ? filter.toDate
+      : `${filter.toDate} 23:59:59.999`;
+
+    values.push(toDateVal);
 
     index++;
   }

@@ -77,3 +77,50 @@ export interface MarkReadDTO {
   notification_ids?: string[] | number[];
 }
 
+export interface AdminNotificationItem {
+  notification_id: number | string;
+  id?: number | string;
+  user_id: number | string;
+  full_name?: string;
+  user_email?: string;
+  pet_id?: number | string | null;
+  pet_name?: string | null;
+  type: NotificationType;
+  title: string;
+  content: string;
+  message?: string;
+  is_read: boolean;
+  scheduled_at?: string | null;
+  sent_at?: string | null;
+  created_at: string;
+}
+
+export interface AdminNotificationFilterParams {
+  search?: string;
+  type?: string;
+  userId?: number | string;
+  fromDate?: string;
+  toDate?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface AdminNotificationListResult {
+  items: AdminNotificationItem[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+export interface SendSystemNotificationDTO {
+  target: "all" | "role" | "user";
+  role?: "admin" | "doctor" | "owner";
+  user_id?: number | string;
+  title: string;
+  content: string;
+  type?: "system";
+}
+
