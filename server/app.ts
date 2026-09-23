@@ -4,10 +4,6 @@ import helmet from "helmet";
 import morgan from "morgan";
 import routes from "./src/routes";
 import errorHandler from "./src/middleware/error.middleware";
-import petRoute from "./src/routes/pet.routes";
-import medicalRecordRoutes from "./src/routes/medicalRecord.route";
-import healthLogRoutes from "./src/routes/healthLog.routes";
-import appointmentRoutes from "./src/routes/appointment.routes";
 const app = express();
 
 // Security
@@ -29,24 +25,8 @@ app.get("/", (req, res) => {
     message: "Welcome to SmartPetCare API",
   });
 });
+
 app.use("/api", routes);
-
-app.use("/api/pets", petRoute);
-
-app.use(
-  "/api/medical-records",
-  medicalRecordRoutes
-);
-
-app.use(
-  "/api/health-logs",
-  healthLogRoutes
-);
-
-app.use(
-  "/api/appointments",
-  appointmentRoutes
-);
 
 app.use(errorHandler);
 

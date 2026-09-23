@@ -7,12 +7,14 @@ export const createHealthLog = async (
   next: NextFunction
 ) => {
   try {
-    const ownerId = req.user!.user_id;
+    const userId = req.user!.user_id;
+    const role = req.user!.role;
 
     const healthLog =
       await healthLogService.createHealthLog(
-        ownerId,
-        req.body
+        userId,
+        req.body,
+        role
       );
 
     res.status(201).json({
@@ -30,14 +32,14 @@ export const getHealthLogsByPet = async (
   next: NextFunction
 ) => {
   try {
-    const ownerId = req.user!.user_id;
+    const userId = req.user!.user_id;
     const role = req.user!.role;
 
     const petId = Number(req.params.petId);
 
     const logs =
       await healthLogService.getHealthLogsByPet(
-        ownerId,
+        userId,
         petId,
         role
       );
@@ -57,14 +59,16 @@ export const getLatestHealthLog = async (
   next: NextFunction
 ) => {
   try {
-    const ownerId = req.user!.user_id;
+    const userId = req.user!.user_id;
+    const role = req.user!.role;
 
     const petId = Number(req.params.petId);
 
     const latest =
       await healthLogService.getLatestHealthLog(
-        ownerId,
-        petId
+        userId,
+        petId,
+        role
       );
 
     res.json({
@@ -76,8 +80,36 @@ export const getLatestHealthLog = async (
   }
 };
 
+export const deleteHealthLog = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const userId = req.user!.user_id;
+    const role = req.user!.role;
+
+    const logId = Number(req.params.id);
+
+    const result = await healthLogService.deleteHealthLog(
+      userId,
+      logId,
+      role
+    );
+
+    res.json({
+      success: true,
+      data: result,
+      message: "Health log deleted successfully",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export default {
   createHealthLog,
   getHealthLogsByPet,
   getLatestHealthLog,
+  deleteHealthLog,
 };

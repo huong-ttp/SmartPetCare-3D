@@ -1,22 +1,10 @@
 import dotenv from "dotenv";
 dotenv.config();
+
 import app from "./app";
 import pool from "./src/config/database.config";
-import { sendTestEmail } from "./src/utils/mail";
-import medicalRecordRoutes from "./src/routes/medicalRecord.route";
-import serviceRoutes from "./src/routes/service.routes";
-import invoiceRoutes from "./src/routes/invoice.routes";
-import paymentRoutes from "./src/routes/payment.routes";
-import notificationRoutes from "./src/routes/notification.routes";
-import userRoutes from "./src/routes/user.routes";
-import vaccinationRoutes from "./src/routes/vaccination.routes";
-import vaccineTypeRoutes from "./src/routes/vaccineType.routes";
-import adminRoutes from "./src/routes/admin.routes";
-
-
 
 async function connectDatabase() {
-  
   try {
     const result = await pool.query("SELECT NOW()");
     console.log("PostgreSQL connected successfully");
@@ -24,64 +12,15 @@ async function connectDatabase() {
   } catch (error) {
     console.error("Database connection failed:", error);
     process.exit(1);
-    
   }
 }
 
-
-
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8000;
 
 connectDatabase().then(() => {
   app.listen(PORT, () => {
-    
     console.log(`Server running at http://localhost:${PORT}`);
   });
-
-  app.use(
-  "/api/medical-records",
-  medicalRecordRoutes
-);
-  
-app.use(
-  "/api/services",
-  serviceRoutes
-);
-
-app.use(
-  "/api/invoices",
-  invoiceRoutes
-);
-
-app.use(
-  "/api/payments",
-  paymentRoutes
-  );
-
-  app.use(
-  "/api/notifications",
-   notificationRoutes
-  );
-
-  app.use(
-  "/api/users",
-  userRoutes
-);
-
-app.use(
-  "/api/vaccinations",
-  vaccinationRoutes
-);
-
-app.use(
-  "/api/admin/vaccine-types",
-  vaccineTypeRoutes
-);
-
-app.use(
-  "/api/admin",
-  adminRoutes
-);
 });
 
 

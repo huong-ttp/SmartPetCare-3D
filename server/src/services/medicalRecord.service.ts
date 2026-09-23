@@ -65,7 +65,8 @@ class MedicalRecordService {
 
   async getMedicalRecordById(
     ownerId: number,
-    recordId: number
+    recordId: number,
+    userRole?: string
   ) {
     const recordResult = await pool.query(
       `
@@ -111,8 +112,8 @@ class MedicalRecordService {
 
     const record = recordResult.rows[0];
 
-    // Check ownership: Record must belong to the requesting owner's pet
-    if (record.owner_id !== ownerId) {
+    // Check ownership: Record must belong to the requesting owner's pet (doctor/admin allowed)
+    if (userRole !== "doctor" && userRole !== "admin" && record.owner_id !== ownerId) {
       throw new AppError("Medical record not found", 404);
     }
 

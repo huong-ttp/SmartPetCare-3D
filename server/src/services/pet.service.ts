@@ -178,7 +178,8 @@ async getPetById(
   const pet = result.rows[0];
 
   // Cho phép doctor và admin xem thông tin pet, owner chỉ xem được thú cưng của mình
-  if (userRole !== "doctor" && userRole !== "admin" && pet.owner_id !== ownerId) {
+  const normalizedRole = userRole?.toLowerCase();
+  if (normalizedRole !== "doctor" && normalizedRole !== "admin" && pet.owner_id !== ownerId) {
     throw new AppError(
       "You do not have permission to access this pet",
       403

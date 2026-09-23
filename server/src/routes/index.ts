@@ -14,10 +14,12 @@ import serviceRoutes from "./service.routes";
 import adminRoutes from "./admin.routes";
 import invoiceRoutes from "./invoice.routes";
 import notificationRoutes from "./notification.routes";
+import healthLogRoutes from "./healthLog.routes";
 
 const router = Router();
 
 router.use("/health", healthRoutes);
+router.use("/health-logs", healthLogRoutes);
 router.use("/auth", authRoutes);
 router.use("/pets", petRoutes);
 router.use("/appointments", appointmentRoutes);
@@ -27,6 +29,7 @@ router.use("/dashboard", dashboardRoutes);
 router.use("/users", userRoutes);
 router.use("/vaccinations", vaccinationRoutes);
 router.use("/vaccine-types", vaccineTypeRoutes);
+router.use("/admin/vaccine-types", vaccineTypeRoutes);
 router.use("/services", serviceRoutes);
 router.use("/admin", adminRoutes);
 router.use("/invoices", invoiceRoutes);

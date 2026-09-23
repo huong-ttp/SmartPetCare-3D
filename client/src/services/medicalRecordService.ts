@@ -355,4 +355,89 @@ export const medicalRecordService = {
       return fallbackList;
     }
   },
+
+  /**
+   * listByDoctor
+   * Lấy toàn bộ danh sách bệnh án do bác sĩ phụ trách.
+   * Kết hợp dữ liệu bệnh nhân & bệnh án từng pet, tự động fallback sang mock khi ngắt kết nối.
+   */
+  async listByDoctor(doctorId?: string | number): Promise<MedicalRecord[]> {
+    const currentDocId = String(doctorId || "u2");
+
+    const getMockDoctorRecords = (): MedicalRecord[] => {
+      let list = MOCK_MEDICAL_RECORDS.filter(
+        (r) => !r.doctor_id || String(r.doctor_id) === currentDocId
+      );
+      if (list.length === 0) {
+        list = [...MOCK_MEDICAL_RECORDS];
+      }
+      return list;
+    };
+
+    if (USE_MOCK) {
+      return mockDelay(getMockDoctorRecords());
+    }
+
+    try {
+      // 1. Lấy danh sách bệnh nhân của bác sĩ
+      const patients = await this.listPatientsByDoctor(doctorId);
+
+      if (!patients || patients.length === 0) {
+        return getMockDoctorRecords();
+      }
+
+      // 2. Tải danh sách bệnh án của từng thú cưng song song
+      const results = await Promise.allSettled(
+        patients.map((p) => this.listByPet(p.pet_id))
+      );
+
+      const allRecords: MedicalRecord[] = [];
+      const seenIds = new Set<string>();
+
+      results.forEach((res, idx) => {
+        if (res.status === "fulfilled" && Array.isArray(res.value)) {
+          const patient = patients[idx];
+          res.value.forEach((rec) => {
+            const key = String(rec.id || rec.record_id);
+            if (!seenIds.has(key)) {
+              seenIds.add(key);
+              allRecords.push({
+                ...rec,
+                id: rec.id || String(rec.record_id),
+                pet_name: rec.pet_name || patient.name,
+                pet_species: rec.pet_species || patient.species,
+                pet_breed: rec.pet_breed || patient.breed,
+                pet_avatar_url: rec.pet_avatar_url || patient.avatar_url,
+                owner_name: rec.owner_name || patient.owner_name,
+                owner_phone: rec.owner_phone || patient.owner_phone,
+                owner_email: rec.owner_email || patient.owner_email,
+              });
+            }
+          });
+        }
+      });
+
+      if (allRecords.length === 0) {
+        return getMockDoctorRecords();
+      }
+
+      // Sắp xếp ngày khám mới nhất lên đầu
+      allRecords.sort((a, b) => {
+        const dateA = new Date(a.record_date || a.created_at || "").getTime();
+        const dateB = new Date(b.record_date || b.created_at || "").getTime();
+        return dateB - dateA;
+      });
+
+      return allRecords;
+    } catch (err) {
+      console.warn("[medicalRecordService.listByDoctor] Failed, falling back to mock:", err);
+      return mockDelay(getMockDoctorRecords());
+    }
+  },
 };
+
+export const medicalRecord = {
+  service: medicalRecordService,
+};
+
+export default medicalRecordService;
