@@ -77,11 +77,31 @@ export const petService = {
       _mockPets = [..._mockPets, newPet];
       return mockDelay(newPet);
     }
-    // Chuyển đổi DTO nếu backend cần microchip_id / special_notes
+    // Chuyển đổi DTO và làm sạch chuỗi rỗng
+    const rawChip = (dto as any).microchip_id ?? dto.microchip_number;
+    const cleanMicrochip = typeof rawChip === "string" && rawChip.trim() !== "" ? rawChip.trim() : undefined;
+    const rawNotes = (dto as any).special_notes ?? dto.notes;
+    const cleanNotes = typeof rawNotes === "string" && rawNotes.trim() !== "" ? rawNotes.trim() : undefined;
+    const cleanDob = typeof dto.date_of_birth === "string" && dto.date_of_birth.trim() !== "" ? dto.date_of_birth.trim() : undefined;
+    const cleanBreed = typeof dto.breed === "string" && dto.breed.trim() !== "" ? dto.breed.trim() : undefined;
+    const cleanColor = typeof dto.color === "string" && dto.color.trim() !== "" ? dto.color.trim() : undefined;
+    const cleanAvatar = typeof dto.avatar_url === "string" && dto.avatar_url.trim() !== "" ? dto.avatar_url.trim() : undefined;
+    const cleanAllergies = typeof dto.allergies === "string" && dto.allergies.trim() !== "" ? dto.allergies.trim() : undefined;
+    const cleanChronic = typeof dto.chronic_conditions === "string" && dto.chronic_conditions.trim() !== "" ? dto.chronic_conditions.trim() : undefined;
+
     const payload = {
       ...dto,
-      microchip_id: (dto as any).microchip_id ?? dto.microchip_number,
-      special_notes: (dto as any).special_notes ?? dto.notes,
+      name: dto.name.trim(),
+      species: dto.species,
+      gender: dto.gender,
+      breed: cleanBreed,
+      color: cleanColor,
+      date_of_birth: cleanDob,
+      microchip_id: cleanMicrochip,
+      avatar_url: cleanAvatar,
+      allergies: cleanAllergies,
+      chronic_conditions: cleanChronic,
+      special_notes: cleanNotes,
     };
     const res = await axiosClient.post<any>("/pets", payload);
     const raw = res.data?.data !== undefined ? res.data.data : res.data;
@@ -111,10 +131,28 @@ export const petService = {
       _mockPets = _mockPets.map((p) => (String(p.id) === cleanId ? updated : p));
       return mockDelay(updated);
     }
+    const rawChip = (dto as any).microchip_id ?? dto.microchip_number;
+    const cleanMicrochip = typeof rawChip === "string" && rawChip.trim() !== "" ? rawChip.trim() : (rawChip === "" ? null : undefined);
+    const rawNotes = (dto as any).special_notes ?? dto.notes;
+    const cleanNotes = typeof rawNotes === "string" && rawNotes.trim() !== "" ? rawNotes.trim() : (rawNotes === "" ? null : undefined);
+    const cleanDob = typeof dto.date_of_birth === "string" && dto.date_of_birth.trim() !== "" ? dto.date_of_birth.trim() : (dto.date_of_birth === "" ? null : undefined);
+    const cleanBreed = typeof dto.breed === "string" && dto.breed.trim() !== "" ? dto.breed.trim() : (dto.breed === "" ? null : undefined);
+    const cleanColor = typeof dto.color === "string" && dto.color.trim() !== "" ? dto.color.trim() : (dto.color === "" ? null : undefined);
+    const cleanAvatar = typeof dto.avatar_url === "string" && dto.avatar_url.trim() !== "" ? dto.avatar_url.trim() : (dto.avatar_url === "" ? null : undefined);
+    const cleanAllergies = typeof dto.allergies === "string" && dto.allergies.trim() !== "" ? dto.allergies.trim() : (dto.allergies === "" ? null : undefined);
+    const cleanChronic = typeof dto.chronic_conditions === "string" && dto.chronic_conditions.trim() !== "" ? dto.chronic_conditions.trim() : (dto.chronic_conditions === "" ? null : undefined);
+
     const payload = {
       ...dto,
-      microchip_id: (dto as any).microchip_id ?? dto.microchip_number,
-      special_notes: (dto as any).special_notes ?? dto.notes,
+      name: dto.name ? dto.name.trim() : undefined,
+      breed: cleanBreed,
+      color: cleanColor,
+      date_of_birth: cleanDob,
+      microchip_id: cleanMicrochip,
+      avatar_url: cleanAvatar,
+      allergies: cleanAllergies,
+      chronic_conditions: cleanChronic,
+      special_notes: cleanNotes,
     };
     try {
       const res = await axiosClient.patch<any>(`/pets/${cleanId}`, payload);

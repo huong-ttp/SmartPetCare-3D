@@ -6,29 +6,32 @@ export const createPetSchema = z.object({
 
     species: z.string().min(1),
 
-    breed: z.string().optional(),
+    breed: z.string().optional().nullable(),
 
     gender: z.enum([
       "Male",
       "Female",
       "Unknown",
+      "male",
+      "female",
+      "unknown",
     ]),
 
-    date_of_birth: z.string().optional(),
+    date_of_birth: z.string().optional().nullable(),
 
-    weight_kg: z.number().optional(),
+    weight_kg: z.union([z.number(), z.string()]).optional().nullable(),
 
-    color: z.string().optional(),
+    color: z.string().optional().nullable(),
 
-    microchip_id: z.string().optional(),
+    microchip_id: z.string().optional().nullable(),
 
-    avatar_url: z.string().optional(),
+    avatar_url: z.string().optional().nullable(),
 
-    allergies: z.string().optional(),
+    allergies: z.string().optional().nullable(),
 
-    chronic_conditions: z.string().optional(),
+    chronic_conditions: z.string().optional().nullable(),
 
-    special_notes: z.string().optional(),
+    special_notes: z.string().optional().nullable(),
   }),
 });
 

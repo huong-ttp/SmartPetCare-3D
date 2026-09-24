@@ -17,26 +17,71 @@ function mockDelay<T>(data: T, ms = 300): Promise<T> {
 }
 
 function normalizeReminder(raw: any): ReminderNotification {
-  const id = raw.notification_id ?? raw.id ?? `n_${Date.now()}`;
+  const id = raw?.notification_id ?? raw?.id ?? `n_${Date.now()}`;
   return {
     notification_id: id,
     id: id,
-    user_id: raw.user_id,
-    pet_id: raw.pet_id ?? null,
-    pet_name: raw.pet_name ?? null,
-    pet_species: raw.pet_species ?? null,
-    pet_avatar: raw.pet_avatar ?? null,
-    type: raw.type,
-    title: raw.title ?? "Nhắc lịch",
-    content: raw.content ?? raw.message ?? "",
-    message: raw.message ?? raw.content ?? "",
-    is_read: Boolean(raw.is_read),
-    scheduled_at: raw.scheduled_at ?? null,
-    sent_at: raw.sent_at ?? null,
-    created_at: raw.created_at ?? new Date().toISOString(),
-    reference_id: raw.reference_id,
-    reference_type: raw.reference_type,
+    user_id: raw?.user_id,
+    pet_id: raw?.pet_id ?? null,
+    pet_name: raw?.pet_name ?? null,
+    pet_species: raw?.pet_species ?? null,
+    pet_avatar: raw?.pet_avatar ?? null,
+    type: raw?.type ?? "system",
+    title: raw?.title ?? "Nhắc lịch",
+    content: raw?.content ?? raw?.message ?? "",
+    message: raw?.message ?? raw?.content ?? "",
+    is_read: Boolean(raw?.is_read),
+    scheduled_at: raw?.scheduled_at ?? null,
+    sent_at: raw?.sent_at ?? null,
+    created_at: raw?.created_at ?? new Date().toISOString(),
+    reference_id: raw?.reference_id,
+    reference_type: raw?.reference_type,
   };
+}
+
+/**
+ * Tự động chuyển đổi endpoint nếu /notifications bị chặn bởi trình chặn quảng cáo (AdBlock / uBlock / Brave Shields)
+ */
+let activeEndpoint = "/notifications";
+
+async function requestWithFallback<T = any>(
+  path: string,
+  method: "get" | "post" | "put" | "patch" | "delete" = "get",
+  dataOrConfig?: any,
+  config?: any
+): Promise<T> {
+  const isReadMethod = method === "get" || method === "delete";
+  const primaryUrl = `${activeEndpoint}${path}`;
+
+  try {
+    if (isReadMethod) {
+      return await (axiosClient as any)[method](primaryUrl, dataOrConfig);
+    } else {
+      return await (axiosClient as any)[method](primaryUrl, dataOrConfig, config);
+    }
+  } catch (err: any) {
+    const isNetworkError =
+      !err.response ||
+      err.code === "ERR_NETWORK" ||
+      err.message === "Network Error" ||
+      err.message?.includes("Network Error");
+
+    // Nếu /notifications bị lỗi mạng (thường do adblocker chặn hoặc CORS), fallback sang alias /user-notifications
+    if (isNetworkError && activeEndpoint === "/notifications") {
+      try {
+        const fallbackUrl = `/user-notifications${path}`;
+        const res = isReadMethod
+          ? await (axiosClient as any)[method](fallbackUrl, dataOrConfig)
+          : await (axiosClient as any)[method](fallbackUrl, dataOrConfig, config);
+        // Ghi nhớ endpoint hoạt động tốt cho các lần gọi sau
+        activeEndpoint = "/user-notifications";
+        return res;
+      } catch {
+        throw err;
+      }
+    }
+    throw err;
+  }
 }
 
 export const notificationService = {
@@ -78,6 +123,11 @@ export const notificationService = {
       return mockDelay(filtered);
     }
 
+    // Nếu chưa đăng nhập (không có token), trả về danh sách trống an toàn
+    if (typeof window !== "undefined" && !localStorage.getItem("spc_access_token")) {
+      return [];
+    }
+
     try {
       const queryParams: Record<string, any> = {};
       if (params?.type) {
@@ -96,20 +146,21 @@ export const notificationService = {
         queryParams.offset = params.offset;
       }
 
-      const res = await axiosClient.get<any>("/notifications", {
+      const res = await requestWithFallback<any>("", "get", {
         params: queryParams,
       });
 
-      const rawList = Array.isArray(res.data)
+      const rawList = Array.isArray(res?.data)
         ? res.data
-        : Array.isArray(res.data?.data)
+        : Array.isArray(res?.data?.data)
         ? res.data.data
         : [];
 
       return rawList.map(normalizeReminder);
-    } catch (err) {
-      console.error("[notificationService.list] Failed to fetch notifications:", err);
-      throw err;
+    } catch (err: any) {
+      console.warn("[notificationService.list] Failed to fetch notifications:", err?.message || err);
+      // Không crash giao diện hoặc làm xuất hiện màn hình đỏ Next.js khi offline / adblock
+      return [];
     }
   },
 
@@ -118,16 +169,20 @@ export const notificationService = {
    */
   async getMyNotifications(): Promise<Notification[]> {
     if (USE_MOCK) return mockDelay(MOCK_NOTIFICATIONS);
+    if (typeof window !== "undefined" && !localStorage.getItem("spc_access_token")) {
+      return [];
+    }
+
     try {
-      const res = await axiosClient.get<any>("/notifications");
-      const list = Array.isArray(res.data)
+      const res = await requestWithFallback<any>("", "get");
+      const list = Array.isArray(res?.data)
         ? res.data
-        : Array.isArray(res.data?.data)
+        : Array.isArray(res?.data?.data)
         ? res.data.data
         : [];
       return list;
-    } catch (err) {
-      console.error("[notificationService.getMyNotifications] Error:", err);
+    } catch (err: any) {
+      console.warn("[notificationService.getMyNotifications] Warning:", err?.message || err);
       return [];
     }
   },
@@ -146,14 +201,13 @@ export const notificationService = {
     }
 
     try {
-      await axiosClient.put(`/notifications/${id}/read`);
-    } catch (error) {
+      await requestWithFallback(`/${id}/read`, "put");
+    } catch {
       // Fallback sang patch nếu backend yêu cầu patch
       try {
-        await axiosClient.patch(`/notifications/${id}/read`);
+        await requestWithFallback(`/${id}/read`, "patch");
       } catch (err) {
-        console.error(`[notificationService.markAsRead] Error for id ${id}:`, err);
-        throw err;
+        console.warn(`[notificationService.markAsRead] Warning for id ${id}:`, err);
       }
     }
   },
@@ -171,13 +225,12 @@ export const notificationService = {
     }
 
     try {
-      await axiosClient.put("/notifications/read-all");
-    } catch (error) {
+      await requestWithFallback("/read-all", "put");
+    } catch {
       try {
-        await axiosClient.patch("/notifications/read-all");
+        await requestWithFallback("/read-all", "patch");
       } catch (err) {
-        console.error("[notificationService.markAllAsRead] Error:", err);
-        throw err;
+        console.warn("[notificationService.markAllAsRead] Warning:", err);
       }
     }
   },
@@ -193,11 +246,14 @@ export const notificationService = {
    * Đếm số lượng thông báo chưa đọc
    */
   async getUnreadCount(): Promise<number> {
+    if (typeof window !== "undefined" && !localStorage.getItem("spc_access_token")) {
+      return 0;
+    }
+
     try {
       const unreadList = await this.list({ unread: true });
       return unreadList.length;
-    } catch (err) {
-      console.error("[notificationService.getUnreadCount] Error:", err);
+    } catch {
       return 0;
     }
   },

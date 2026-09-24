@@ -15,12 +15,12 @@ import { useToast } from "@/components/ui/Toast";
 export default function PetsPage() {
   const { error: showError } = useToast();
 
-  const [pets, setPets]           = useState<Pet[]>([]);
+  const [pets, setPets] = useState<Pet[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
-  const [search, setSearch]                         = useState("");
-  const [selectedSpecies, setSelectedSpecies]       = useState<PetSpecies | "all">("all");
+  const [search, setSearch] = useState("");
+  const [selectedSpecies, setSelectedSpecies] = useState<PetSpecies | "all">("all");
 
   // ─── Fetch ───────────────────────────────────────────────────────────────────
 
@@ -48,7 +48,7 @@ export default function PetsPage() {
 
   const filtered = useMemo(() => {
     return pets.filter((p) => {
-      const matchName    = p.name.toLowerCase().includes(search.toLowerCase());
+      const matchName = p.name.toLowerCase().includes(search.toLowerCase());
       const matchSpecies = selectedSpecies === "all" || p.species === selectedSpecies;
       return matchName && matchSpecies;
     });
@@ -83,7 +83,7 @@ export default function PetsPage() {
         <Link
           id="add-pet-btn"
           href="/pets/create"
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-white text-sm font-semibold shadow-sm hover:bg-primary-600 hover:shadow-md transition-all duration-200 active:scale-95"
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-black text-sm font-semibold shadow-sm hover:bg-primary-600 hover:shadow-md transition-all duration-200 active:scale-95"
         >
           <Plus size={17} />
           Thêm thú cưng

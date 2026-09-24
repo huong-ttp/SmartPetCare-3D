@@ -34,4 +34,5 @@ router.use("/services", serviceRoutes);
 router.use("/admin", adminRoutes);
 router.use("/invoices", invoiceRoutes);
 router.use("/notifications", notificationRoutes);
+router.use("/user-notifications", notificationRoutes);
 export default router;
