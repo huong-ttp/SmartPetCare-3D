@@ -83,7 +83,7 @@ export default function PetsPage() {
         <Link
           id="add-pet-btn"
           href="/pets/create"
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-black text-sm font-semibold shadow-sm hover:bg-primary-600 hover:shadow-md transition-all duration-200 active:scale-95"
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-semibold shadow-sm hover:bg-primary-600 hover:shadow-md transition-all duration-200 active:scale-95"
         >
           <Plus size={17} />
           Thêm thú cưng

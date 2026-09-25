@@ -68,7 +68,7 @@ export const PetFilterBar: React.FC<PetFilterBarProps> = ({
           className={cn(
             "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all duration-200",
             selectedSpecies === "all"
-              ? "bg-primary text-white border-primary shadow-sm"
+              ? "bg-emerald-400 text-white border-primary shadow-sm"
               : "bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-50"
           )}
         >
