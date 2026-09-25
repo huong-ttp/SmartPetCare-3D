@@ -22,4 +22,10 @@ router.get(
   healthLogController.getLatestHealthLog
 );
 
+router.delete(
+  "/:id",
+  authMiddleware,
+  healthLogController.deleteHealthLog
+);
+
 export default router;

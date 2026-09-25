@@ -35,12 +35,16 @@ export const SPECIES_BADGE_COLORS: Record<PetSpecies, { bg: string; text: string
   other:   { bg: "bg-slate-100",  text: "text-slate-600",  border: "border-slate-200" },
 };
 
-export function getSpeciesLabel(species: PetSpecies): string {
-  return SPECIES_LABELS[species] ?? species;
+export function getSpeciesLabel(species: string | PetSpecies): string {
+  return SPECIES_LABELS[species as PetSpecies] ?? species;
 }
 
-export function getSpeciesEmoji(species: PetSpecies): string {
-  return SPECIES_EMOJIS[species] ?? "🐾";
+export function getSpeciesEmoji(species: string | PetSpecies): string {
+  return SPECIES_EMOJIS[species as PetSpecies] ?? "🐾";
+}
+
+export function getSpeciesBadgeColor(species: string | PetSpecies): { bg: string; text: string; border: string } {
+  return SPECIES_BADGE_COLORS[species as PetSpecies] ?? SPECIES_BADGE_COLORS.other;
 }
 
 // ─── Gender ───────────────────────────────────────────────────────────────────

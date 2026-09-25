@@ -18,11 +18,15 @@ export const DashboardHeader: React.FC = () => {
   const [unreadCount, setUnreadCount] = useState<number>(0);
 
   const fetchUnreadCount = useCallback(async () => {
+    if (typeof window !== "undefined" && !localStorage.getItem("spc_access_token")) {
+      setUnreadCount(0);
+      return;
+    }
     try {
       const count = await notificationService.getUnreadCount();
       setUnreadCount(count);
-    } catch (err) {
-      console.error("[DashboardHeader] Failed to fetch unread notifications count:", err);
+    } catch {
+      setUnreadCount(0);
     }
   }, []);
 

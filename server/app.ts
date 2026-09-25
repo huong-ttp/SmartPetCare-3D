@@ -4,20 +4,26 @@ import helmet from "helmet";
 import morgan from "morgan";
 import routes from "./src/routes";
 import errorHandler from "./src/middleware/error.middleware";
-import petRoute from "./src/routes/pet.routes";
-import medicalRecordRoutes from "./src/routes/medicalRecord.route";
-import healthLogRoutes from "./src/routes/healthLog.routes";
-import appointmentRoutes from "./src/routes/appointment.routes";
 const app = express();
 
 // Security
-app.use(helmet());
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+  })
+);
 
 // Cross-Origin Resource Sharing
-app.use(cors());
+app.use(
+  cors({
+    origin: true,
+    credentials: true,
+  })
+);
 
-// Parse JSON request body
-app.use(express.json());
+// Parse JSON request body (up to 50MB for Base64 avatars)
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
 // HTTP request logger
 app.use(morgan("dev"));
@@ -29,24 +35,8 @@ app.get("/", (req, res) => {
     message: "Welcome to SmartPetCare API",
   });
 });
+
 app.use("/api", routes);
-
-app.use("/api/pets", petRoute);
-
-app.use(
-  "/api/medical-records",
-  medicalRecordRoutes
-);
-
-app.use(
-  "/api/health-logs",
-  healthLogRoutes
-);
-
-app.use(
-  "/api/appointments",
-  appointmentRoutes
-);
 
 app.use(errorHandler);
 

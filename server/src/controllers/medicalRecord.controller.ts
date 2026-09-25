@@ -36,11 +36,13 @@ export const getMedicalRecordById = async (
 ) => {
   try {
     const ownerId = req.user!.user_id;
+    const role = req.user!.role;
     const recordId = Number(req.params.id);
 
     const record = await medicalRecordService.getMedicalRecordById(
       ownerId,
-      recordId
+      recordId,
+      role
     );
 
     res.json({

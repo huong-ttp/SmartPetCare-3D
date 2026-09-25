@@ -12,3 +12,4 @@ export * from "./service.type";
 export * from "./invoice.type";
 export * from "./payment.type";
 export * from "./notification.type";
+export * from "./schedule.type";

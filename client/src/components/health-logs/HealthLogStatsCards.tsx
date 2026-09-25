@@ -1,7 +1,19 @@
 "use client";
 
 import React from "react";
-import { Scale, Ruler, TrendingUp, TrendingDown, Minus, Calendar, Sparkles } from "lucide-react";
+import {
+  Scale,
+  Thermometer,
+  Utensils,
+  Zap,
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  Calendar,
+  Sparkles,
+  AlertCircle,
+  Activity,
+} from "lucide-react";
 import { motion } from "framer-motion";
 import type { PetHealthLog } from "@/types/health-log.type";
 import { formatDate } from "@/utils/formatDate";
@@ -17,96 +29,131 @@ export const HealthLogStatsCards: React.FC<HealthLogStatsCardsProps> = ({ logs, 
     (a, b) => new Date(b.log_date).getTime() - new Date(a.log_date).getTime()
   );
 
-  // Find latest log with weight and previous log with weight
+  // 1. Weight stats
   const logsWithWeight = sortedLogs.filter((l) => l.weight_kg !== undefined && l.weight_kg !== null);
   const latestWeightLog = logsWithWeight[0];
   const prevWeightLog = logsWithWeight[1];
-
-  // Find latest log with height
-  const logsWithHeight = sortedLogs.filter((l) => l.height_cm !== undefined && l.height_cm !== null);
-  const latestHeightLog = logsWithHeight[0];
-  const prevHeightLog = logsWithHeight[1];
-
-  // Calculate weight diff
   const weightDiff =
     latestWeightLog && prevWeightLog && latestWeightLog.weight_kg !== undefined && prevWeightLog.weight_kg !== undefined
       ? Number((latestWeightLog.weight_kg - prevWeightLog.weight_kg).toFixed(2))
       : null;
 
-  // Calculate height diff
-  const heightDiff =
-    latestHeightLog && prevHeightLog && latestHeightLog.height_cm !== undefined && prevHeightLog.height_cm !== undefined
-      ? Number((latestHeightLog.height_cm - prevHeightLog.height_cm).toFixed(1))
+  // 2. Temperature stats
+  const logsWithTemp = sortedLogs.filter((l) => l.temperature !== undefined && l.temperature !== null);
+  const latestTempLog = logsWithTemp[0];
+  const prevTempLog = logsWithTemp[1];
+  const tempDiff =
+    latestTempLog && prevTempLog && latestTempLog.temperature !== undefined && prevTempLog.temperature !== undefined
+      ? Number((latestTempLog.temperature - prevTempLog.temperature).toFixed(1))
       : null;
+
+  // 3. Appetite stats
+  const logsWithAppetite = sortedLogs.filter((l) => l.appetite);
+  const latestAppetiteLog = logsWithAppetite[0];
+
+  // 4. Activity stats
+  const logsWithActivity = sortedLogs.filter((l) => l.activity_level);
+  const latestActivityLog = logsWithActivity[0];
+
+  // Appetite helper
+  const getAppetiteInfo = (appetite?: string) => {
+    switch (appetite) {
+      case "normal":
+        return { label: "Bình thường", color: "text-emerald-700 bg-emerald-50 border-emerald-200" };
+      case "increased":
+        return { label: "Tăng khẩu vị", color: "text-blue-700 bg-blue-50 border-blue-200" };
+      case "decreased":
+        return { label: "Ăn giảm sút", color: "text-amber-700 bg-amber-50 border-amber-200" };
+      case "none":
+        return { label: "Bỏ ăn / Kém", color: "text-rose-700 bg-rose-50 border-rose-200" };
+      default:
+        return { label: "Chưa ghi nhận", color: "text-slate-500 bg-slate-50 border-slate-200" };
+    }
+  };
+
+  // Activity level helper
+  const getActivityInfo = (activity?: string) => {
+    switch (activity) {
+      case "normal":
+        return { label: "Bình thường", color: "text-emerald-700 bg-emerald-50 border-emerald-200" };
+      case "high":
+        return { label: "Rất hiếu động", color: "text-cyan-700 bg-cyan-50 border-cyan-200" };
+      case "low":
+        return { label: "Kém vận động", color: "text-amber-700 bg-amber-50 border-amber-200" };
+      case "lethargic":
+        return { label: "Uể oải / Lờ đờ", color: "text-rose-700 bg-rose-50 border-rose-200" };
+      default:
+        return { label: "Chưa ghi nhận", color: "text-slate-500 bg-slate-50 border-slate-200" };
+    }
+  };
+
+  // Temperature status helper
+  const getTempStatus = (temp?: number) => {
+    if (temp === undefined || temp === null) return null;
+    if (temp < 37.5) {
+      return { label: "Hạ thân nhiệt", color: "text-blue-600 bg-blue-50 border-blue-200" };
+    }
+    if (temp <= 39.2) {
+      return { label: "Thân nhiệt chuẩn", color: "text-emerald-600 bg-emerald-50 border-emerald-200" };
+    }
+    if (temp <= 39.8) {
+      return { label: "Sốt nhẹ", color: "text-amber-600 bg-amber-50 border-amber-200" };
+    }
+    return { label: "Sốt cao", color: "text-rose-600 bg-rose-50 border-rose-200" };
+  };
+
+  const tempStatus = getTempStatus(latestTempLog?.temperature);
+  const appetiteInfo = getAppetiteInfo(latestAppetiteLog?.appetite);
+  const activityInfo = getActivityInfo(latestActivityLog?.activity_level);
 
   return (
     <div className="space-y-4">
-      {/* ── System Notice Banner ────────────────────────────────────────── */}
-      <motion.div
-        initial={{ opacity: 0, y: -6 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex items-start gap-3 p-4 rounded-2xl bg-gradient-to-r from-violet-500/10 via-purple-500/5 to-transparent border border-violet-200/80 text-violet-950 shadow-sm"
-      >
-        <div className="w-8 h-8 rounded-xl bg-violet-100 text-violet-600 flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
-          <Sparkles size={18} />
-        </div>
-        <div className="flex-1 text-sm">
-          <div className="font-semibold text-violet-900 flex items-center gap-1.5 mb-0.5">
-            Quyền cập nhật chỉ số thể chất của bé {petName}
-          </div>
-          <p className="text-violet-700/90 text-xs leading-relaxed">
-            Đây là nơi <strong>duy nhất</strong> bạn có thể ghi nhận chỉ số cân nặng và chiều cao cho bé. 
-            Mỗi khi bạn lưu nhật ký mới, hệ số <code className="px-1.5 py-0.5 rounded bg-violet-100/80 font-mono text-[11px] text-violet-800">Pet.weight_kg</code> sẽ được tự động đồng bộ trên toàn bộ hồ sơ mà không cần chỉnh sửa thủ công.
-          </p>
-        </div>
-      </motion.div>
-
-      {/* ── Stat Cards Grid ────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {/* ── Stat Cards Grid (4 Columns) ─────────────────────────────────── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1: Current Weight */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.98 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.3 }}
-          className="relative overflow-hidden rounded-2xl bg-white border border-slate-100 shadow-sm p-5 flex flex-col justify-between"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.25 }}
+          className="relative overflow-hidden rounded-2xl bg-white border border-slate-200/80 shadow-sm p-4 flex flex-col justify-between hover:shadow-md transition-shadow"
         >
-          <div className="absolute right-3 top-3 w-20 h-20 rounded-full bg-violet-50/60 -mr-6 -mt-6 pointer-events-none" />
+          <div className="absolute right-2 top-2 w-16 h-16 rounded-full bg-violet-50/70 -mr-4 -mt-4 pointer-events-none" />
           <div>
-            <div className="flex items-center justify-between gap-2 mb-2">
-              <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-                <span className="w-6 h-6 rounded-lg bg-violet-100 text-violet-600 flex items-center justify-center">
-                  <Scale size={14} />
+            <div className="flex items-center justify-between gap-1 mb-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                <span className="w-6 h-6 rounded-lg bg-violet-100 text-violet-600 flex items-center justify-center shrink-0">
+                  <Scale size={13} />
                 </span>
-                Cân nặng hiện tại
+                Cân nặng
               </span>
               {latestWeightLog && (
-                <span className="inline-flex items-center gap-1 text-[11px] text-slate-400 font-medium">
-                  <Calendar size={12} />
+                <span className="inline-flex items-center gap-1 text-[10px] text-slate-400">
+                  <Calendar size={10} />
                   {formatDate(latestWeightLog.log_date)}
                 </span>
               )}
             </div>
 
-            <div className="flex items-baseline gap-2 mt-1">
+            <div className="flex items-baseline gap-1.5 mt-2">
               {latestWeightLog?.weight_kg !== undefined ? (
                 <>
-                  <span className="text-3xl font-extrabold text-slate-900 tracking-tight">
+                  <span className="text-2xl font-black text-slate-900 tracking-tight">
                     {latestWeightLog.weight_kg}
                   </span>
-                  <span className="text-base font-semibold text-slate-500">kg</span>
+                  <span className="text-xs font-bold text-slate-500">kg</span>
                 </>
               ) : (
-                <span className="text-xl font-bold text-slate-400 italic">Chưa có dữ liệu</span>
+                <span className="text-base font-bold text-slate-400 italic">Chưa có số đo</span>
               )}
             </div>
           </div>
 
           {/* Trend pill */}
-          <div className="mt-3 pt-3 border-t border-slate-50 flex items-center justify-between text-xs">
-            <span className="text-slate-500">So với lần đo trước:</span>
+          <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px]">
+            <span className="text-slate-400">So lần trước:</span>
             {weightDiff !== null ? (
               <span
-                className={`inline-flex items-center gap-1 font-semibold px-2 py-0.5 rounded-full text-xs ${
+                className={`inline-flex items-center gap-1 font-semibold px-2 py-0.5 rounded-full text-[11px] ${
                   weightDiff > 0
                     ? "bg-amber-50 text-amber-700 border border-amber-200"
                     : weightDiff < 0
@@ -116,98 +163,172 @@ export const HealthLogStatsCards: React.FC<HealthLogStatsCardsProps> = ({ logs, 
               >
                 {weightDiff > 0 ? (
                   <>
-                    <TrendingUp size={12} />
+                    <TrendingUp size={11} />
                     +{weightDiff} kg
                   </>
                 ) : weightDiff < 0 ? (
                   <>
-                    <TrendingDown size={12} />
+                    <TrendingDown size={11} />
                     {weightDiff} kg
                   </>
                 ) : (
                   <>
-                    <Minus size={12} />
+                    <Minus size={11} />
                     0.0 kg
                   </>
                 )}
               </span>
             ) : (
-              <span className="text-slate-400 italic">Chưa có lần đo đối chiếu</span>
+              <span className="text-slate-400 italic text-[10px]">Chưa có đối chiếu</span>
             )}
           </div>
         </motion.div>
 
-        {/* Card 2: Current Height */}
+        {/* Card 2: Temperature */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.98 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.3, delay: 0.08 }}
-          className="relative overflow-hidden rounded-2xl bg-white border border-slate-100 shadow-sm p-5 flex flex-col justify-between"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.25, delay: 0.05 }}
+          className="relative overflow-hidden rounded-2xl bg-white border border-slate-200/80 shadow-sm p-4 flex flex-col justify-between hover:shadow-md transition-shadow"
         >
-          <div className="absolute right-3 top-3 w-20 h-20 rounded-full bg-indigo-50/60 -mr-6 -mt-6 pointer-events-none" />
+          <div className="absolute right-2 top-2 w-16 h-16 rounded-full bg-rose-50/70 -mr-4 -mt-4 pointer-events-none" />
           <div>
-            <div className="flex items-center justify-between gap-2 mb-2">
-              <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-                <span className="w-6 h-6 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center">
-                  <Ruler size={14} />
+            <div className="flex items-center justify-between gap-1 mb-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                <span className="w-6 h-6 rounded-lg bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+                  <Thermometer size={13} />
                 </span>
-                Chiều cao hiện tại
+                Thân nhiệt
               </span>
-              {latestHeightLog && (
-                <span className="inline-flex items-center gap-1 text-[11px] text-slate-400 font-medium">
-                  <Calendar size={12} />
-                  {formatDate(latestHeightLog.log_date)}
+              {latestTempLog && (
+                <span className="inline-flex items-center gap-1 text-[10px] text-slate-400">
+                  <Calendar size={10} />
+                  {formatDate(latestTempLog.log_date)}
                 </span>
               )}
             </div>
 
-            <div className="flex items-baseline gap-2 mt-1">
-              {latestHeightLog?.height_cm !== undefined ? (
+            <div className="flex items-baseline gap-1.5 mt-2">
+              {latestTempLog?.temperature !== undefined ? (
                 <>
-                  <span className="text-3xl font-extrabold text-slate-900 tracking-tight">
-                    {latestHeightLog.height_cm}
+                  <span className="text-2xl font-black text-slate-900 tracking-tight">
+                    {latestTempLog.temperature}
                   </span>
-                  <span className="text-base font-semibold text-slate-500">cm</span>
+                  <span className="text-xs font-bold text-slate-500">°C</span>
                 </>
               ) : (
-                <span className="text-xl font-bold text-slate-400 italic">Chưa có dữ liệu</span>
+                <span className="text-base font-bold text-slate-400 italic">Chưa đo nhiệt</span>
               )}
             </div>
           </div>
 
-          {/* Trend pill */}
-          <div className="mt-3 pt-3 border-t border-slate-50 flex items-center justify-between text-xs">
-            <span className="text-slate-500">So với lần đo trước:</span>
-            {heightDiff !== null ? (
-              <span
-                className={`inline-flex items-center gap-1 font-semibold px-2 py-0.5 rounded-full text-xs ${
-                  heightDiff > 0
-                    ? "bg-indigo-50 text-indigo-700 border border-indigo-200"
-                    : heightDiff < 0
-                    ? "bg-rose-50 text-rose-700 border border-rose-200"
-                    : "bg-slate-100 text-slate-600"
-                }`}
-              >
-                {heightDiff > 0 ? (
-                  <>
-                    <TrendingUp size={12} />
-                    +{heightDiff} cm
-                  </>
-                ) : heightDiff < 0 ? (
-                  <>
-                    <TrendingDown size={12} />
-                    {heightDiff} cm
-                  </>
-                ) : (
-                  <>
-                    <Minus size={12} />
-                    0.0 cm
-                  </>
-                )}
+          {/* Temp status pill */}
+          <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px]">
+            <span className="text-slate-400">Tình trạng:</span>
+            {tempStatus ? (
+              <span className={`inline-flex items-center gap-1 font-semibold px-2 py-0.5 rounded-full text-[11px] border ${tempStatus.color}`}>
+                <Activity size={10} />
+                {tempStatus.label}
               </span>
             ) : (
-              <span className="text-slate-400 italic">Chưa có lần đo đối chiếu</span>
+              <span className="text-slate-400 italic text-[10px]">Chuẩn: 38 - 39.2°C</span>
             )}
+          </div>
+        </motion.div>
+
+        {/* Card 3: Appetite */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.25, delay: 0.1 }}
+          className="relative overflow-hidden rounded-2xl bg-white border border-slate-200/80 shadow-sm p-4 flex flex-col justify-between hover:shadow-md transition-shadow"
+        >
+          <div className="absolute right-2 top-2 w-16 h-16 rounded-full bg-emerald-50/70 -mr-4 -mt-4 pointer-events-none" />
+          <div>
+            <div className="flex items-center justify-between gap-1 mb-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                <span className="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
+                  <Utensils size={13} />
+                </span>
+                Tình trạng ăn uống
+              </span>
+              {latestAppetiteLog && (
+                <span className="inline-flex items-center gap-1 text-[10px] text-slate-400">
+                  <Calendar size={10} />
+                  {formatDate(latestAppetiteLog.log_date)}
+                </span>
+              )}
+            </div>
+
+            <div className="flex items-center gap-1.5 mt-2">
+              <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-bold border ${appetiteInfo.color}`}>
+                <Utensils size={12} />
+                {appetiteInfo.label}
+              </span>
+            </div>
+          </div>
+
+          <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px]">
+            <span className="text-slate-400">Khẩu phần gần nhất:</span>
+            <span className="text-[11px] font-medium text-slate-600">
+              {latestAppetiteLog?.appetite === "normal"
+                ? "Ăn đủ bữa"
+                : latestAppetiteLog?.appetite === "decreased"
+                ? "Ăn kém / chậm"
+                : latestAppetiteLog?.appetite === "increased"
+                ? "Ăn nhiều hơn"
+                : latestAppetiteLog?.appetite === "none"
+                ? "Bỏ ăn hoàn toàn"
+                : "Chưa ghi nhận"}
+            </span>
+          </div>
+        </motion.div>
+
+        {/* Card 4: Activity Level */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.25, delay: 0.15 }}
+          className="relative overflow-hidden rounded-2xl bg-white border border-slate-200/80 shadow-sm p-4 flex flex-col justify-between hover:shadow-md transition-shadow"
+        >
+          <div className="absolute right-2 top-2 w-16 h-16 rounded-full bg-cyan-50/70 -mr-4 -mt-4 pointer-events-none" />
+          <div>
+            <div className="flex items-center justify-between gap-1 mb-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                <span className="w-6 h-6 rounded-lg bg-cyan-100 text-cyan-600 flex items-center justify-center shrink-0">
+                  <Zap size={13} />
+                </span>
+                Mức độ vận động
+              </span>
+              {latestActivityLog && (
+                <span className="inline-flex items-center gap-1 text-[10px] text-slate-400">
+                  <Calendar size={10} />
+                  {formatDate(latestActivityLog.log_date)}
+                </span>
+              )}
+            </div>
+
+            <div className="flex items-center gap-1.5 mt-2">
+              <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-bold border ${activityInfo.color}`}>
+                <Zap size={12} />
+                {activityInfo.label}
+              </span>
+            </div>
+          </div>
+
+          <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px]">
+            <span className="text-slate-400">Hành vi thể chất:</span>
+            <span className="text-[11px] font-medium text-slate-600">
+              {latestActivityLog?.activity_level === "normal"
+                ? "Linh hoạt tự nhiên"
+                : latestActivityLog?.activity_level === "high"
+                ? "Rất năng động"
+                : latestActivityLog?.activity_level === "low"
+                ? "Ít chạy nhảy"
+                : latestActivityLog?.activity_level === "lethargic"
+                ? "Nằm li bì"
+                : "Chưa ghi nhận"}
+            </span>
           </div>
         </motion.div>
       </div>

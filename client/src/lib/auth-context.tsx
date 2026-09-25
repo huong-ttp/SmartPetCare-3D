@@ -112,16 +112,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
        */
       if (state.isLoading) return false;
 
-      // Hydrate xong, chưa đăng nhập → đá về /login
+      // Hydrate xong, chưa đăng nhập → đá về /login (trì hoãn qua setTimeout để tránh gọi setState trong render)
       if (!state.isAuthenticated || !state.user) {
-        router.push("/login");
+        setTimeout(() => {
+          router.push("/login");
+        }, 0);
         return false;
       }
 
       // Đăng nhập nhưng sai role → về trang chủ
       const allowed = Array.isArray(role) ? role : [role];
       if (!allowed.includes(state.user.role)) {
-        router.push("/");
+        setTimeout(() => {
+          router.push("/");
+        }, 0);
         return false;
       }
 

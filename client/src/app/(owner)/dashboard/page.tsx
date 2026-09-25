@@ -7,10 +7,7 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { petService } from "@/services/petService";
 import { appointmentService } from "@/services/appointmentService";
-// TODO: Re-enable notificationService when the backend exposes /api/notifications.
-// import { notificationService } from "@/services/notificationService";
-// TODO: Re-enable notificationService when the backend exposes /api/notifications.
-// import { notificationService } from "@/services/notificationService";
+import { notificationService } from "@/services/notificationService";
 import { invoiceService } from "@/services/invoiceService";
 import { useAuth } from "@/lib/auth-context";
 
@@ -46,14 +43,13 @@ export default function OwnerDashboardPage() {
 
       try {
         // Fetch all in parallel for performance
-        const [pets, appts, invs] = await Promise.all([
+        const [pets, appts, invs, notifs] = await Promise.all([
           petService.getMyPets(),
           appointmentService.getMyAppointments(),
           invoiceService.getMyInvoices().catch(() => []),
+          notificationService.list({ unread: true }).catch(() => []),
         ]);
 
-        // Notifications API is not available yet, so leave the counter at zero.
-        const notifs: { is_read: boolean }[] = [];
         const invoices = Array.isArray(invs) ? invs : [];
 
         setTotalPets(Array.isArray(pets) ? pets.length : 0);
