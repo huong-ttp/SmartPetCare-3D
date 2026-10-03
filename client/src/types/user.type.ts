@@ -15,6 +15,9 @@ export interface User {
   role: UserRole;
   /** false khi chưa xác thực OTP; true sau khi xác thực xong */
   is_active: boolean;
+  /** true nếu người dùng đã bị soft delete */
+  is_deleted?: boolean;
+  deleted_at?: string | null;
   created_at: string; // ISO 8601
   updated_at: string;
   role_updated_by?: string | number | null;

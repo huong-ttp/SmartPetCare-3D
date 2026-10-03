@@ -145,6 +145,45 @@ export const toggleUserActive = async (
 
 };
 
+export const deleteUser = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const adminId = req.user!.user_id;
+    const userId = Number(req.params.id);
+    const user = await adminService.deleteUser(userId, adminId);
+
+    res.json({
+      success: true,
+      message: "Đã xóa người dùng thành công (soft delete)",
+      data: user
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const restoreUser = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const userId = Number(req.params.id);
+    const user = await adminService.restoreUser(userId);
+
+    res.json({
+      success: true,
+      message: "Đã khôi phục người dùng thành công",
+      data: user
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const updateUser = async (
   req: Request,
   res: Response,
@@ -635,6 +674,8 @@ export default {
   updateUser,
   updateUserRole,
   toggleUserActive,
+  deleteUser,
+  restoreUser,
   listPets,
   getPetById,
   updatePet,

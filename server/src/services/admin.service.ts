@@ -321,6 +321,8 @@ const offset = (page - 1) * limit;
       address,
       role,
       is_active,
+      is_deleted,
+      deleted_at,
       created_at,
       updated_at,
       role_updated_by,
@@ -397,8 +399,7 @@ if (filter.role) {
 }
 if (
     filter.status &&
-    filter.status !== "active" &&
-    filter.status !== "inactive"
+    !["active", "inactive", "deleted", "all"].includes(filter.status)
 ) {
     throw new AppError(
         "Invalid status",
@@ -406,22 +407,22 @@ if (
     );
 }
 
-  if (filter.status !== undefined) {
-
-    const condition = `
-        AND is_active = $${index}
-    `;
-
-    query += condition;
-    countQuery += condition;
-
-    values.push(
-        filter.status === "active"
-    );
-    
-
-    index++;
-}
+  if (filter.status === "deleted") {
+    query += ` AND is_deleted = true `;
+    countQuery += ` AND is_deleted = true `;
+  } else if (filter.status === "active") {
+    query += ` AND is_deleted = false AND is_active = true `;
+    countQuery += ` AND is_deleted = false AND is_active = true `;
+  } else if (filter.status === "inactive") {
+    query += ` AND is_deleted = false AND is_active = false `;
+    countQuery += ` AND is_deleted = false AND is_active = false `;
+  } else if (filter.status === "all") {
+    // Không lọc is_deleted
+  } else {
+    // Mặc định: loại bỏ tài khoản đã xóa
+    query += ` AND is_deleted = false `;
+    countQuery += ` AND is_deleted = false `;
+  }
 
   query += `
 ORDER BY created_at DESC
@@ -929,6 +930,87 @@ async updateUser(
       role_updated_at;
     `,
     [fullName, phone, address, userId]
+  );
+
+  return result.rows[0];
+}
+
+async deleteUser(userId: number, adminId?: number) {
+  if (adminId && userId === adminId) {
+    throw new AppError("Bạn không thể tự xóa tài khoản của chính mình", 400);
+  }
+
+  const existed = await pool.query(
+    `SELECT user_id, full_name, email, role, is_deleted FROM users WHERE user_id = $1;`,
+    [userId]
+  );
+
+  if (existed.rowCount === 0) {
+    throw new AppError("Người dùng không tồn tại", 404);
+  }
+
+  if (existed.rows[0].is_deleted) {
+    throw new AppError("Người dùng này đã bị xóa trước đó", 400);
+  }
+
+  const result = await pool.query(
+    `
+    UPDATE users
+    SET
+      is_deleted = true,
+      deleted_at = NOW(),
+      is_active = false,
+      updated_at = NOW()
+    WHERE user_id = $1
+    RETURNING
+      user_id,
+      full_name,
+      email,
+      role,
+      is_active,
+      is_deleted,
+      deleted_at,
+      updated_at;
+    `,
+    [userId]
+  );
+
+  return result.rows[0];
+}
+
+async restoreUser(userId: number) {
+  const existed = await pool.query(
+    `SELECT user_id, full_name, email, role, is_deleted FROM users WHERE user_id = $1;`,
+    [userId]
+  );
+
+  if (existed.rowCount === 0) {
+    throw new AppError("Người dùng không tồn tại", 404);
+  }
+
+  if (!existed.rows[0].is_deleted) {
+    throw new AppError("Người dùng này chưa bị xóa", 400);
+  }
+
+  const result = await pool.query(
+    `
+    UPDATE users
+    SET
+      is_deleted = false,
+      deleted_at = NULL,
+      is_active = true,
+      updated_at = NOW()
+    WHERE user_id = $1
+    RETURNING
+      user_id,
+      full_name,
+      email,
+      role,
+      is_active,
+      is_deleted,
+      updated_at;
+    `,
+    [userId]
   );
 
   return result.rows[0];

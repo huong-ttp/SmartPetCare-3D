@@ -97,6 +97,15 @@ async login(data: LoginData) {
 }
 
 const user = result.rows[0];
+
+if (user.is_deleted) {
+  throw new AppError("Tài khoản của bạn đã bị xóa khỏi hệ thống", 403);
+}
+
+if (!user.is_active) {
+  throw new AppError("Tài khoản của bạn hiện đang bị vô hiệu hóa", 403);
+}
+
 const isMatch = await bcrypt.compare(
   data.password,
   user.password_hash
@@ -188,14 +197,14 @@ async forgotPassword(
     `
       SELECT user_id, email
       FROM users
-      WHERE email = $1
+      WHERE email = $1 AND is_deleted = false
     `,
     [data.email]
   );
 
   if (userResult.rows.length === 0) {
     throw new AppError(
-      "Email không tồn tại",
+      "Email không tồn tại hoặc tài khoản đã bị khóa",
       404
     );
   }

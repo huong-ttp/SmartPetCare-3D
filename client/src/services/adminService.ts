@@ -428,6 +428,34 @@ export const adminService = {
     return res.data?.data || res.data;
   },
 
+  async deleteUser(userId: string | number): Promise<User> {
+    if (USE_MOCK) {
+      const u = MOCK_USERS.find((u) => u.id === String(userId) || u.user_id === Number(userId));
+      if (!u) throw new Error("Người dùng không tồn tại.");
+      u.is_active = false;
+      u.is_deleted = true;
+      u.deleted_at = new Date().toISOString();
+      u.updated_at = new Date().toISOString();
+      return mockDelay({ ...u });
+    }
+    const res = await axiosClient.delete<any>(`/admin/users/${userId}`);
+    return res.data?.data || res.data;
+  },
+
+  async restoreUser(userId: string | number): Promise<User> {
+    if (USE_MOCK) {
+      const u = MOCK_USERS.find((u) => u.id === String(userId) || u.user_id === Number(userId));
+      if (!u) throw new Error("Người dùng không tồn tại.");
+      u.is_active = true;
+      u.is_deleted = false;
+      u.deleted_at = null;
+      u.updated_at = new Date().toISOString();
+      return mockDelay({ ...u });
+    }
+    const res = await axiosClient.patch<any>(`/admin/users/${userId}/restore`);
+    return res.data?.data || res.data;
+  },
+
   async updateUser(userId: string | number, data: UpdateAdminUserDTO): Promise<User> {
     if (USE_MOCK) {
       const u = MOCK_USERS.find((u) => u.id === String(userId) || u.user_id === Number(userId));

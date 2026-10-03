@@ -37,3 +37,6 @@ src/uploads/*
 AGENTS.md
 CLAUDE.md
 .agent/ 
+
+migrations/
+migrate.ts
