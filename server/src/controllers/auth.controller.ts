@@ -85,7 +85,9 @@ async logout(
   next: NextFunction
 ) {
   try {
-    const result = await authService.logout();
+    const refreshToken = req.body?.refresh_token;
+    const userId = req.user?.user_id;
+    const result = await authService.logout(refreshToken, userId);
 
     return res.json({
       success: true,
