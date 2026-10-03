@@ -178,7 +178,7 @@ export default function AdminNotificationsPage() {
           system: systemCount,
           today: todayCount,
         });
-      } catch (err: any) {
+      } catch (err) {
         console.error("Failed to load notifications:", err);
         setErrorMsg(
           err?.response?.data?.message ||

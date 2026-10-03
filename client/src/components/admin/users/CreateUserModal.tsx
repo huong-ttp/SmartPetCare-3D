@@ -140,7 +140,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
       resetForm();
       onSuccess(newUser);
       onClose();
-    } catch (err: any) {
+    } catch (err) {
       console.error("Failed to create user:", err);
       const msg =
         err?.response?.data?.message ||

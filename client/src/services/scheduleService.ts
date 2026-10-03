@@ -135,10 +135,10 @@ export const scheduleService = {
       // Nếu có API backend /doctor/shifts hoặc /appointments/doctor/shifts
       if (!USE_MOCK) {
         try {
-          const res = await axiosClient.get<any>("/doctor/shifts", {
+          const res = await axiosClient.get<{ data?: DoctorShift[] } | DoctorShift[]>("/doctor/shifts", {
             params: { startDate, endDate },
           });
-          const raw = res.data?.data ?? res.data;
+          const raw = (res.data as { data?: DoctorShift[] })?.data ?? (res.data as DoctorShift[]);
           if (Array.isArray(raw) && raw.length > 0) {
             return raw;
           }

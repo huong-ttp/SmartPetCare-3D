@@ -119,7 +119,7 @@ export default function DoctorAppointmentsPage() {
           upcoming: normalizedUpcoming.length,
           completed: normalizedCompleted.length,
         });
-      } catch (err: any) {
+      } catch (err) {
         console.error("[DoctorAppointments] Fetch failed:", err);
         setErrorMessage(
           err?.response?.data?.message ||

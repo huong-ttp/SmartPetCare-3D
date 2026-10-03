@@ -159,7 +159,7 @@ export default function SendSystemNotificationModal({
       );
       onSuccess();
       onClose();
-    } catch (err: any) {
+    } catch (err) {
       console.error("Failed to send system notification:", err);
       toast.error(
         err?.response?.data?.message ||

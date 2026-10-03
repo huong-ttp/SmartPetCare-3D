@@ -47,7 +47,7 @@ export const HealthLogHistoryTable: React.FC<HealthLogHistoryTableProps> = ({
       showToastSuccess("Đã xóa bản ghi nhật ký sức khỏe thành công.");
       onLogDeleted(id);
       setConfirmId(null);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Lỗi khi xóa nhật ký:", err);
       showToastError("Không thể xóa bản ghi. Vui lòng thử lại.");
     } finally {

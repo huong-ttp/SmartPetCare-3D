@@ -56,7 +56,7 @@ export const DeleteVaccineTypeModal: React.FC<DeleteVaccineTypeModalProps> = ({
       toast.success(`Đã xóa loại vắc xin "${vaccineTypeToDelete.name}" thành công.`);
       onSuccess();
       onClose();
-    } catch (err: any) {
+    } catch (err) {
       console.error("Delete vaccine type failed:", err);
       const msg: string =
         err?.response?.data?.message ||

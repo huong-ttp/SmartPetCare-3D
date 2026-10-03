@@ -1,3 +1,4 @@
+import type { MedicalRecord } from "@/types/medical-record.type";
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
@@ -111,7 +112,7 @@ export default function CreateMedicalRecordPage() {
       if (data.pet_weight) {
         setWeightAtVisit(String(data.pet_weight));
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error("[CreateRecord] Fetch appointment failed:", err);
       setErrorMessage(
         err?.response?.data?.message ||
@@ -186,11 +187,10 @@ export default function CreateMedicalRecordPage() {
       const result = await medicalRecordService.create(payload);
 
       // Extract new medical record ID
+      const rec = (result as { medical_record?: MedicalRecord })?.medical_record ?? result;
       const newRecId =
-        result?.medical_record?.record_id ??
-        result?.medical_record?.id ??
-        result?.record_id ??
-        result?.id ??
+        rec?.record_id ??
+        rec?.id ??
         "mr_" + Date.now();
 
       setSavedRecordId(newRecId);
@@ -210,7 +210,7 @@ export default function CreateMedicalRecordPage() {
 
       // Display the success prompt modal to guide next navigation
       setShowSuccessModal(true);
-    } catch (err: any) {
+    } catch (err) {
       console.error("[CreateRecord] Save failed:", err);
       showToastError(
         err?.response?.data?.message ||

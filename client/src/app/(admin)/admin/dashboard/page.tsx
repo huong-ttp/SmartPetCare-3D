@@ -50,7 +50,7 @@ export default function AdminDashboardPage() {
     try {
       const stats = await adminService.getStats();
       setData(stats);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Failed to fetch admin stats:", err);
       setErrorMsg(
         err?.response?.data?.message ||

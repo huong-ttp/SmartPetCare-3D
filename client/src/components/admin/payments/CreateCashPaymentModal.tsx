@@ -64,7 +64,7 @@ export default function CreateCashPaymentModal({
           limit: 50,
         });
         setUnpaidInvoices(res.items || []);
-      } catch (err: any) {
+      } catch (err) {
         console.error("[CreateCashPaymentModal] Failed to fetch unpaid invoices:", err);
       } finally {
         setIsLoadingInvoices(false);
@@ -126,7 +126,7 @@ export default function CreateCashPaymentModal({
       showSuccess(`Đã ghi nhận thanh toán tiền mặt cho hóa đơn #INV-${targetInvoiceId} thành công!`);
       onSuccess(res);
       onClose();
-    } catch (err: any) {
+    } catch (err) {
       console.error("[CreateCashPaymentModal] Error creating cash payment:", err);
       const msg =
         err?.response?.data?.message ||

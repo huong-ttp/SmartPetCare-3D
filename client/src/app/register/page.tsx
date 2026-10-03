@@ -119,7 +119,7 @@ export default function RegisterPage() {
         router.push(`/login`);
       }, 1500);
       
-    } catch (error: any) {
+    } catch (error) {
       const msg = error?.response?.data?.message || error.message || "Đăng ký thất bại. Vui lòng thử lại.";
       setGlobalError(msg);
     } finally {

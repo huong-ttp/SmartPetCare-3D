@@ -10,6 +10,7 @@ import type {
   UpdateProfileDTO,
   ChangePasswordDTO,
 } from "@/types/user.type";
+import type { ApiResponse } from "@/types/api.type";
 import { MOCK_USERS } from "@/lib/mock";
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === "true";
@@ -28,8 +29,8 @@ export const userService = {
     }
 
     try {
-      const res = await axiosClient.get<any>("/users/profile");
-      return res.data?.data || res.data;
+      const res = await axiosClient.get<ApiResponse<User> | User>("/users/profile");
+      return (res.data as ApiResponse<User>)?.data || (res.data as User);
     } catch (err) {
       console.error("[userService.getProfile] Error:", err);
       throw err;
@@ -48,8 +49,8 @@ export const userService = {
     }
 
     try {
-      const res = await axiosClient.put<any>("/users/profile", dto);
-      return res.data?.data || res.data;
+      const res = await axiosClient.put<ApiResponse<User> | User>("/users/profile", dto);
+      return (res.data as ApiResponse<User>)?.data || (res.data as User);
     } catch (err) {
       console.error("[userService.updateProfile] Error:", err);
       throw err;
@@ -69,11 +70,11 @@ export const userService = {
     }
 
     try {
-      const res = await axiosClient.put<any>("/users/change-password", {
+      const res = await axiosClient.put<ApiResponse<{ message: string }> | { message: string }>("/users/change-password", {
         current_password: dto.current_password,
         new_password: dto.new_password,
       });
-      return res.data?.data || res.data;
+      return (res.data as ApiResponse<{ message: string }>)?.data || (res.data as { message: string });
     } catch (err) {
       console.error("[userService.changePassword] Error:", err);
       throw err;

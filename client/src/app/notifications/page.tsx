@@ -62,7 +62,7 @@ export default function NotificationsPage() {
     try {
       const data = await notificationService.list();
       setNotifications(data);
-    } catch (err: any) {
+    } catch (err) {
       console.error("[NotificationsPage] Error fetching notifications:", err);
       setError("Không thể tải danh sách thông báo. Vui lòng thử lại sau!");
     } finally {

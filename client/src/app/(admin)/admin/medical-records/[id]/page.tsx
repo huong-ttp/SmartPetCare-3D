@@ -137,7 +137,7 @@ export default function AdminMedicalRecordDetailPage() {
     try {
       const data = await medicalRecordService.getById(recordId);
       setRecord(data);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Lỗi khi tải chi tiết bệnh án:", err);
       setErrorMessage(
         err?.response?.status === 404
@@ -162,7 +162,7 @@ export default function AdminMedicalRecordDetailPage() {
       showToastSuccess(`Đã xóa vĩnh viễn hồ sơ bệnh án #${recordId}!`);
       setIsDeleteModalOpen(false);
       router.push("/admin/medical-records");
-    } catch (err: any) {
+    } catch (err) {
       console.error("Lỗi khi xóa hồ sơ:", err);
       const errMsg =
         err?.response?.data?.message ||

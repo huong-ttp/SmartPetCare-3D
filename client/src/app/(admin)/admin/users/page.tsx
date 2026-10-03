@@ -116,7 +116,7 @@ export default function AdminUsersPage() {
         if (res.pagination) {
           setPagination(res.pagination);
         }
-      } catch (err: any) {
+      } catch (err) {
         console.error("Failed to fetch users:", err);
         setErrorMsg(
           err?.response?.data?.message ||
@@ -178,7 +178,7 @@ export default function AdminUsersPage() {
             : u
         )
       );
-    } catch (err: any) {
+    } catch (err) {
       console.error("Failed to activate user:", err);
       toast.error(
         err?.response?.data?.message ||

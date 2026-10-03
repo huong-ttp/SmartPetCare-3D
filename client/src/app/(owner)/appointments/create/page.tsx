@@ -250,7 +250,7 @@ export default function CreateAppointmentPage() {
       } else {
         router.push("/appointments");
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error("[CreateAppointment] Submit failed:", err);
       const msg =
         err?.response?.data?.message ||

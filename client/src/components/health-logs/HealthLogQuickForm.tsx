@@ -79,7 +79,7 @@ export const HealthLogQuickForm: React.FC<HealthLogQuickFormProps> = ({
       showToastSuccess(msg);
 
       onSuccess(created);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Lỗi khi thêm nhật ký sức khỏe:", err);
       const errDetail =
         err?.response?.data?.message || err?.message || "Không thể lưu chỉ số sức khỏe. Vui lòng thử lại.";

@@ -46,7 +46,7 @@ export const DeleteServiceModal: React.FC<DeleteServiceModalProps> = ({
       toast.success(`Đã xóa dịch vụ "${serviceToDelete.name}" thành công.`);
       onSuccess();
       onClose();
-    } catch (err: any) {
+    } catch (err) {
       const msg: string =
         err?.response?.data?.message ||
         err?.message ||

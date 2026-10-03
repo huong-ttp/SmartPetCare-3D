@@ -3,6 +3,7 @@
  */
 import axiosClient from "@/lib/axiosClient";
 import type { PetHealthLog, CreatePetHealthLogDTO, UpdatePetHealthLogDTO } from "@/types/health-log.type";
+import type { ApiResponse } from "@/types/api.type";
 import { MOCK_HEALTH_LOGS } from "@/lib/mock";
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === "true";
@@ -13,18 +14,18 @@ function mockDelay<T>(data: T, ms = 400): Promise<T> {
 // Mutable mock store
 let _mockHealthLogs: PetHealthLog[] = [...MOCK_HEALTH_LOGS];
 
-function normalizeLog(item: any): PetHealthLog {
-  if (!item) return item;
+function normalizeLog(item: Partial<PetHealthLog> & Record<string, unknown>): PetHealthLog {
+  if (!item) return item as unknown as PetHealthLog;
   return {
-    ...item,
+    ...(item as unknown as PetHealthLog),
     id: String(item.id ?? item.health_log_id ?? item.log_id ?? ""),
     pet_id: String(item.pet_id ?? ""),
     weight_kg: item.weight_kg !== null && item.weight_kg !== undefined ? Number(item.weight_kg) : undefined,
     height_cm: item.height_cm !== null && item.height_cm !== undefined ? Number(item.height_cm) : undefined,
     temperature: item.temperature !== null && item.temperature !== undefined ? Number(item.temperature) : undefined,
     log_date: item.log_date ? (typeof item.log_date === "string" ? item.log_date.split("T")[0] : String(item.log_date)) : "",
-    created_at: item.created_at || new Date().toISOString(),
-    updated_at: item.updated_at || new Date().toISOString(),
+    created_at: (item.created_at as string | undefined) || new Date().toISOString(),
+    updated_at: (item.updated_at as string | undefined) || new Date().toISOString(),
   };
 }
 
@@ -37,9 +38,9 @@ export const healthLogService = {
           .sort((a, b) => new Date(b.log_date).getTime() - new Date(a.log_date).getTime())
       );
     }
-    const res = await axiosClient.get<any>(`/health-logs/pet/${petId}`);
+    const res = await axiosClient.get<ApiResponse<PetHealthLog[]> | PetHealthLog[]>(`/health-logs/pet/${petId}`);
     const rawList = Array.isArray(res.data) ? res.data : (res.data?.data ?? []);
-    return rawList.map(normalizeLog).sort((a: PetHealthLog, b: PetHealthLog) => new Date(b.log_date).getTime() - new Date(a.log_date).getTime());
+    return (rawList as Array<Partial<PetHealthLog> & Record<string, unknown>>).map(normalizeLog).sort((a: PetHealthLog, b: PetHealthLog) => new Date(b.log_date).getTime() - new Date(a.log_date).getTime());
   },
 
   async getLatestByPetId(petId: string): Promise<PetHealthLog | null> {
@@ -49,9 +50,9 @@ export const healthLogService = {
         .sort((a, b) => new Date(b.log_date).getTime() - new Date(a.log_date).getTime());
       return mockDelay(logs.length > 0 ? logs[0] : null);
     }
-    const res = await axiosClient.get<any>(`/health-logs/pet/${petId}/latest`);
-    const raw = res.data?.data !== undefined ? res.data.data : res.data;
-    return raw ? normalizeLog(raw) : null;
+    const res = await axiosClient.get<ApiResponse<PetHealthLog> | PetHealthLog>(`/health-logs/pet/${petId}/latest`);
+    const raw = (res.data as ApiResponse<PetHealthLog>)?.data !== undefined ? (res.data as ApiResponse<PetHealthLog>).data : (res.data as PetHealthLog);
+    return raw ? normalizeLog(raw as Partial<PetHealthLog> & Record<string, unknown>) : null;
   },
 
   async create(dto: CreatePetHealthLogDTO): Promise<PetHealthLog> {
@@ -74,9 +75,9 @@ export const healthLogService = {
       weight_kg: dto.weight_kg !== undefined ? Number(dto.weight_kg) : undefined,
       height_cm: dto.height_cm !== undefined ? Number(dto.height_cm) : undefined,
     };
-    const res = await axiosClient.post<any>("/health-logs", payload);
-    const raw = res.data?.data !== undefined ? res.data.data : res.data;
-    return normalizeLog(raw);
+    const res = await axiosClient.post<ApiResponse<PetHealthLog> | PetHealthLog>("/health-logs", payload);
+    const raw = (res.data as ApiResponse<PetHealthLog>)?.data !== undefined ? (res.data as ApiResponse<PetHealthLog>).data : (res.data as PetHealthLog);
+    return normalizeLog(raw as Partial<PetHealthLog> & Record<string, unknown>);
   },
 
   async update(id: string, dto: UpdatePetHealthLogDTO): Promise<PetHealthLog> {
@@ -87,9 +88,9 @@ export const healthLogService = {
       _mockHealthLogs[idx] = updated;
       return mockDelay(updated);
     }
-    const res = await axiosClient.patch<any>(`/health-logs/${id}`, dto);
-    const raw = res.data?.data !== undefined ? res.data.data : res.data;
-    return normalizeLog(raw);
+    const res = await axiosClient.patch<ApiResponse<PetHealthLog> | PetHealthLog>(`/health-logs/${id}`, dto);
+    const raw = (res.data as ApiResponse<PetHealthLog>)?.data !== undefined ? (res.data as ApiResponse<PetHealthLog>).data : (res.data as PetHealthLog);
+    return normalizeLog(raw as Partial<PetHealthLog> & Record<string, unknown>);
   },
 
   async delete(id: string): Promise<void> {
@@ -100,3 +101,9 @@ export const healthLogService = {
     await axiosClient.delete(`/health-logs/${id}`);
   },
 };
+
+export const healthLog = {
+  service: healthLogService,
+};
+
+export default healthLogService;

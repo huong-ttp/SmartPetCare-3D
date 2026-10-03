@@ -26,7 +26,7 @@ export default function EditPetPage() {
     try {
       const data = await petService.getById(petId);
       setPet(data);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Error loading pet details for editing:", err);
       setErrorMsg("Không tìm thấy thông tin thú cưng hoặc bạn không có quyền truy cập.");
     } finally {

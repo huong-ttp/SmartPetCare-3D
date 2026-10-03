@@ -13,3 +13,4 @@ export * from "./invoice.type";
 export * from "./payment.type";
 export * from "./notification.type";
 export * from "./schedule.type";
+export * from "./api.type";

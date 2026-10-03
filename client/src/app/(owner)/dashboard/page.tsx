@@ -9,6 +9,7 @@ import { petService } from "@/services/petService";
 import { appointmentService } from "@/services/appointmentService";
 import { notificationService } from "@/services/notificationService";
 import { invoiceService } from "@/services/invoiceService";
+import type { Appointment } from "@/types/appointment.type";
 import { useAuth } from "@/lib/auth-context";
 
 // Dynamic import for 3D component to disable SSR
@@ -55,17 +56,18 @@ export default function OwnerDashboardPage() {
         setTotalPets(Array.isArray(pets) ? pets.length : 0);
 
         // Normalize appts: API có thể trả về mảng trực tiếp hoặc bọc trong { data: [...] } / { items: [...] }
-        const appointmentsList: any[] = Array.isArray(appts)
-          ? appts
-          : Array.isArray((appts as any)?.data)
-          ? (appts as any).data
-          : Array.isArray((appts as any)?.items)
-          ? (appts as any).items
+        const rawAppts = appts as Appointment[] | { data?: Appointment[]; items?: Appointment[] } | null | undefined;
+        const appointmentsList: Appointment[] = Array.isArray(rawAppts)
+          ? rawAppts
+          : Array.isArray(rawAppts?.data)
+          ? rawAppts.data
+          : Array.isArray(rawAppts?.items)
+          ? rawAppts.items
           : [];
 
         // Filter upcoming appts: confirmed + scheduled_at trong tương lai
         const now = new Date();
-        const upcoming = appointmentsList.filter((a: any) =>
+        const upcoming = appointmentsList.filter((a) =>
           a?.status === "confirmed" && a?.scheduled_at && new Date(a.scheduled_at) >= now
         );
         setUpcomingAppts(upcoming.length);
@@ -78,7 +80,7 @@ export default function OwnerDashboardPage() {
         const unpaid = invoices.filter(i => i.status === "unpaid");
         setUnpaidInvoices(unpaid.length);
 
-      } catch (err: any) {
+      } catch (err) {
         console.error("Failed to fetch dashboard data:", err);
         setErrorMsg("Không thể tải dữ liệu tổng quan. Vui lòng thử lại sau.");
       } finally {

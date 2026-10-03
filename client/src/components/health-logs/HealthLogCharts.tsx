@@ -79,7 +79,7 @@ export const HealthLogCharts: React.FC<HealthLogChartsProps> = ({
 
     // 2. Process medical records (clinical visits weight_at_visit)
     medicalRecords.forEach((mr) => {
-      const rawDate = (mr as any).visit_date || (mr as any).record_date || (mr as any).created_at || "";
+      const rawDate = (mr as { visit_date?: string; record_date?: string }).visit_date || (mr as { record_date?: string }).record_date || mr.created_at || "";
       const dateStr = rawDate ? rawDate.split("T")[0] : "";
       if (!dateStr) return;
 
@@ -120,7 +120,8 @@ export const HealthLogCharts: React.FC<HealthLogChartsProps> = ({
   }, [chartData]);
 
   // Custom Tooltip
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  interface TooltipProps { active?: boolean; payload?: Array<{ payload: ChartDataPoint; value?: number; name?: string; color?: string }>; label?: string; }
+  const CustomTooltip = ({ active, payload, label }: TooltipProps) => {
     if (!active || !payload || !payload.length) return null;
 
     const dataPoint: ChartDataPoint | undefined = payload[0]?.payload;

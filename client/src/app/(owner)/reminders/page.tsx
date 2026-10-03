@@ -222,7 +222,7 @@ export default function ReminderCenterPage() {
         ],
       });
       setReminders(data);
-    } catch (err: any) {
+    } catch (err) {
       console.error("[ReminderCenter] Error loading reminders:", err);
       setError("Không thể tải danh sách nhắc lịch. Vui lòng thử lại sau.");
       showToastError("Lỗi tải danh sách nhắc lịch.");

@@ -151,7 +151,7 @@ export default function AdminPaymentsPage() {
         } catch (e) {
           // ignore stat fetch error
         }
-      } catch (err: any) {
+      } catch (err) {
         console.error("[AdminPayments] Failed to load payments:", err);
         setErrorMessage(
           err?.response?.data?.message ||
@@ -436,7 +436,7 @@ export default function AdminPaymentsPage() {
               <select
                 value={methodFilter}
                 onChange={(e) => {
-                  setMethodFilter(e.target.value as any);
+                  setMethodFilter(e.target.value as PaymentMethod | "all");
                   setPagination((prev) => ({ ...prev, page: 1 }));
                 }}
                 className="w-full text-xs py-2.5 px-3 bg-slate-50 border border-slate-200/80 rounded-2xl outline-none focus:border-[#0EA5B7] focus:bg-white text-slate-700 font-medium transition-all cursor-pointer"

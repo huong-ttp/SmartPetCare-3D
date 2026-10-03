@@ -188,7 +188,7 @@ export default function PetMedicalRecordsPage() {
       });
 
       setRecords(sortedRecords);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Lỗi khi tải hồ sơ bệnh án:", err);
       setError(
         err?.response?.data?.message ||

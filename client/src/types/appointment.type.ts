@@ -59,6 +59,7 @@ export interface AppointmentFilterDTO {
   doctor?: "me" | string;
   date?: string;
   upcoming?: boolean;
+  tab?: string;
 }
 
 export interface DoctorDashboardOverview {
@@ -104,6 +105,7 @@ export interface AdminAppointmentFilterParams {
   search?: string;
   status?: AppointmentStatus | "all" | string;
   unassigned?: boolean;
+  date?: string;
   dateFrom?: string;
   dateTo?: string;
   page?: number;

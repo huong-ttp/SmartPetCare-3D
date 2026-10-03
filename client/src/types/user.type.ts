@@ -70,8 +70,8 @@ export interface CreateAdminUserDTO {
 // DTO cập nhật thông tin user bởi admin
 export interface UpdateAdminUserDTO {
   full_name?: string;
-  phone?: string;
-  address?: string;
+  phone?: string | null;
+  address?: string | null;
 }
 
 export interface UserFilterParams {

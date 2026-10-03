@@ -49,7 +49,7 @@ export default function ConfirmPaymentModal({
       showSuccess(`Đã xác nhận thanh toán #PAY-${paymentId} thành công.`);
       onSuccess(res);
       onClose();
-    } catch (err: any) {
+    } catch (err) {
       console.error("[ConfirmPaymentModal] Error confirming payment:", err);
       const msg =
         err?.response?.data?.message ||

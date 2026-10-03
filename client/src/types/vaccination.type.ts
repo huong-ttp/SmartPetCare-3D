@@ -93,7 +93,11 @@ export interface UpdateVaccineTypeDTO {
 export interface AdminVaccinationFilterParams {
   search?: string;
   vaccineType?: string | number;
+  vaccineTypeId?: string | number;
+  status?: string;
   dueStatus?: "all" | "upcoming" | "due_soon" | "overdue" | "valid";
+  dateFrom?: string;
+  dateTo?: string;
   page?: number;
   limit?: number;
 }

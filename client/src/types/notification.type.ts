@@ -64,7 +64,7 @@ export interface ReminderNotification {
 }
 
 export interface NotificationFilterParams {
-  user?: any;
+  user?: string | number | { id?: string | number };
   type?: string | string[];
   unread?: boolean;
   limit?: number;

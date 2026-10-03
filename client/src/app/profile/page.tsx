@@ -83,7 +83,7 @@ export default function ProfilePage() {
           created_at: data.created_at || "",
         });
         setAvatarPreview(data.avatar_url || "");
-      } catch (err: any) {
+      } catch (err) {
         console.error("[ProfilePage] Failed to fetch profile:", err);
         // Fallback to user from auth context
         if (user) {
@@ -211,7 +211,7 @@ export default function ProfilePage() {
       });
 
       toast.success("Thông tin tài khoản đã được cập nhật thành công!", "Cập nhật thành công");
-    } catch (err: any) {
+    } catch (err) {
       console.error("[ProfilePage] Update profile error:", err);
       const msg =
         err?.response?.data?.message ||
@@ -271,7 +271,7 @@ export default function ProfilePage() {
         new_password: "",
         confirm_password: "",
       });
-    } catch (err: any) {
+    } catch (err) {
       console.error("[ProfilePage] Change password error:", err);
       const msg =
         err?.response?.data?.message ||

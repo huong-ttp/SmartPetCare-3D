@@ -115,7 +115,7 @@ export default function AdminMedicalRecordsPage() {
         if (result.pagination) {
           setPagination(result.pagination);
         }
-      } catch (err: any) {
+      } catch (err) {
         console.error("Lỗi khi tải danh sách hồ sơ bệnh án:", err);
         setErrorMessage(
           err?.response?.data?.message ||
@@ -189,7 +189,7 @@ export default function AdminMedicalRecordsPage() {
       showToastSuccess(`Đã xóa thành công hồ sơ bệnh án #${recId}!`);
       setRecordToDelete(null);
       fetchRecords(false);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Lỗi khi xóa hồ sơ:", err);
       const errMsg =
         err?.response?.data?.message ||

@@ -1,11 +1,11 @@
 /**
  * vaccineTypeService.ts
  * Service truy vấn danh mục loại vắc xin (VACCINE_TYPES).
- * Hỗ trợ cả API backend (/vaccine-types) và mock fallback.
  */
 
 import axiosClient from "@/lib/axiosClient";
 import type { VaccineType, CreateVaccineTypeDTO, UpdateVaccineTypeDTO } from "@/types/vaccination.type";
+import type { ApiResponse } from "@/types/api.type";
 import { MOCK_VACCINE_TYPES, MOCK_PET_VACCINATIONS } from "@/lib/mock";
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === "true";
@@ -14,17 +14,18 @@ function mockDelay<T>(data: T, ms = 300): Promise<T> {
   return new Promise((resolve) => setTimeout(() => resolve(data), ms));
 }
 
-function normalizeVaccineType(raw: any): VaccineType {
-  const id = raw.vaccine_type_id ?? raw.id;
+function normalizeVaccineType(raw: Partial<VaccineType> & Record<string, unknown>): VaccineType {
+  const id = (raw.vaccine_type_id as number | string | undefined) ?? (raw.id as number | string | undefined);
   return {
-    id: String(id),
-    vaccine_type_id: id,
-    name: raw.name || "Vắc xin",
-    description: raw.description || "",
+    ...(raw as unknown as VaccineType),
+    id: String(id ?? ""),
+    vaccine_type_id: id ? (Number(id) || id) : undefined,
+    name: (raw.name as string | undefined) || "Vắc xin",
+    description: (raw.description as string | undefined) || "",
     recommended_interval_days: Number(raw.recommended_interval_days) || 365,
-    applicable_species: raw.applicable_species || (raw.name?.toLowerCase().includes("mèo") ? ["cat"] : ["dog", "cat"]),
-    created_at: raw.created_at || new Date().toISOString(),
-    updated_at: raw.updated_at || new Date().toISOString(),
+    applicable_species: (raw.applicable_species as Array<"dog" | "cat"> | undefined) || (raw.name?.toLowerCase().includes("mèo") ? ["cat"] : ["dog", "cat"]),
+    created_at: (raw.created_at as string | undefined) || new Date().toISOString(),
+    updated_at: (raw.updated_at as string | undefined) || new Date().toISOString(),
   };
 }
 
@@ -35,20 +36,15 @@ export const vaccineTypeService = {
    */
   async list(): Promise<VaccineType[]> {
     if (USE_MOCK) {
-      return mockDelay(MOCK_VACCINE_TYPES.map(normalizeVaccineType));
+      return mockDelay(MOCK_VACCINE_TYPES.map((v) => normalizeVaccineType(v as Partial<VaccineType> & Record<string, unknown>)));
     }
 
-    try {
-      const res = await axiosClient.get<any>("/vaccine-types");
-      const rawList = Array.isArray(res.data) ? res.data : (res.data?.data ?? []);
-      if (Array.isArray(rawList)) {
-        return rawList.map(normalizeVaccineType);
-      }
-      return [];
-    } catch (err) {
-      console.warn("[vaccineTypeService.list] Failed to fetch from API, falling back to mock:", err);
-      return MOCK_VACCINE_TYPES.map(normalizeVaccineType);
+    const res = await axiosClient.get<ApiResponse<VaccineType[]> | VaccineType[]>("/vaccine-types");
+    const rawList = Array.isArray(res.data) ? res.data : (res.data?.data ?? []);
+    if (Array.isArray(rawList)) {
+      return rawList.map((item) => normalizeVaccineType(item as Partial<VaccineType> & Record<string, unknown>));
     }
+    return [];
   },
 
   /** Alias: getAll */
@@ -78,7 +74,7 @@ export const vaccineTypeService = {
         updated_at: new Date().toISOString(),
       };
       MOCK_VACCINE_TYPES.push(newType);
-      return mockDelay(normalizeVaccineType(newType));
+      return mockDelay(normalizeVaccineType(newType as Partial<VaccineType> & Record<string, unknown>));
     }
 
     const payload = {
@@ -87,9 +83,9 @@ export const vaccineTypeService = {
       recommended_interval_days: Number(dto.recommended_interval_days),
     };
 
-    const res = await axiosClient.post<any>("/vaccine-types", payload);
-    const raw = res.data?.data ?? res.data;
-    return normalizeVaccineType(raw);
+    const res = await axiosClient.post<ApiResponse<VaccineType> | VaccineType>("/vaccine-types", payload);
+    const raw = (res.data as ApiResponse<VaccineType>)?.data ?? (res.data as VaccineType);
+    return normalizeVaccineType(raw as Partial<VaccineType> & Record<string, unknown>);
   },
 
   /** Cập nhật thông tin loại vắc xin (admin) */
@@ -105,7 +101,7 @@ export const vaccineTypeService = {
           ...dto,
           updated_at: new Date().toISOString(),
         };
-        return mockDelay(normalizeVaccineType(MOCK_VACCINE_TYPES[index]));
+        return mockDelay(normalizeVaccineType(MOCK_VACCINE_TYPES[index] as Partial<VaccineType> & Record<string, unknown>));
       }
       throw new Error("Không tìm thấy loại vắc xin");
     }
@@ -116,9 +112,9 @@ export const vaccineTypeService = {
       recommended_interval_days: dto.recommended_interval_days !== undefined ? Number(dto.recommended_interval_days) : undefined,
     };
 
-    const res = await axiosClient.put<any>(`/vaccine-types/${id}`, payload);
-    const raw = res.data?.data ?? res.data;
-    return normalizeVaccineType(raw);
+    const res = await axiosClient.put<ApiResponse<VaccineType> | VaccineType>(`/vaccine-types/${id}`, payload);
+    const raw = (res.data as ApiResponse<VaccineType>)?.data ?? (res.data as VaccineType);
+    return normalizeVaccineType(raw as Partial<VaccineType> & Record<string, unknown>);
   },
 
   /** Xóa loại vắc xin (admin) */
@@ -144,10 +140,11 @@ export const vaccineTypeService = {
 
     try {
       await axiosClient.delete(`/vaccine-types/${id}`);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } }; message?: string };
       const message =
-        error?.response?.data?.message ||
-        error?.message ||
+        err?.response?.data?.message ||
+        err?.message ||
         "Không thể xóa loại vắc xin.";
       throw new Error(message);
     }

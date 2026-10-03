@@ -103,7 +103,7 @@ export default function AdminPetsPage() {
         if (res.pagination) {
           setPagination(res.pagination);
         }
-      } catch (err: any) {
+      } catch (err) {
         console.error("Failed to fetch pets list:", err);
         setErrorMessage(
           err?.response?.data?.message ||
@@ -187,7 +187,7 @@ export default function AdminPetsPage() {
     const dogs = pets.filter((p) => p.species === "dog").length;
     const cats = pets.filter((p) => p.species === "cat").length;
     const other = pets.filter((p) => p.species !== "dog" && p.species !== "cat").length;
-    const withChip = pets.filter((p) => !!p.microchip_number || !!(p as any).microchip_id).length;
+    const withChip = pets.filter((p) => !!p.microchip_number || !!p.microchip_id).length;
     return { total, dogs, cats, other, withChip };
   }, [pets, pagination.total]);
 

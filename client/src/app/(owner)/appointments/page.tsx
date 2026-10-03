@@ -85,7 +85,7 @@ export default function OwnerAppointmentsPage() {
       showSuccess("Đã hủy lịch hẹn thành công.");
       closeCancelModal();
       loadAppointments();
-    } catch (err: any) {
+    } catch (err) {
       showError(err?.message || "Không thể hủy lịch hẹn.");
       setIsCancelling(false);
     }

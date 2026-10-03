@@ -75,7 +75,7 @@ export default function CancelInvoiceModal({
       showSuccess(`Đã hủy hóa đơn #INV-${invoiceId} thành công.`);
       onSuccess(updated);
       onClose();
-    } catch (err: any) {
+    } catch (err) {
       console.error("[CancelInvoiceModal] Error cancelling invoice:", err);
       const msg =
         err?.response?.data?.message ||

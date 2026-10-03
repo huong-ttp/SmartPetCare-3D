@@ -3,7 +3,10 @@
 import { useFrame } from "@react-three/fiber";
 
 // Hook to apply subtle floating motion to a group
-export function useFloat(ref: any, speed = 0.6, intensity = 0.06) {
+import type { RefObject } from "react";
+import type { Object3D } from "three";
+
+export function useFloat(ref: RefObject<Object3D | null> | { current: Object3D | null }, speed = 0.6, intensity = 0.06) {
   useFrame((state, delta) => {
     if (!ref.current) return;
     const t = state.clock.getElapsedTime() * speed;

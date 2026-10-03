@@ -66,7 +66,7 @@ export default function AdminInvoiceDetailPage() {
       try {
         const data = await invoice.service.getById(invoiceId, true);
         setInvoiceData(data);
-      } catch (err: any) {
+      } catch (err) {
         console.error("[AdminInvoiceDetail] Fetch error:", err);
         setErrorMessage(
           err?.response?.data?.message ||

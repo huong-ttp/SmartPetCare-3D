@@ -2,6 +2,7 @@
  * adminService.ts — Admin: quản lý user, thống kê
  */
 import axiosClient from "@/lib/axiosClient";
+import type { ApiResponse } from "@/types/api.type";
 import type {
   User,
   UserRole,
@@ -64,7 +65,7 @@ function mockDelay<T>(data: T, ms = 400): Promise<T> {
   return new Promise((resolve) => setTimeout(() => resolve(data), ms));
 }
 
-export let _adminMockNotifications: AdminNotificationItem[] = MOCK_NOTIFICATIONS.map((n, idx) => {
+export const _adminMockNotifications: AdminNotificationItem[] = MOCK_NOTIFICATIONS.map((n, idx) => {
   const user = MOCK_USERS.find(
     (u) => String(u.id) === String(n.user_id) || String(u.user_id) === String(n.user_id)
   );
@@ -87,7 +88,7 @@ export let _adminMockNotifications: AdminNotificationItem[] = MOCK_NOTIFICATIONS
   };
 });
 
-export let _adminMockAppointments: Appointment[] = [
+export const _adminMockAppointments: Appointment[] = [
   {
     id: "a1",
     appointment_id: 101,
@@ -219,53 +220,133 @@ let _adminMockPets: Pet[] = MOCK_PETS.map((p) => {
   };
 });
 
-function normalizePet(item: any): Pet {
-  if (!item) return item;
+function normalizePet(item: unknown): Pet {
+  if (!item) return item as unknown as Pet;
+  const p = item as Record<string, unknown>;
   return {
-    ...item,
-    id: String(item.id ?? item.pet_id ?? ""),
-    microchip_number: item.microchip_number ?? item.microchip_id ?? undefined,
-    notes: item.notes ?? item.special_notes ?? undefined,
-  };
+    ...(item as Pet),
+    id: String(p.id ?? p.pet_id ?? ""),
+    microchip_number: (p.microchip_number as string | undefined) ?? (p.microchip_id as string | undefined) ?? undefined,
+    notes: (p.notes as string | undefined) ?? (p.special_notes as string | undefined) ?? undefined,
+  } as Pet;
 }
 
-function normalizeAppointment(item: any): Appointment {
-  if (!item) return item;
-  const pet = MOCK_PETS.find((p) => String(p.id) === String(item.pet_id));
-  const owner = MOCK_USERS.find((u) => String(u.id) === String(item.owner_id));
-  const doctor = item.doctor_id
-    ? MOCK_USERS.find((u) => String(u.id) === String(item.doctor_id))
+function normalizeAppointment(item: unknown): Appointment {
+  if (!item) return item as unknown as Appointment;
+  const raw = item as Record<string, unknown>;
+  const pet = MOCK_PETS.find((p) => String(p.id) === String(raw.pet_id));
+  const owner = MOCK_USERS.find((u) => String(u.id) === String(raw.owner_id));
+  const doctor = raw.doctor_id
+    ? MOCK_USERS.find((u) => String(u.id) === String(raw.doctor_id))
     : null;
 
-  const rawDate = item.appointment_date || (item.scheduled_at ? item.scheduled_at.split("T")[0] : "");
-  const rawStartTime = item.start_time || (item.scheduled_at ? item.scheduled_at.split("T")[1]?.slice(0, 5) : "09:00");
+  const rawDate = (raw.appointment_date as string | undefined) || ((raw.scheduled_at as string | undefined) ? (raw.scheduled_at as string).split("T")[0] : "");
+  const rawStartTime = (raw.start_time as string | undefined) || ((raw.scheduled_at as string | undefined) ? (raw.scheduled_at as string).split("T")[1]?.slice(0, 5) : "09:00");
 
   return {
-    ...item,
-    id: String(item.id ?? item.appointment_id ?? ""),
-    appointment_id: item.appointment_id ?? item.id,
-    pet_name: item.pet_name || pet?.name || "Thú cưng",
-    pet_species: item.pet_species || pet?.species || "dog",
-    pet_breed: item.pet_breed || pet?.breed || "",
-    pet_weight: item.pet_weight ?? pet?.weight_kg,
-    owner_name: item.owner_name || owner?.full_name || "Chủ nuôi",
-    owner_phone: item.owner_phone || owner?.phone || "",
-    owner_email: item.owner_email || owner?.email || "",
-    doctor_name: item.doctor_name || doctor?.full_name || undefined,
-    doctor_phone: item.doctor_phone || doctor?.phone || undefined,
-    doctor_email: item.doctor_email || doctor?.email || undefined,
-    service_name: item.service_name || "Khám sức khỏe tổng quát",
+    ...(item as Appointment),
+    id: String(raw.id ?? raw.appointment_id ?? ""),
+    appointment_id: (raw.appointment_id as number | undefined) ?? (raw.id as number | undefined),
+    pet_name: (raw.pet_name as string | undefined) || pet?.name || "Thú cưng",
+    pet_species: (raw.pet_species as string | undefined) || pet?.species || "dog",
+    pet_breed: (raw.pet_breed as string | undefined) || pet?.breed || "",
+    pet_weight: (raw.pet_weight as number | undefined) ?? pet?.weight_kg,
+    owner_name: (raw.owner_name as string | undefined) || owner?.full_name || "Chủ nuôi",
+    owner_phone: (raw.owner_phone as string | undefined) || owner?.phone || "",
+    owner_email: (raw.owner_email as string | undefined) || owner?.email || "",
+    doctor_name: (raw.doctor_name as string | undefined) || doctor?.full_name || undefined,
+    doctor_phone: (raw.doctor_phone as string | undefined) || doctor?.phone || undefined,
+    doctor_email: (raw.doctor_email as string | undefined) || doctor?.email || undefined,
+    service_name: (raw.service_name as string | undefined) || "Khám sức khỏe tổng quát",
     appointment_date: rawDate,
     start_time: rawStartTime,
-    end_time: item.end_time || "10:00",
-    status: item.status || "confirmed",
-    reason: item.reason || undefined,
-    notes: item.notes || undefined,
-    cancel_reason: item.cancel_reason || undefined,
-  };
+    end_time: (raw.end_time as string | undefined) || "10:00",
+    status: (raw.status as Appointment["status"]) || "confirmed",
+    reason: raw.reason as string | undefined,
+    notes: raw.notes as string | undefined,
+    cancel_reason: raw.cancel_reason as string | undefined,
+  } as Appointment;
 }
 
+function normalizeAdminInvoice(item: unknown): Invoice {
+  if (!item) return item as unknown as Invoice;
+  const raw = item as Record<string, unknown>;
+  const cleanId = String(raw.invoice_id ?? raw.id ?? "");
+  return {
+    ...raw,
+    id: cleanId,
+    invoice_id: raw.invoice_id ?? raw.id,
+    appointment_id: String(raw.appointment_id ?? ""),
+    owner_id: String(raw.owner_id ?? raw.user_id ?? ""),
+    owner_name: (raw.owner_name as string) || "Khách hàng",
+    owner_phone: raw.owner_phone as string | undefined,
+    owner_email: raw.owner_email as string | undefined,
+    pet_id: raw.pet_id as string | number | undefined,
+    pet_name: (raw.pet_name as string) || "Thú cưng",
+    pet_species: raw.pet_species as string | undefined,
+    pet_breed: raw.pet_breed as string | undefined,
+    status: (raw.status as Invoice["status"]) || "unpaid",
+    total_amount: Number(raw.total_amount || 0),
+    issued_date: (raw.issued_date || raw.issued_at || raw.created_at) as string,
+    cancel_reason: raw.cancel_reason as string | undefined,
+    items: Array.isArray(raw.items) ? raw.items : [],
+    payments: Array.isArray(raw.payments) ? raw.payments : [],
+    created_at: (raw.created_at || raw.issued_date || new Date().toISOString()) as string,
+  } as Invoice;
+}
 
+function normalizeAdminPayment(item: unknown): Payment {
+  if (!item) return item as unknown as Payment;
+  const raw = item as Record<string, unknown>;
+  return {
+    ...raw,
+    id: String(raw.payment_id ?? raw.id ?? ""),
+    payment_id: raw.payment_id ?? raw.id,
+    invoice_id: String(raw.invoice_id ?? ""),
+    owner_id: String(raw.owner_id ?? raw.user_id ?? ""),
+    owner_name: (raw.owner_name as string) || "Khách hàng",
+    pet_id: raw.pet_id as string | number | undefined,
+    pet_name: raw.pet_name as string | undefined,
+    amount: Number(raw.amount || 0),
+    payment_method: (raw.payment_method as Payment["payment_method"]) || "cash",
+    status: (raw.status as Payment["status"]) || "pending",
+    transaction_ref: raw.transaction_ref as string | undefined,
+    reject_reason: raw.reject_reason as string | undefined,
+    payment_date: (raw.payment_date || raw.created_at) as string,
+    paid_at: raw.paid_at as string | undefined,
+    created_at: (raw.created_at || raw.payment_date || new Date().toISOString()) as string,
+    updated_at: (raw.updated_at || new Date().toISOString()) as string,
+  } as Payment;
+}
+
+function normalizeAdminNotification(item: unknown): AdminNotificationItem {
+  if (!item) return item as unknown as AdminNotificationItem;
+  const raw = item as Record<string, unknown>;
+  const id = raw.notification_id ?? raw.id ?? `notif_${Date.now()}`;
+  const user = MOCK_USERS.find(
+    (u) =>
+      String(u.id) === String(raw.user_id) ||
+      String(u.user_id) === String(raw.user_id)
+  );
+  return {
+    ...raw,
+    notification_id: id,
+    id,
+    user_id: raw.user_id as string | number,
+    full_name: (raw.full_name as string) || user?.full_name || "Người dùng",
+    user_email: (raw.user_email as string) || user?.email || "",
+    pet_id: (raw.pet_id as string | number | null) ?? null,
+    pet_name: (raw.pet_name as string | null) ?? null,
+    type: (raw.type as AdminNotificationItem["type"]) || "system",
+    title: (raw.title as string) || "Thông báo",
+    content: (raw.content || raw.message || "") as string,
+    message: (raw.message || raw.content || "") as string,
+    is_read: Boolean(raw.is_read),
+    scheduled_at: (raw.scheduled_at as string | null) ?? null,
+    sent_at: (raw.sent_at || raw.created_at || null) as string | null,
+    created_at: (raw.created_at || new Date().toISOString()) as string,
+  } as AdminNotificationItem;
+}
 
 export interface AdminOverview {
   totalUsers: number;
@@ -308,7 +389,7 @@ export interface AdminDashboardData {
   vaccinationStatistics: VaccinationStatItem[];
 }
 
-export interface AdminStats extends AdminOverview {}
+export type AdminStats = AdminOverview;
 
 export const adminService = {
   async listUsers(filters?: UserFilterParams): Promise<UserListResult> {
@@ -348,9 +429,9 @@ export const adminService = {
     if (filters?.page) params.append("page", String(filters.page));
     if (filters?.limit) params.append("limit", String(filters.limit));
 
-    const res = await axiosClient.get<any>(`/admin/users?${params.toString()}`);
-    const data = res.data?.data;
-    if (data?.items) {
+    const res = await axiosClient.get<ApiResponse<UserListResult | User[]>>(`/admin/users?${params.toString()}`);
+    const data = (res.data?.data ?? res.data) as UserListResult | User[];
+    if (data && typeof data === "object" && "items" in data) {
       return data as UserListResult;
     }
     // Fallback if data is raw array
@@ -373,14 +454,17 @@ export const adminService = {
 
   async getAllUsers(): Promise<User[]> {
     if (USE_MOCK) return mockDelay(MOCK_USERS);
-    const res = await axiosClient.get<any>("/admin/users");
-    return res.data?.data?.items || res.data?.data || res.data;
+    const res = await axiosClient.get<ApiResponse<UserListResult | User[]>>("/admin/users");
+    const d = res.data?.data ?? res.data;
+    if (d && typeof d === "object" && "items" in d && Array.isArray((d as UserListResult).items)) return (d as UserListResult).items;
+    return Array.isArray(d) ? d : [];
   },
 
   async getDoctors(): Promise<User[]> {
     if (USE_MOCK) return mockDelay(MOCK_USERS.filter((u) => u.role === "doctor"));
-    const res = await axiosClient.get<any>("/admin/doctors");
-    return res.data?.data || res.data;
+    const res = await axiosClient.get<ApiResponse<User[]>>("/admin/doctors");
+    const d = res.data?.data ?? res.data;
+    return Array.isArray(d) ? d : [];
   },
 
   async createUser(data: CreateAdminUserDTO): Promise<User> {
@@ -399,8 +483,8 @@ export const adminService = {
       MOCK_USERS.unshift(newUser);
       return mockDelay(newUser);
     }
-    const res = await axiosClient.post<any>("/admin/users", data);
-    return res.data?.data || res.data;
+    const res = await axiosClient.post<ApiResponse<User>>("/admin/users", data);
+    return (res.data?.data ?? res.data) as User;
   },
 
   async updateUserRole(id: string | number, role: UserRole): Promise<User> {
@@ -411,8 +495,8 @@ export const adminService = {
       u.updated_at = new Date().toISOString();
       return mockDelay({ ...u });
     }
-    const res = await axiosClient.put<any>(`/admin/users/${id}/role`, { role });
-    return res.data?.data || res.data;
+    const res = await axiosClient.put<ApiResponse<User>>(`/admin/users/${id}/role`, { role });
+    return (res.data?.data ?? res.data) as User;
   },
 
   async toggleUserActive(userId: string | number, isActive?: boolean): Promise<User> {
@@ -424,8 +508,8 @@ export const adminService = {
       u.updated_at = new Date().toISOString();
       return mockDelay({ ...u });
     }
-    const res = await axiosClient.patch<any>(`/admin/users/${userId}/toggle-active`);
-    return res.data?.data || res.data;
+    const res = await axiosClient.patch<ApiResponse<User>>(`/admin/users/${userId}/toggle-active`);
+    return (res.data?.data ?? res.data) as User;
   },
 
   async deleteUser(userId: string | number): Promise<User> {
@@ -438,8 +522,8 @@ export const adminService = {
       u.updated_at = new Date().toISOString();
       return mockDelay({ ...u });
     }
-    const res = await axiosClient.delete<any>(`/admin/users/${userId}`);
-    return res.data?.data || res.data;
+    const res = await axiosClient.delete<ApiResponse<User>>(`/admin/users/${userId}`);
+    return (res.data?.data ?? res.data) as User;
   },
 
   async restoreUser(userId: string | number): Promise<User> {
@@ -452,8 +536,8 @@ export const adminService = {
       u.updated_at = new Date().toISOString();
       return mockDelay({ ...u });
     }
-    const res = await axiosClient.patch<any>(`/admin/users/${userId}/restore`);
-    return res.data?.data || res.data;
+    const res = await axiosClient.patch<ApiResponse<User>>(`/admin/users/${userId}/restore`);
+    return (res.data?.data ?? res.data) as User;
   },
 
   async updateUser(userId: string | number, data: UpdateAdminUserDTO): Promise<User> {
@@ -461,13 +545,13 @@ export const adminService = {
       const u = MOCK_USERS.find((u) => u.id === String(userId) || u.user_id === Number(userId));
       if (!u) throw new Error("Người dùng không tồn tại.");
       if (data.full_name !== undefined) u.full_name = data.full_name;
-      if (data.phone !== undefined) u.phone = data.phone;
-      if (data.address !== undefined) u.address = data.address;
+      if (data.phone !== undefined) u.phone = data.phone || undefined;
+      if (data.address !== undefined) u.address = data.address || undefined;
       u.updated_at = new Date().toISOString();
       return mockDelay({ ...u });
     }
-    const res = await axiosClient.put<any>(`/admin/users/${userId}`, data);
-    return res.data?.data || res.data;
+    const res = await axiosClient.put<ApiResponse<User>>(`/admin/users/${userId}`, data);
+    return (res.data?.data ?? res.data) as User;
   },
 
   async getStats(): Promise<AdminDashboardData> {
@@ -518,8 +602,8 @@ export const adminService = {
     }
 
     try {
-      const res = await axiosClient.get<any>("/admin/dashboard");
-      const data = res.data?.data || res.data;
+      const res = await axiosClient.get<ApiResponse<AdminDashboardData>>("/admin/dashboard");
+      const data = (res.data?.data || res.data) as AdminDashboardData;
       if (data?.overview) {
         return data as AdminDashboardData;
       }
@@ -527,8 +611,8 @@ export const adminService = {
     } catch (err) {
       console.warn("Failed to fetch from /admin/dashboard, trying /admin/stats fallback:", err);
       try {
-        const fallbackRes = await axiosClient.get<any>("/admin/stats");
-        const fallbackData = fallbackRes.data?.data || fallbackRes.data;
+        const fallbackRes = await axiosClient.get<ApiResponse<AdminDashboardData>>("/admin/stats");
+        const fallbackData = (fallbackRes.data?.data || fallbackRes.data) as AdminDashboardData;
         if (fallbackData?.overview) {
           return fallbackData as AdminDashboardData;
         }
@@ -573,9 +657,9 @@ export const adminService = {
     if (filters?.page) params.append("page", String(filters.page));
     if (filters?.limit) params.append("limit", String(filters.limit));
 
-    const res = await axiosClient.get<any>(`/admin/pets?${params.toString()}`);
-    const data = res.data?.data;
-    if (data?.items) {
+    const res = await axiosClient.get<ApiResponse<PetListResult | (Partial<Pet> & Record<string, unknown>)[]>>(`/admin/pets?${params.toString()}`);
+    const data = (res.data?.data ?? res.data) as PetListResult | Pet[];
+    if (data && typeof data === "object" && "items" in data) {
       return {
         items: data.items.map(normalizePet),
         pagination: data.pagination,
@@ -605,8 +689,8 @@ export const adminService = {
       if (!p) throw new Error("Thú cưng không tồn tại.");
       return mockDelay({ ...p });
     }
-    const res = await axiosClient.get<any>(`/admin/pets/${cleanId}`);
-    const raw = res.data?.data ?? res.data;
+    const res = await axiosClient.get<ApiResponse<Partial<Pet> & Record<string, unknown>>>(`/admin/pets/${cleanId}`);
+    const raw = (res.data?.data ?? res.data) as Partial<Pet> & Record<string, unknown>;
     return normalizePet(raw);
   },
 
@@ -635,11 +719,11 @@ export const adminService = {
     }
     const payload = {
       ...dto,
-      microchip_id: (dto as any).microchip_id ?? dto.microchip_number,
-      special_notes: (dto as any).special_notes ?? dto.notes,
+      microchip_id: (dto as { microchip_id?: string }).microchip_id ?? dto.microchip_number,
+      special_notes: (dto as { special_notes?: string }).special_notes ?? dto.notes,
     };
-    const res = await axiosClient.put<any>(`/admin/pets/${cleanId}`, payload);
-    const raw = res.data?.data ?? res.data;
+    const res = await axiosClient.put<ApiResponse<Partial<Pet> & Record<string, unknown>>>(`/admin/pets/${cleanId}`, payload);
+    const raw = (res.data?.data ?? res.data) as Partial<Pet> & Record<string, unknown>;
     return normalizePet(raw);
   },
 
@@ -649,8 +733,8 @@ export const adminService = {
       _adminMockPets = _adminMockPets.filter((item) => String(item.id) !== cleanId);
       return mockDelay({ message: "Pet deleted successfully" });
     }
-    const res = await axiosClient.delete<any>(`/admin/pets/${cleanId}`);
-    return res.data;
+    const res = await axiosClient.delete<ApiResponse<{ message?: string }>>(`/admin/pets/${cleanId}`);
+    return (res.data?.data ?? res.data) as { message?: string };
   },
 
   async listAppointments(filters?: AdminAppointmentFilterParams): Promise<AdminAppointmentListResult> {
@@ -701,43 +785,39 @@ export const adminService = {
       return mockDelay(filterMock());
     }
 
-    try {
-      const params = new URLSearchParams();
-      if (filters?.search) params.append("search", filters.search);
-      if (filters?.status && filters.status !== "all") params.append("status", filters.status);
-      if (filters?.unassigned) params.append("unassigned", "true");
-      if (filters?.dateFrom) params.append("dateFrom", filters.dateFrom);
-      if (filters?.dateTo) params.append("dateTo", filters.dateTo);
-      if (filters?.page) params.append("page", String(filters.page));
-      if (filters?.limit) params.append("limit", String(filters.limit));
+    const params = new URLSearchParams();
+    if (filters?.search) params.append("search", filters.search);
+    if (filters?.status && filters.status !== "all") params.append("status", filters.status);
+    if (filters?.date) params.append("date", filters.date);
+    if (filters?.dateFrom) params.append("dateFrom", filters.dateFrom);
+    if (filters?.dateTo) params.append("dateTo", filters.dateTo);
+    if (filters?.page) params.append("page", String(filters.page));
+    if (filters?.limit) params.append("limit", String(filters.limit));
 
-      const res = await axiosClient.get<any>(`/admin/appointments?${params.toString()}`);
-      const data = res.data?.data;
-      if (data?.items) {
-        return {
-          items: data.items.map(normalizeAppointment),
-          pagination: data.pagination,
-        };
-      }
-      if (Array.isArray(data)) {
-        return {
-          items: data.map(normalizeAppointment),
-          pagination: {
-            page: filters?.page || 1,
-            limit: filters?.limit || 10,
-            total: data.length,
-            totalPages: 1,
-          },
-        };
-      }
+    const res = await axiosClient.get<ApiResponse<AdminAppointmentListResult | (Partial<Appointment> & Record<string, unknown>)[]>>(`/admin/appointments?${params.toString()}`);
+    const data = res.data?.data ?? res.data;
+    if (data && typeof data === "object" && "items" in data && Array.isArray((data as AdminAppointmentListResult).items)) {
+      const listRes = data as AdminAppointmentListResult;
       return {
-        items: [],
-        pagination: { page: 1, limit: 10, total: 0, totalPages: 1 },
+        items: (listRes.items as (Partial<Appointment> & Record<string, unknown>)[]).map(normalizeAppointment),
+        pagination: listRes.pagination,
       };
-    } catch (err) {
-      console.warn("[adminService.listAppointments] API call failed, falling back to mock data:", err);
-      return mockDelay(filterMock());
     }
+    if (Array.isArray(data)) {
+      return {
+        items: (data as (Partial<Appointment> & Record<string, unknown>)[]).map(normalizeAppointment),
+        pagination: {
+          page: filters?.page || 1,
+          limit: filters?.limit || 10,
+          total: data.length,
+          totalPages: 1,
+        },
+      };
+    }
+    return {
+      items: [],
+      pagination: { page: 1, limit: 10, total: 0, totalPages: 1 },
+    };
   },
 
   async getAppointmentById(id: string | number): Promise<Appointment> {
@@ -750,18 +830,9 @@ export const adminService = {
       return mockDelay(normalizeAppointment(found));
     }
 
-    try {
-      const res = await axiosClient.get<any>(`/admin/appointments/${cleanId}`);
-      const raw = res.data?.data ?? res.data;
-      return normalizeAppointment(raw);
-    } catch (err) {
-      console.warn("[adminService.getAppointmentById] API failed, falling back to mock:", err);
-      const found = _adminMockAppointments.find(
-        (a) => String(a.id) === cleanId || String(a.appointment_id) === cleanId
-      );
-      if (found) return mockDelay(normalizeAppointment(found));
-      throw err;
-    }
+    const res = await axiosClient.get<ApiResponse<Partial<Appointment> & Record<string, unknown>>>(`/admin/appointments/${cleanId}`);
+    const raw = (res.data?.data ?? res.data) as Partial<Appointment> & Record<string, unknown>;
+    return normalizeAppointment(raw);
   },
 
   async listDoctors(params?: { is_active?: boolean }): Promise<User[]> {
@@ -777,22 +848,17 @@ export const adminService = {
       return mockDelay(getMockDocs());
     }
 
-    try {
-      const res = await axiosClient.get<any>("/admin/doctors");
-      const data = res.data?.data ?? res.data;
-      if (Array.isArray(data)) {
-        return data.map((d: any) => ({
-          ...d,
-          id: String(d.id ?? d.user_id ?? ""),
-          role: "doctor" as UserRole,
-          is_active: d.is_active ?? true,
-        }));
-      }
-      return [];
-    } catch (err) {
-      console.warn("[adminService.listDoctors] API failed, falling back to mock:", err);
-      return mockDelay(getMockDocs());
+    const res = await axiosClient.get<ApiResponse<Array<Partial<User> & Record<string, unknown>>>>("/admin/doctors");
+    const data = res.data?.data ?? res.data;
+    if (Array.isArray(data)) {
+      return data.map((d) => ({
+        ...d,
+        id: String(d.id ?? d.user_id ?? ""),
+        role: "doctor" as UserRole,
+        is_active: (d.is_active as boolean | undefined) ?? true,
+      } as User));
     }
+    return [];
   },
 
   async listMedicalRecords(
@@ -860,58 +926,54 @@ export const adminService = {
       return mockDelay(filterMock());
     }
 
-    try {
-      const params: Record<string, any> = {};
-      if (filters?.search) params.search = filters.search;
-      if (filters?.doctorId) params.doctorId = filters.doctorId;
-      if (filters?.dateFrom) params.dateFrom = filters.dateFrom;
-      if (filters?.dateTo) params.dateTo = filters.dateTo;
-      if (filters?.page) params.page = filters.page;
-      if (filters?.limit) params.limit = filters.limit;
+    const params: Record<string, string | number | undefined> = {};
+    if (filters?.search) params.search = filters.search;
+    if (filters?.doctorId) params.doctorId = filters.doctorId;
+    if (filters?.dateFrom) params.dateFrom = filters.dateFrom;
+    if (filters?.dateTo) params.dateTo = filters.dateTo;
+    if (filters?.page) params.page = filters.page;
+    if (filters?.limit) params.limit = filters.limit;
 
-      const res = await axiosClient.get<any>("/admin/medical-records", { params });
-      const data = res.data?.data ?? res.data;
+    const res = await axiosClient.get<ApiResponse<AdminMedicalRecordListResult | (Partial<MedicalRecord> & Record<string, unknown>)[]>>("/admin/medical-records", { params });
+    const data = res.data?.data ?? res.data;
 
-      if (data && Array.isArray(data.items)) {
-        return {
-          items: data.items.map((item: any) => ({
-            ...item,
-            id: String(item.record_id ?? item.id ?? ""),
-            record_id: Number(item.record_id ?? item.id),
-          })),
-          pagination: data.pagination ?? {
-            page: filters?.page || 1,
-            limit: filters?.limit || 10,
-            total: data.items.length,
-            totalPages: 1,
-          },
-        };
-      }
-
-      if (Array.isArray(data)) {
-        return {
-          items: data.map((item: any) => ({
-            ...item,
-            id: String(item.record_id ?? item.id ?? ""),
-            record_id: Number(item.record_id ?? item.id),
-          })),
-          pagination: {
-            page: filters?.page || 1,
-            limit: filters?.limit || 10,
-            total: data.length,
-            totalPages: 1,
-          },
-        };
-      }
-
+    if (data && typeof data === "object" && "items" in data && Array.isArray((data as AdminMedicalRecordListResult).items)) {
+      const listData = data as AdminMedicalRecordListResult;
       return {
-        items: [],
-        pagination: { page: 1, limit: 10, total: 0, totalPages: 1 },
+        items: (listData.items as (Partial<MedicalRecord> & Record<string, unknown>)[]).map((item) => ({
+          ...item,
+          id: String(item.record_id ?? item.id ?? ""),
+          record_id: Number(item.record_id ?? item.id),
+        } as MedicalRecord)),
+        pagination: listData.pagination ?? {
+          page: filters?.page || 1,
+          limit: filters?.limit || 10,
+          total: listData.items.length,
+          totalPages: 1,
+        },
       };
-    } catch (err) {
-      console.warn("[adminService.listMedicalRecords] API failed, falling back to mock:", err);
-      return mockDelay(filterMock());
     }
+
+    if (Array.isArray(data)) {
+      return {
+        items: (data as (Partial<MedicalRecord> & Record<string, unknown>)[]).map((item) => ({
+          ...item,
+          id: String(item.record_id ?? item.id ?? ""),
+          record_id: Number(item.record_id ?? item.id),
+        } as MedicalRecord)),
+        pagination: {
+          page: filters?.page || 1,
+          limit: filters?.limit || 10,
+          total: data.length,
+          totalPages: 1,
+        },
+      };
+    }
+
+    return {
+      items: [],
+      pagination: { page: 1, limit: 10, total: 0, totalPages: 1 },
+    };
   },
 
   async listVaccinations(
@@ -1024,100 +1086,68 @@ export const adminService = {
       return mockDelay(filterMock());
     }
 
-    try {
-      const params: Record<string, any> = {};
-      if (filters?.search) params.search = filters.search;
-      if (filters?.vaccineType && filters.vaccineType !== "all") {
-        params.vaccineType = filters.vaccineType;
-      }
-      if (filters?.dueStatus && filters.dueStatus !== "all") {
-        // Support backend values: "upcoming", "overdue", "valid"
-        params.dueStatus =
-          filters.dueStatus === "due_soon" ? "upcoming" : filters.dueStatus;
-      }
-      if (filters?.page) params.page = filters.page;
-      if (filters?.limit) params.limit = filters.limit;
+    const params: Record<string, string | number | undefined> = {};
+    if (filters?.search) params.search = filters.search;
+    if (filters?.status && filters.status !== "all") params.status = filters.status;
+    if (filters?.vaccineTypeId && filters.vaccineTypeId !== "all")
+      params.vaccineTypeId = filters.vaccineTypeId;
+    if (filters?.dateFrom) params.dateFrom = filters.dateFrom;
+    if (filters?.dateTo) params.dateTo = filters.dateTo;
+    if (filters?.page) params.page = filters.page;
+    if (filters?.limit) params.limit = filters.limit;
 
-      const res = await axiosClient.get<any>("/admin/vaccinations", { params });
-      const data = res.data?.data ?? res.data;
+    const res = await axiosClient.get<ApiResponse<AdminVaccinationListResult | (Partial<PetVaccination> & Record<string, unknown>)[]>>("/admin/vaccinations", { params });
+    const data = res.data?.data ?? res.data;
 
-      if (data && Array.isArray(data.items)) {
-        return {
-          items: data.items.map((item: any) => ({
-            ...item,
-            id: String(item.vaccination_id ?? item.id ?? ""),
-            vaccination_id: Number(item.vaccination_id ?? item.id),
-            vaccine_name: item.vaccine_name || item.vaccine_type || "Vắc xin",
-            batch_number: item.batch_number || item.lot_number || "",
-          })),
-          pagination: data.pagination ?? {
-            page: filters?.page || 1,
-            limit: filters?.limit || 10,
-            total: data.items.length,
-            totalPages: 1,
-          },
-        };
-      }
-
-      if (Array.isArray(data)) {
-        return {
-          items: data.map((item: any) => ({
-            ...item,
-            id: String(item.vaccination_id ?? item.id ?? ""),
-            vaccination_id: Number(item.vaccination_id ?? item.id),
-            vaccine_name: item.vaccine_name || item.vaccine_type || "Vắc xin",
-            batch_number: item.batch_number || item.lot_number || "",
-          })),
-          pagination: {
-            page: filters?.page || 1,
-            limit: filters?.limit || 10,
-            total: data.length,
-            totalPages: 1,
-          },
-        };
-      }
-
+    if (data && typeof data === "object" && "items" in data && Array.isArray((data as AdminVaccinationListResult).items)) {
+      const listData = data as AdminVaccinationListResult;
       return {
-        items: [],
-        pagination: { page: 1, limit: 10, total: 0, totalPages: 1 },
+        items: (listData.items as (Partial<PetVaccination> & Record<string, unknown>)[]).map((item) => ({
+          ...item,
+          id: String(item.vaccination_id ?? item.id ?? ""),
+          vaccination_id: Number(item.vaccination_id ?? item.id),
+          vaccine_name: (item.vaccine_name as string) || (item.vaccine_type as string) || "Vắc xin",
+          batch_number: (item.batch_number as string) || (item.lot_number as string) || "",
+        } as PetVaccination)),
+        pagination: listData.pagination ?? {
+          page: filters?.page || 1,
+          limit: filters?.limit || 10,
+          total: listData.items.length,
+          totalPages: 1,
+        },
       };
-    } catch (err) {
-      console.warn("[adminService.listVaccinations] API failed, falling back to mock:", err);
-      return mockDelay(filterMock());
     }
+
+    if (Array.isArray(data)) {
+      return {
+        items: (data as (Partial<PetVaccination> & Record<string, unknown>)[]).map((item) => ({
+          ...item,
+          id: String(item.vaccination_id ?? item.id ?? ""),
+          vaccination_id: Number(item.vaccination_id ?? item.id),
+          vaccine_name: (item.vaccine_name as string) || (item.vaccine_type as string) || "Vắc xin",
+          batch_number: (item.batch_number as string) || (item.lot_number as string) || "",
+        } as PetVaccination)),
+        pagination: {
+          page: filters?.page || 1,
+          limit: filters?.limit || 10,
+          total: data.length,
+          totalPages: 1,
+        },
+      };
+    }
+
+    return {
+      items: [],
+      pagination: { page: 1, limit: 10, total: 0, totalPages: 1 },
+    };
   },
 
   /** Quản lý danh sách hóa đơn Admin */
   async listInvoices(
     filters?: AdminInvoiceFilterParams
   ): Promise<AdminInvoiceListResponse> {
-    const normalizeAdminInvoice = (raw: any): Invoice => {
-      const cleanId = String(raw.invoice_id ?? raw.id ?? "");
-      return {
-        ...raw,
-        id: cleanId,
-        invoice_id: raw.invoice_id ?? raw.id,
-        appointment_id: String(raw.appointment_id ?? ""),
-        owner_id: String(raw.owner_id ?? raw.user_id ?? ""),
-        owner_name: raw.owner_name || "Khách hàng",
-        owner_phone: raw.owner_phone,
-        owner_email: raw.owner_email,
-        pet_id: raw.pet_id,
-        pet_name: raw.pet_name || "Thú cưng",
-        pet_species: raw.pet_species,
-        pet_breed: raw.pet_breed,
-        status: raw.status || "unpaid",
-        total_amount: Number(raw.total_amount || 0),
-        issued_date: raw.issued_date || raw.issued_at || raw.created_at,
-        cancel_reason: raw.cancel_reason,
-        items: Array.isArray(raw.items) ? raw.items : [],
-        payments: Array.isArray(raw.payments) ? raw.payments : [],
-        created_at: raw.created_at || raw.issued_date || new Date().toISOString(),
-      };
-    };
-
     const filterMock = (): AdminInvoiceListResponse => {
-      let filtered = MOCK_INVOICES.map((inv: any) => {
+      let filtered = MOCK_INVOICES.map((inv) => {
         const user = MOCK_USERS.find((u) => String(u.id) === String(inv.owner_id));
         const appt = MOCK_APPOINTMENTS.find((a) => String(a.id) === String(inv.appointment_id));
         const pet = appt ? MOCK_PETS.find((p) => String(p.id) === String(appt.pet_id)) : undefined;
@@ -1174,78 +1204,52 @@ export const adminService = {
       return mockDelay(filterMock());
     }
 
-    try {
-      const res = await axiosClient.get<any>("/admin/invoices", {
-        params: {
-          search: filters?.search || undefined,
-          status: filters?.status !== "all" ? filters?.status : undefined,
-          fromDate: filters?.fromDate || undefined,
-          toDate: filters?.toDate || undefined,
+    const res = await axiosClient.get<ApiResponse<AdminInvoiceListResponse | (Partial<Invoice> & Record<string, unknown>)[]>>("/admin/invoices", {
+      params: {
+        search: filters?.search || undefined,
+        status: filters?.status !== "all" ? filters?.status : undefined,
+        fromDate: filters?.fromDate || undefined,
+        toDate: filters?.toDate || undefined,
+        page: filters?.page || 1,
+        limit: filters?.limit || 10,
+      },
+    });
+
+    const data = res.data?.data ?? res.data;
+    if (data && typeof data === "object" && "items" in data && Array.isArray((data as AdminInvoiceListResponse).items)) {
+      const listData = data as AdminInvoiceListResponse;
+      return {
+        items: (listData.items as (Partial<Invoice> & Record<string, unknown>)[]).map(normalizeAdminInvoice),
+        pagination: listData.pagination ?? {
           page: filters?.page || 1,
           limit: filters?.limit || 10,
+          total: listData.items.length,
+          totalPages: 1,
         },
-      });
-
-      const data = res.data?.data ?? res.data;
-      if (data && Array.isArray(data.items)) {
-        return {
-          items: data.items.map(normalizeAdminInvoice),
-          pagination: data.pagination ?? {
-            page: filters?.page || 1,
-            limit: filters?.limit || 10,
-            total: data.items.length,
-            totalPages: 1,
-          },
-        };
-      }
-
-      if (Array.isArray(data)) {
-        return {
-          items: data.map(normalizeAdminInvoice),
-          pagination: {
-            page: filters?.page || 1,
-            limit: filters?.limit || 10,
-            total: data.length,
-            totalPages: 1,
-          },
-        };
-      }
-
-      return {
-        items: [],
-        pagination: { page: 1, limit: 10, total: 0, totalPages: 1 },
       };
-    } catch (err) {
-      console.warn("[adminService.listInvoices] API failed, falling back to mock:", err);
-      return mockDelay(filterMock());
     }
+
+    if (Array.isArray(data)) {
+      return {
+        items: (data as (Partial<Invoice> & Record<string, unknown>)[]).map(normalizeAdminInvoice),
+        pagination: {
+          page: filters?.page || 1,
+          limit: filters?.limit || 10,
+          total: data.length,
+          totalPages: 1,
+        },
+      };
+    }
+
+    return {
+      items: [],
+      pagination: { page: 1, limit: 10, total: 0, totalPages: 1 },
+    };
   },
 
   /** Lấy chi tiết hóa đơn theo ID dành cho Admin */
   async getInvoiceById(id: string | number): Promise<Invoice> {
     const cleanId = String(id);
-    const normalizeAdminInvoice = (raw: any): Invoice => ({
-      ...raw,
-      id: String(raw.invoice_id ?? raw.id ?? ""),
-      invoice_id: raw.invoice_id ?? raw.id,
-      appointment_id: String(raw.appointment_id ?? ""),
-      owner_id: String(raw.owner_id ?? raw.user_id ?? ""),
-      owner_name: raw.owner_name || "Khách hàng",
-      owner_phone: raw.owner_phone,
-      owner_email: raw.owner_email,
-      pet_id: raw.pet_id,
-      pet_name: raw.pet_name || "Thú cưng",
-      pet_species: raw.pet_species,
-      pet_breed: raw.pet_breed,
-      status: raw.status || "unpaid",
-      total_amount: Number(raw.total_amount || 0),
-      issued_date: raw.issued_date || raw.issued_at || raw.created_at,
-      cancel_reason: raw.cancel_reason,
-      items: Array.isArray(raw.items) ? raw.items : [],
-      payments: Array.isArray(raw.payments) ? raw.payments : [],
-      created_at: raw.created_at || raw.issued_date || new Date().toISOString(),
-    });
-
     if (USE_MOCK) {
       const inv = MOCK_INVOICES.find(
         (i) => String(i.id) === cleanId || String(i.invoice_id) === cleanId
@@ -1254,32 +1258,15 @@ export const adminService = {
       return mockDelay(normalizeAdminInvoice(inv));
     }
 
-    try {
-      const res = await axiosClient.get<any>(`/admin/invoices/${cleanId}`);
-      const raw = res.data?.data ?? res.data;
-      if (!raw) throw new Error("Hóa đơn không tồn tại.");
-      return normalizeAdminInvoice(raw);
-    } catch (err) {
-      console.warn("[adminService.getInvoiceById] API failed, trying fallback:", err);
-      const inv = MOCK_INVOICES.find(
-        (i) => String(i.id) === cleanId || String(i.invoice_id) === cleanId
-      );
-      if (inv) return mockDelay(normalizeAdminInvoice(inv));
-      throw err;
-    }
+    const res = await axiosClient.get<ApiResponse<Partial<Invoice> & Record<string, unknown>>>(`/admin/invoices/${cleanId}`);
+    const raw = (res.data?.data ?? res.data) as Partial<Invoice> & Record<string, unknown>;
+    if (!raw) throw new Error("Hóa đơn không tồn tại.");
+    return normalizeAdminInvoice(raw);
   },
 
   /** Hủy hóa đơn với lý do (Admin action) */
   async cancelInvoice(id: string | number, reason: string): Promise<Invoice> {
     const cleanId = String(id);
-    const normalizeAdminInvoice = (raw: any): Invoice => ({
-      ...raw,
-      id: String(raw.invoice_id ?? raw.id ?? ""),
-      invoice_id: raw.invoice_id ?? raw.id,
-      status: raw.status || "cancelled",
-      cancel_reason: raw.cancel_reason || reason,
-    });
-
     if (USE_MOCK) {
       const inv = MOCK_INVOICES.find(
         (i) => String(i.id) === cleanId || String(i.invoice_id) === cleanId
@@ -1291,8 +1278,8 @@ export const adminService = {
       return mockDelay(normalizeAdminInvoice(inv));
     }
 
-    const res = await axiosClient.put<any>(`/admin/invoices/${cleanId}/cancel`, { reason });
-    const raw = res.data?.data ?? res.data;
+    const res = await axiosClient.put<ApiResponse<Partial<Invoice> & Record<string, unknown>>>(`/admin/invoices/${cleanId}/cancel`, { reason });
+    const raw = (res.data?.data ?? res.data) as Partial<Invoice> & Record<string, unknown>;
     return normalizeAdminInvoice(raw);
   },
 
@@ -1300,26 +1287,6 @@ export const adminService = {
   async listPayments(params?: AdminPaymentFilterParams): Promise<AdminPaymentListResult> {
     const page = params?.page ?? 1;
     const limit = params?.limit ?? 10;
-
-    const normalizeAdminPayment = (raw: any): Payment => ({
-      ...raw,
-      id: String(raw.payment_id ?? raw.id ?? ""),
-      payment_id: raw.payment_id ?? raw.id,
-      invoice_id: String(raw.invoice_id ?? ""),
-      owner_id: String(raw.owner_id ?? raw.user_id ?? ""),
-      owner_name: raw.owner_name || "Khách hàng",
-      pet_id: raw.pet_id,
-      pet_name: raw.pet_name,
-      amount: Number(raw.amount || 0),
-      payment_method: raw.payment_method || "cash",
-      status: raw.status || "pending",
-      transaction_ref: raw.transaction_ref,
-      reject_reason: raw.reject_reason,
-      payment_date: raw.payment_date || raw.created_at,
-      paid_at: raw.paid_at,
-      created_at: raw.created_at || raw.payment_date || new Date().toISOString(),
-      updated_at: raw.updated_at || new Date().toISOString(),
-    });
 
     const filterMock = (): AdminPaymentListResult => {
       let list = [...MOCK_PAYMENTS];
@@ -1362,39 +1329,35 @@ export const adminService = {
       return mockDelay(filterMock());
     }
 
-    try {
-      const res = await axiosClient.get<any>("/admin/payments", { params });
-      const rawData = res.data?.data;
-      if (rawData?.items && Array.isArray(rawData.items)) {
-        return {
-          items: rawData.items.map(normalizeAdminPayment),
-          pagination: rawData.pagination ?? {
-            page,
-            limit,
-            total: rawData.items.length,
-            totalPages: Math.ceil(rawData.items.length / limit) || 1,
-          },
-        };
-      }
-      if (Array.isArray(rawData)) {
-        return {
-          items: rawData.map(normalizeAdminPayment),
-          pagination: {
-            page,
-            limit,
-            total: rawData.length,
-            totalPages: Math.ceil(rawData.length / limit) || 1,
-          },
-        };
-      }
+    const res = await axiosClient.get<ApiResponse<AdminPaymentListResult | (Partial<Payment> & Record<string, unknown>)[]>>("/admin/payments", { params });
+    const rawData = res.data?.data ?? res.data;
+    if (rawData && typeof rawData === "object" && "items" in rawData && Array.isArray((rawData as AdminPaymentListResult).items)) {
+      const listData = rawData as AdminPaymentListResult;
       return {
-        items: [],
-        pagination: { page: 1, limit: 10, total: 0, totalPages: 1 },
+        items: (listData.items as (Partial<Payment> & Record<string, unknown>)[]).map(normalizeAdminPayment),
+        pagination: listData.pagination ?? {
+          page,
+          limit,
+          total: listData.items.length,
+          totalPages: Math.ceil(listData.items.length / limit) || 1,
+        },
       };
-    } catch (err) {
-      console.warn("[adminService.listPayments] API failed, falling back to mock:", err);
-      return mockDelay(filterMock());
     }
+    if (Array.isArray(rawData)) {
+      return {
+        items: (rawData as (Partial<Payment> & Record<string, unknown>)[]).map(normalizeAdminPayment),
+        pagination: {
+          page,
+          limit,
+          total: rawData.length,
+          totalPages: Math.ceil(rawData.length / limit) || 1,
+        },
+      };
+    }
+    return {
+      items: [],
+      pagination: { page: 1, limit: 10, total: 0, totalPages: 1 },
+    };
   },
 
   /** Danh sách toàn bộ thông báo trong hệ thống cho Admin */
@@ -1403,33 +1366,6 @@ export const adminService = {
   ): Promise<AdminNotificationListResult> {
     const page = params?.page ?? 1;
     const limit = params?.limit ?? 10;
-
-    const normalizeAdminNotification = (raw: any): AdminNotificationItem => {
-      const id = raw.notification_id ?? raw.id ?? `notif_${Date.now()}`;
-      const user = MOCK_USERS.find(
-        (u) =>
-          String(u.id) === String(raw.user_id) ||
-          String(u.user_id) === String(raw.user_id)
-      );
-      return {
-        ...raw,
-        notification_id: id,
-        id,
-        user_id: raw.user_id,
-        full_name: raw.full_name || user?.full_name || "Người dùng",
-        user_email: raw.user_email || user?.email || "",
-        pet_id: raw.pet_id ?? null,
-        pet_name: raw.pet_name ?? null,
-        type: raw.type || "system",
-        title: raw.title || "Thông báo",
-        content: raw.content || raw.message || "",
-        message: raw.message || raw.content || "",
-        is_read: Boolean(raw.is_read),
-        scheduled_at: raw.scheduled_at ?? null,
-        sent_at: raw.sent_at ?? raw.created_at ?? null,
-        created_at: raw.created_at || new Date().toISOString(),
-      };
-    };
 
     const filterMock = (): AdminNotificationListResult => {
       let list = [..._adminMockNotifications];
@@ -1485,44 +1421,48 @@ export const adminService = {
       return mockDelay(filterMock());
     }
 
-    try {
-      const res = await axiosClient.get<any>("/admin/notifications", {
-        params,
-      });
-      const rawData = res.data?.data;
-      if (rawData?.items && Array.isArray(rawData.items)) {
-        return {
-          items: rawData.items.map(normalizeAdminNotification),
-          pagination: rawData.pagination ?? {
-            page,
-            limit,
-            total: rawData.items.length,
-            totalPages: Math.ceil(rawData.items.length / limit) || 1,
-          },
-        };
-      }
-      if (Array.isArray(rawData)) {
-        return {
-          items: rawData.map(normalizeAdminNotification),
-          pagination: {
-            page,
-            limit,
-            total: rawData.length,
-            totalPages: Math.ceil(rawData.length / limit) || 1,
-          },
-        };
-      }
+    const res = await axiosClient.get<ApiResponse<AdminNotificationListResult | (Partial<AdminNotificationItem> & Record<string, unknown>)[]>>("/admin/notifications", {
+      params: {
+        page,
+        limit,
+        type: params?.type !== "all" ? params?.type : undefined,
+        userId: params?.userId !== "all" ? params?.userId : undefined,
+        search: params?.search || undefined,
+        fromDate: params?.fromDate || undefined,
+        toDate: params?.toDate || undefined,
+      },
+    });
+
+    const data = res.data?.data ?? res.data;
+    if (data && typeof data === "object" && "items" in data && Array.isArray((data as AdminNotificationListResult).items)) {
+      const listData = data as AdminNotificationListResult;
       return {
-        items: [],
-        pagination: { page: 1, limit: 10, total: 0, totalPages: 1 },
+        items: (listData.items as (Partial<AdminNotificationItem> & Record<string, unknown>)[]).map(normalizeAdminNotification),
+        pagination: listData.pagination ?? {
+          page,
+          limit,
+          total: listData.items.length,
+          totalPages: Math.ceil(listData.items.length / limit) || 1,
+        },
       };
-    } catch (err) {
-      console.warn(
-        "[adminService.listNotifications] API failed, falling back to mock:",
-        err
-      );
-      return mockDelay(filterMock());
     }
+
+    if (Array.isArray(data)) {
+      return {
+        items: (data as (Partial<AdminNotificationItem> & Record<string, unknown>)[]).map(normalizeAdminNotification),
+        pagination: {
+          page,
+          limit,
+          total: data.length,
+          totalPages: Math.ceil(data.length / limit) || 1,
+        },
+      };
+    }
+
+    return {
+      items: [],
+      pagination: { page: 1, limit: 10, total: 0, totalPages: 1 },
+    };
   },
 
   /** Gửi thông báo hệ thống (Admin action) */
@@ -1578,24 +1518,16 @@ export const adminService = {
       return mockDelay(handleMockSend());
     }
 
-    try {
-      const res = await axiosClient.post<any>(
-        "/admin/notifications/system",
-        data
-      );
-      return {
-        success: true,
-        message:
-          res.data?.message || "Thông báo hệ thống đã được gửi thành công!",
-        data: res.data?.data,
-      };
-    } catch (err) {
-      console.warn(
-        "[adminService.sendSystemNotification] API failed, falling back to mock:",
-        err
-      );
-      return mockDelay(handleMockSend());
-    }
+    const res = await axiosClient.post<ApiResponse<{ recipients: number }>>(
+      "/admin/notifications/system",
+      data
+    );
+    return {
+      success: true,
+      message:
+        res.data?.message || "Thông báo hệ thống đã được gửi thành công!",
+      data: res.data?.data,
+    };
   },
 };
 

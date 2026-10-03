@@ -89,7 +89,7 @@ export default function DoctorPatientsPage() {
         query
       );
       setPatients(data || []);
-    } catch (err: any) {
+    } catch (err) {
       console.error("[DoctorPatientsPage] Error fetching patients:", err);
       setErrorMsg(
         err?.response?.data?.message ||

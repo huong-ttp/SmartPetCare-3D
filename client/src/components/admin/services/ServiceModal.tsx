@@ -140,7 +140,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         onSuccess(created, false);
         onClose();
       }
-    } catch (err: any) {
+    } catch (err) {
       const msg =
         err?.response?.data?.message ||
         err?.message ||

@@ -153,7 +153,7 @@ export default function MedicalRecordDetailPage() {
     try {
       const data = await medicalRecordService.getById(recordId);
       setRecord(data);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Lỗi khi tải chi tiết hồ sơ bệnh án:", err);
       setError(
         err?.response?.status === 404

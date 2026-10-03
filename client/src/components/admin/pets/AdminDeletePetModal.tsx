@@ -48,7 +48,7 @@ export const AdminDeletePetModal: React.FC<AdminDeletePetModalProps> = ({
       );
       onSuccess(pet.id);
       onClose();
-    } catch (err: any) {
+    } catch (err) {
       console.error("Failed to delete pet:", err);
       const status = err?.response?.status;
       const serverMsg =

@@ -98,7 +98,7 @@ export default function LoginPage() {
       else if (res.user.role === "doctor") router.push("/doctor/dashboard");
       else router.push("/dashboard");
       
-    } catch (error: any) {
+    } catch (error) {
       const msg = error?.response?.data?.message || error.message || "Đăng nhập thất bại. Vui lòng thử lại.";
       // Kiểm tra xem lỗi có phải do chưa xác thực OTP không
       if (msg.includes("chưa được kích hoạt") || msg.toLowerCase().includes("chưa xác thực")) {
