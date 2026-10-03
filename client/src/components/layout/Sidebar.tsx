@@ -23,13 +23,13 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 
-interface NavItem {
+export interface NavItem {
   name: string;
   href: string;
   icon: React.ReactNode;
 }
 
-const OWNER_NAV: NavItem[] = [
+export const OWNER_NAV: NavItem[] = [
   { name: "Tổng quan", href: "/dashboard", icon: <Home size={20} /> },
   { name: "Thú cưng", href: "/pets", icon: <Dog size={20} /> },
   { name: "Dịch vụ", href: "/services", icon: <Sparkles size={20} /> },
@@ -38,7 +38,7 @@ const OWNER_NAV: NavItem[] = [
   { name: "Hóa đơn", href: "/invoices", icon: <CreditCard size={20} /> },
 ];
 
-const DOCTOR_NAV: NavItem[] = [
+export const DOCTOR_NAV: NavItem[] = [
   { name: "Tổng quan", href: "/doctor/dashboard", icon: <Home size={20} /> },
   { name: "Lịch hẹn", href: "/doctor/appointments", icon: <Calendar size={20} /> },
   { name: "Bệnh nhân", href: "/doctor/patients", icon: <Dog size={20} /> },
@@ -47,7 +47,7 @@ const DOCTOR_NAV: NavItem[] = [
   { name: "Nhật ký sức khỏe", href: "/doctor/health-logs", icon: <Activity size={20} /> },
 ];
 
-const ADMIN_NAV: NavItem[] = [
+export const ADMIN_NAV: NavItem[] = [
   { name: "Dashboard 3D", href: "/admin/dashboard", icon: <LayoutDashboard size={20} /> },
   { name: "Users", href: "/admin/users", icon: <Users size={20} /> },
   { name: "Pets", href: "/admin/pets", icon: <Dog size={20} /> },

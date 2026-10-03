@@ -10,9 +10,10 @@ export default function OwnerLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname();
   const router = useRouter();
 
-  // Cho phép doctor và admin truy cập chi tiết lịch hẹn tại /appointments và hồ sơ bệnh nhân tại /pets/[id]
+  // Cho phép doctor và admin truy cập chi tiết lịch hẹn tại /appointments, hồ sơ thú cưng tại /pets/[id], và bệnh án tại /medical-records/[id]
   const isSharedRoute =
     pathname?.startsWith("/appointments") ||
+    pathname?.startsWith("/medical-records") ||
     (pathname?.startsWith("/pets/") && !pathname?.startsWith("/pets/create"));
   const allowedRoles = isSharedRoute ? ["owner", "doctor", "admin"] : ["owner"];
   const hasAccess = Boolean(

@@ -11,29 +11,21 @@ router.get(
 );
 
 router.get(
-  "/:id",
-  authMiddleware,
-  invoiceController.getInvoiceById
-);
-
-router.get(
-
   "/admin/list",
-
   authMiddleware,
-
   invoiceController.listInvoices
-
 );
 
 router.put(
-
   "/admin/:id/cancel",
-
   authMiddleware,
-
   invoiceController.cancelInvoice
+);
 
+router.get(
+  "/:id",
+  authMiddleware,
+  invoiceController.getInvoiceById
 );
 
 export default router;
