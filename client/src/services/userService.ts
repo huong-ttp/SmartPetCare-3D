@@ -49,6 +49,17 @@ export const userService = {
     }
 
     try {
+      if (dto.avatar instanceof File) {
+        const formData = new FormData();
+        if (dto.full_name) formData.append("full_name", dto.full_name);
+        if (dto.phone) formData.append("phone", dto.phone);
+        if (dto.address) formData.append("address", dto.address);
+        formData.append("avatar", dto.avatar);
+
+        const res = await axiosClient.put<ApiResponse<User> | User>("/users/profile", formData);
+        return (res.data as ApiResponse<User>)?.data || (res.data as User);
+      }
+
       const res = await axiosClient.put<ApiResponse<User> | User>("/users/profile", dto);
       return (res.data as ApiResponse<User>)?.data || (res.data as User);
     } catch (err) {

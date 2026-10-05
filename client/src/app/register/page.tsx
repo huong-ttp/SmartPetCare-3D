@@ -101,15 +101,14 @@ export default function RegisterPage() {
     
     setIsLoading(true);
     try {
-      // Gọi service register
+      // Gọi service register (ảnh avatar là tùy chọn, không bắt buộc)
       await authService.register({
         full_name: formData.fullName,
         email: formData.email,
         phone: formData.phone || undefined,
         address: formData.address || undefined,
         password: formData.password,
-        // TODO: Xử lý upload avatar_url nếu cần thiết
-        // avatar_url: avatarUrl 
+        avatar: avatarFile || null,
       });
       
       setSuccessMsg("Đăng ký thành công! Đang chuyển hướng đến trang đăng nhập...");

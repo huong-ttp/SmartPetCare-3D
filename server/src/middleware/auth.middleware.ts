@@ -26,6 +26,7 @@ const authMiddleware = (
 ) as {
   user_id: number;
   role: string;
+  email?: string;
 };
 
 req.user = decoded;

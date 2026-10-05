@@ -1,10 +1,17 @@
 import { Request, Response, NextFunction } from "express";
 import petService from "../services/pet.service";
 import AppError from "../utils/AppError";
+import {
+  collectUploadedFiles,
+  deleteUploadedFiles,
+  getUploadedImageUrl,
+} from "../middleware/upload.middleware";
 
 class PetController {
 
   async createPet(req: Request, res: Response, next: NextFunction) {
+    const uploadedFiles = collectUploadedFiles(req);
+
     try {
       const owner_id = (req.user?.role === "admin" && req.body.owner_id)
         ? Number(req.body.owner_id)
@@ -14,16 +21,24 @@ class PetController {
         throw new AppError("Không tìm thấy thông tin chủ thú cưng hợp lệ", 400);
       }
 
-      const pet = await petService.createPet({
+      const uploadedAvatarUrl =
+        getUploadedImageUrl(req, "avatar") ||
+        getUploadedImageUrl(req, "petAvatar");
+
+      const petData = {
         ...req.body,
+        ...(uploadedAvatarUrl ? { avatar_url: uploadedAvatarUrl } : {}),
         owner_id,
-      });
+      };
+
+      const pet = await petService.createPet(petData);
 
       return res.status(201).json({
         success: true,
         data: pet,
       });
     } catch (error) {
+      await deleteUploadedFiles(uploadedFiles);
       next(error);
     }
   }
@@ -73,11 +88,22 @@ class PetController {
     res: Response,
     next: NextFunction
   ) {
+    const uploadedFiles = collectUploadedFiles(req);
+
     try {
+      const uploadedAvatarUrl =
+        getUploadedImageUrl(req, "avatar") ||
+        getUploadedImageUrl(req, "petAvatar");
+
+      const updateData = {
+        ...req.body,
+        ...(uploadedAvatarUrl ? { avatar_url: uploadedAvatarUrl } : {}),
+      };
+
       const pet = await petService.updatePet(
         Number(req.params.id),
         req.user.user_id,
-        req.body,
+        updateData,
         req.user.role
       );
 
@@ -86,6 +112,7 @@ class PetController {
         data: pet,
       });
     } catch (error) {
+      await deleteUploadedFiles(uploadedFiles);
       next(error);
     }
   }

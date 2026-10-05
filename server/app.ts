@@ -21,9 +21,9 @@ app.use(
   })
 );
 
-// Parse JSON request body (up to 50MB for Base64 avatars)
-app.use(express.json({ limit: "50mb" }));
-app.use(express.urlencoded({ extended: true, limit: "50mb" }));
+// Parse JSON request body (ảnh được upload trực tiếp qua Multer/Cloudinary)
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 // HTTP request logger
 app.use(morgan("dev"));

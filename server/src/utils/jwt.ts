@@ -4,6 +4,7 @@ export const generateAccessToken = (
   payload: {
     user_id: number;
     role: string;
+    email?: string;
   }
 ) => {
   const secret: Secret = process.env.JWT_SECRET!;

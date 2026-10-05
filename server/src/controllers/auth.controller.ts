@@ -1,5 +1,12 @@
 import { Request, Response, NextFunction } from "express";
 import authService from "../services/auth.service";
+import AppError from "../utils/AppError";
+import { RegisterInput } from "../validations/auth.validation";
+import {
+  collectUploadedFiles,
+  deleteUploadedFiles,
+  getUploadedImageUrl,
+} from "../middleware/upload.middleware";
 
 class AuthController {
   async register(
@@ -7,14 +14,49 @@ class AuthController {
     res: Response,
     next: NextFunction
   ) {
+    // Ảnh đã được Multer đẩy lên Cloudinary trước khi vào controller.
+    // Giữ lại danh sách để rollback (xóa ảnh) nếu nghiệp vụ thất bại.
+    const uploadedFiles = collectUploadedFiles(req);
+
     try {
-      const result = await authService.register(req.body);
+      const body = req.body as RegisterInput;
+
+      // URL HTTPS của ảnh trên Cloudinary (đã bật f_auto, q_auto) — thay thế Base64
+      const userAvatarUrl = getUploadedImageUrl(req, "avatar");
+      const petAvatarUrl = getUploadedImageUrl(req, "petAvatar");
+
+      if (petAvatarUrl && !body.pet_name) {
+        throw new AppError(
+          "Vui lòng nhập tên và loài thú cưng khi tải ảnh thú cưng lên",
+          400
+        );
+      }
+
+      const result = await authService.register({
+        full_name: body.full_name,
+        email: body.email,
+        password: body.password,
+        phone: body.phone,
+        address: body.address,
+        avatar_url: userAvatarUrl,
+        pet:
+          body.pet_name && body.pet_species
+            ? {
+                name: body.pet_name,
+                species: body.pet_species,
+                breed: body.pet_breed,
+                gender: body.pet_gender ?? "unknown",
+                avatar_url: petAvatarUrl,
+              }
+            : null,
+      });
 
       return res.status(201).json({
         success: true,
         data: result,
       });
     } catch (error) {
+      await deleteUploadedFiles(uploadedFiles);
       next(error);
     }
   }

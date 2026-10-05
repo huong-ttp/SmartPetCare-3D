@@ -1,6 +1,11 @@
 import { Request, Response, NextFunction } from "express";
 import adminService from "../services/admin.service";
 import invoiceService from "../services/invoice.service";
+import {
+  collectUploadedFiles,
+  deleteUploadedFiles,
+  getUploadedImageUrl,
+} from "../middleware/upload.middleware";
 
 export const getDashboard = async (
   req: Request,
@@ -277,31 +282,33 @@ export const updatePet = async (
   res: Response,
   next: NextFunction
 ) => {
+  const uploadedFiles = collectUploadedFiles(req);
 
   try {
+    const uploadedAvatarUrl =
+      getUploadedImageUrl(req, "avatar") ||
+      getUploadedImageUrl(req, "petAvatar");
+
+    const updateData = {
+      ...req.body,
+      ...(uploadedAvatarUrl ? { avatar_url: uploadedAvatarUrl } : {}),
+    };
 
     const pet =
       await adminService.updatePet(
         Number(req.params.id),
-        req.body
+        updateData
       );
 
     res.json({
-
       success: true,
-
       message: "Pet updated successfully",
-
-      data: pet
-
+      data: pet,
     });
-
   } catch (err) {
-
+    await deleteUploadedFiles(uploadedFiles);
     next(err);
-
   }
-
 };
 
 export const deletePet = async (

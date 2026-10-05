@@ -1,21 +1,37 @@
 import { Request, Response, NextFunction } from "express";
-import userService from "../services/user.service"
+import userService from "../services/user.service";
+import {
+  collectUploadedFiles,
+  deleteUploadedFiles,
+  getUploadedImageUrl,
+} from "../middleware/upload.middleware";
+
 export const updateProfile = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
+  const uploadedFiles = collectUploadedFiles(req);
+
   try {
+    const uploadedAvatarUrl = getUploadedImageUrl(req, "avatar");
+
+    const updatePayload = {
+      ...req.body,
+      ...(uploadedAvatarUrl ? { avatar_url: uploadedAvatarUrl } : {}),
+    };
+
     const user = await userService.updateProfile(
       req.user!.user_id,
-      req.body
+      updatePayload
     );
 
     res.json({
       success: true,
-      data: user
+      data: user,
     });
   } catch (error) {
+    await deleteUploadedFiles(uploadedFiles);
     next(error);
   }
 };

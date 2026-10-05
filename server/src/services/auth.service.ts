@@ -8,12 +8,27 @@ import {
 import jwt, { JwtPayload } from "jsonwebtoken";
 import { generateOTP } from "../utils/otp";
 import { sendOTPEmail } from "../utils/mail";
-interface RegisterData {
+export type PetGender = "male" | "female" | "unknown";
+
+export interface RegisterPetData {
+  name: string;
+  species: string;
+  breed?: string;
+  gender: PetGender;
+  /** URL ảnh trên Cloudinary (thay thế chuỗi Base64) */
+  avatar_url: string | null;
+}
+
+export interface RegisterData {
   full_name: string;
   email: string;
   password: string;
   phone?: string;
   address?: string;
+  /** URL ảnh đại diện người dùng trên Cloudinary (thay thế chuỗi Base64) */
+  avatar_url?: string | null;
+  /** Thú cưng đăng ký kèm tài khoản (tùy chọn) */
+  pet?: RegisterPetData | null;
 }
 interface LoginData {
   email: string;
@@ -42,43 +57,100 @@ class AuthService {
     throw new AppError("Email already exists", 409);
 }
 const hashedPassword = await bcrypt.hash(data.password, 10);
-const result = await pool.query(
-  `
-    INSERT INTO users (
-      full_name,
-      email,
-      password_hash,
-      phone,
-      address,
-      role,
-      is_active
-    )
-    VALUES ($1, $2, $3, $4, $5, $6, $7)
-    RETURNING
-      user_id,
-      full_name,
-      email,
-      phone,
-      address,
-      role,
-      is_active,
-      created_at;
-  `,
-  [
-    data.full_name,
-    data.email,
-    hashedPassword,
-    data.phone ?? null,
-    data.address ?? null,
-    "owner",
-    true,
-  ]
-);
 
-return {
-  message: "Register successfully",
-  user: result.rows[0],
-};
+// Tạo user + thú cưng (nếu có) trong cùng 1 transaction để đảm bảo toàn vẹn
+const client = await pool.connect();
+
+try {
+  await client.query("BEGIN");
+
+  const userResult = await client.query(
+    `
+      INSERT INTO users (
+        full_name,
+        email,
+        password_hash,
+        phone,
+        address,
+        avatar_url,
+        role,
+        is_active
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      RETURNING
+        user_id,
+        full_name,
+        email,
+        phone,
+        address,
+        avatar_url,
+        role,
+        is_active,
+        created_at;
+    `,
+    [
+      data.full_name,
+      data.email,
+      hashedPassword,
+      data.phone ?? null,
+      data.address ?? null,
+      data.avatar_url ?? null,
+      "owner",
+      true,
+    ]
+  );
+
+  const user = userResult.rows[0];
+  let pet = null;
+
+  if (data.pet) {
+    const petResult = await client.query(
+      `
+        INSERT INTO pets (
+          owner_id,
+          name,
+          species,
+          breed,
+          gender,
+          avatar_url
+        )
+        VALUES ($1, $2, $3, $4, $5, $6)
+        RETURNING
+          pet_id,
+          owner_id,
+          name,
+          species,
+          breed,
+          gender,
+          avatar_url,
+          created_at;
+      `,
+      [
+        user.user_id,
+        data.pet.name,
+        data.pet.species,
+        data.pet.breed ?? null,
+        data.pet.gender,
+        data.pet.avatar_url,
+      ]
+    );
+
+    pet = petResult.rows[0];
+  }
+
+  await client.query("COMMIT");
+
+  return {
+    message: "Register successfully",
+    user,
+    pet,
+  };
+} catch (error) {
+  await client.query("ROLLBACK");
+  throw error;
+} finally {
+  client.release();
+}
 }
 async login(data: LoginData) {
   const result = await pool.query(
@@ -119,6 +191,7 @@ if (!isMatch) {
 const accessToken = generateAccessToken({
   user_id: user.user_id,
   role: user.role,
+  email: user.email,
 });
 const refreshToken = generateRefreshToken({
   user_id: user.user_id,
@@ -181,7 +254,7 @@ async refreshToken(refreshToken: string) {
     // 2. Xác thực trạng thái người dùng trong users
     const userResult = await pool.query(
       `
-      SELECT user_id, role, is_active, is_deleted
+      SELECT user_id, email, role, is_active, is_deleted
       FROM users
       WHERE user_id = $1;
       `,
@@ -203,6 +276,7 @@ async refreshToken(refreshToken: string) {
     const accessToken = generateAccessToken({
       user_id: decoded.user_id,
       role: userResult.rows[0].role,
+      email: userResult.rows[0].email,
     });
 
     return {
