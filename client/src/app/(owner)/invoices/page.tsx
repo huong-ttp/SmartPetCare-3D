@@ -46,7 +46,7 @@ export default function OwnerInvoicesPage() {
         status: filterStatus !== "all" ? filterStatus : undefined,
       });
       setInvoices(data);
-    } catch (err: any) {
+    } catch (err) {
       console.error("[InvoicesPage] Load error:", err);
       setErrorMessage("Không thể tải danh sách hóa đơn. Vui lòng kiểm tra lại kết nối.");
       showError("Không thể tải danh sách hóa đơn.");

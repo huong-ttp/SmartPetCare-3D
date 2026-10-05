@@ -45,7 +45,7 @@ export const ConfirmChangeRoleModal: React.FC<ConfirmChangeRoleModalProps> = ({
       );
       onSuccess(updated);
       onClose();
-    } catch (err: any) {
+    } catch (err) {
       console.error("Failed to update role:", err);
       toast.error(
         err?.response?.data?.message ||

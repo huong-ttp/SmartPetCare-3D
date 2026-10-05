@@ -11,6 +11,7 @@ import type {
   UpdatePetVaccinationDTO,
   CreateVaccineTypeDTO,
 } from "@/types/vaccination.type";
+import type { ApiResponse } from "@/types/api.type";
 import { MOCK_VACCINE_TYPES, MOCK_PET_VACCINATIONS } from "@/lib/mock";
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === "true";
@@ -23,8 +24,9 @@ export const vaccinationService = {
 
   async getVaccineTypes(): Promise<VaccineType[]> {
     if (USE_MOCK) return mockDelay(MOCK_VACCINE_TYPES);
-    const res = await axiosClient.get<VaccineType[]>("/vaccine-types");
-    return res.data;
+    const res = await axiosClient.get<ApiResponse<VaccineType[]> | VaccineType[]>("/vaccine-types");
+    const raw = (res.data as ApiResponse<VaccineType[]>)?.data ?? (res.data as VaccineType[]);
+    return Array.isArray(raw) ? raw : [];
   },
 
   async createVaccineType(dto: CreateVaccineTypeDTO): Promise<VaccineType> {
@@ -36,8 +38,8 @@ export const vaccinationService = {
         updated_at: new Date().toISOString(),
       });
     }
-    const res = await axiosClient.post<VaccineType>("/vaccine-types", dto);
-    return res.data;
+    const res = await axiosClient.post<ApiResponse<VaccineType> | VaccineType>("/vaccine-types", dto);
+    return (res.data as ApiResponse<VaccineType>)?.data ?? (res.data as VaccineType);
   },
 
   // ─── Pet vaccinations ───────────────────────────────────────────────────
@@ -48,7 +50,7 @@ export const vaccinationService = {
         MOCK_PET_VACCINATIONS.filter((v) => String(v.pet_id) === String(petId))
       );
     }
-    const res = await axiosClient.get<any>(`/vaccinations/pet/${petId}`);
+    const res = await axiosClient.get<ApiResponse<PetVaccination[]> | PetVaccination[]>(`/vaccinations/pet/${petId}`);
     const rawList = Array.isArray(res.data) ? res.data : (res.data?.data ?? []);
     return rawList;
   },
@@ -97,38 +99,13 @@ export const vaccinationService = {
       return mockDelay(newVac);
     }
 
-    try {
-      // Try POST /vaccinations first, or fallback to appointment-scoped route if appointment_id provided
-      const endpoint = payload.appointment_id
-        ? `/vaccinations/appointment/${payload.appointment_id}`
-        : "/vaccinations";
+    const endpoint = payload.appointment_id
+      ? `/vaccinations/appointment/${payload.appointment_id}`
+      : "/vaccinations";
 
-      const res = await axiosClient.post<any>(endpoint, payload);
-      const raw = res.data?.data ?? res.data;
-      return raw;
-    } catch (err) {
-      console.warn("[vaccinationService.create] API failed, falling back to client-calculated mock save:", err);
-      const vt = MOCK_VACCINE_TYPES.find(
-        (v) => String(v.id) === String(dto.vaccine_type_id)
-      );
-      const intervalDays = vt?.recommended_interval_days ?? 365;
-      const nextDue = new Date(dto.date_administered);
-      nextDue.setDate(nextDue.getDate() + intervalDays);
-
-      const fallbackVac: PetVaccination = {
-        id: "pv_" + Date.now(),
-        vaccination_id: Date.now(),
-        doctor_id: "u2",
-        doctor_name: "Bác sĩ thú y",
-        ...payload,
-        next_due_date: nextDue.toISOString().split("T")[0],
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      } as PetVaccination;
-
-      MOCK_PET_VACCINATIONS.unshift(fallbackVac);
-      return fallbackVac;
-    }
+    const res = await axiosClient.post<ApiResponse<PetVaccination> | PetVaccination>(endpoint, payload);
+    const raw = (res.data as ApiResponse<PetVaccination>)?.data ?? (res.data as PetVaccination);
+    return raw;
   },
 
   /** Alias: vaccination.service.create(...) */
@@ -139,31 +116,42 @@ export const vaccinationService = {
   /**
    * Ghi nhận NHIỀU mũi tiêm trong cùng 1 lần ([RECOMMENDATION])
    */
-  async createMultiple(dtos: CreatePetVaccinationDTO[]): Promise<PetVaccination[]> {
+  async createBatchVaccinations(
+    vaccinations: CreatePetVaccinationDTO[]
+  ): Promise<PetVaccination[]> {
     const results: PetVaccination[] = [];
-    for (const dto of dtos) {
-      const saved = await this.createVaccination(dto);
-      results.push(saved);
+    for (const dto of vaccinations) {
+      const created = await this.createVaccination(dto);
+      results.push(created);
     }
     return results;
   },
 
-  /** Lấy các vắc xin sắp đến hạn (Mock: trả về các bản ghi có next_due_date trong tương lai gần) */
-  async getDueSoonVaccinations(): Promise<PetVaccination[]> {
+  /** Alias: createMultiple */
+  async createMultiple(
+    vaccinations: CreatePetVaccinationDTO[]
+  ): Promise<PetVaccination[]> {
+    return this.createBatchVaccinations(vaccinations);
+  },
+
+  /** Lấy danh sách lịch tiêm sắp đến hạn (trong vòng 30 ngày tới) */
+  async getUpcomingVaccinations(): Promise<PetVaccination[]> {
     if (USE_MOCK) {
-      const today = new Date();
-      const in30Days = new Date(today);
-      in30Days.setDate(today.getDate() + 30);
-      
+      const now = new Date();
+      const in30Days = new Date();
+      in30Days.setDate(now.getDate() + 30);
+      const nowStr = now.toISOString().split("T")[0];
+      const in30Str = in30Days.toISOString().split("T")[0];
+
       const dueSoon = MOCK_PET_VACCINATIONS.filter(v => {
         if (!v.next_due_date) return false;
-        const dueDate = new Date(v.next_due_date);
-        return dueDate >= today && dueDate <= in30Days;
+        return v.next_due_date >= nowStr && v.next_due_date <= in30Str;
       });
       return mockDelay(dueSoon);
     }
-    const res = await axiosClient.get<PetVaccination[]>("/vaccinations/due-soon");
-    return res.data;
+    const res = await axiosClient.get<ApiResponse<PetVaccination[]> | PetVaccination[]>("/vaccinations/upcoming");
+    const raw = (res.data as ApiResponse<PetVaccination[]>)?.data ?? (res.data as PetVaccination[]);
+    return Array.isArray(raw) ? raw : [];
   },
 
   /**
@@ -213,26 +201,14 @@ export const vaccinationService = {
       return mockDelay(applyMockUpdate());
     }
 
-    try {
-      const res = await axiosClient.put<any>(`/vaccinations/${id}`, {
-        batch_number: data.batch_number,
-        date_administered: data.date_administered,
-        notes: data.notes,
-        administered_by: data.administered_by,
-      });
-      const updated = res.data?.data ?? res.data;
-      // Sync mock cache if present
-      const index = MOCK_PET_VACCINATIONS.findIndex(
-        (v) => String(v.id) === String(id) || String(v.vaccination_id) === String(id)
-      );
-      if (index !== -1 && updated) {
-        MOCK_PET_VACCINATIONS[index] = { ...MOCK_PET_VACCINATIONS[index], ...updated };
-      }
-      return updated || applyMockUpdate();
-    } catch (err) {
-      console.warn("[vaccinationService.update] API failed, falling back to mock update:", err);
-      return mockDelay(applyMockUpdate());
-    }
+    const res = await axiosClient.put<ApiResponse<PetVaccination> | PetVaccination>(`/vaccinations/${id}`, {
+      batch_number: data.batch_number,
+      date_administered: data.date_administered,
+      notes: data.notes,
+      administered_by: data.administered_by,
+    });
+    const updated = (res.data as ApiResponse<PetVaccination>)?.data ?? (res.data as PetVaccination);
+    return updated || applyMockUpdate();
   },
 
   /** Alias: vaccination.service.updateVaccination(id, data) */
@@ -262,14 +238,9 @@ export const vaccinationService = {
       return mockDelay(applyMockDelete());
     }
 
-    try {
-      await axiosClient.delete(`/vaccinations/${id}`);
-      applyMockDelete();
-      return { success: true, message: "Xóa bản ghi tiêm phòng thành công" };
-    } catch (err) {
-      console.warn("[vaccinationService.delete] API failed, falling back to mock delete:", err);
-      return mockDelay(applyMockDelete());
-    }
+    await axiosClient.delete(`/vaccinations/${id}`);
+    applyMockDelete();
+    return { success: true, message: "Xóa bản ghi tiêm phòng thành công" };
   },
 
   /** Alias: vaccination.service.deleteVaccination(id) */
@@ -286,4 +257,3 @@ export const vaccination = {
 };
 
 export default vaccinationService;
-

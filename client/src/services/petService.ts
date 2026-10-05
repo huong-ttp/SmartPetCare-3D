@@ -6,6 +6,7 @@
 
 import axiosClient from "@/lib/axiosClient";
 import type { Pet, PetSpecies, CreatePetDTO, UpdatePetDTO } from "@/types/pet.type";
+import type { ApiResponse } from "@/types/api.type";
 import { MOCK_PETS } from "@/lib/mock";
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === "true";
@@ -17,13 +18,15 @@ function mockDelay<T>(data: T, ms = 400): Promise<T> {
 // Mutable mock store (phản ánh thay đổi trong runtime)
 let _mockPets: Pet[] = [...MOCK_PETS];
 
-function normalizePet(item: any): Pet {
-  if (!item) return item;
+function normalizePet(item: Partial<Pet> & Record<string, unknown>): Pet {
+  if (!item) return item as unknown as Pet;
   return {
-    ...item,
+    ...(item as unknown as Pet),
     id: String(item.id ?? item.pet_id ?? ""),
-    microchip_number: item.microchip_number ?? item.microchip_id ?? undefined,
-    notes: item.notes ?? item.special_notes ?? undefined,
+    microchip_number: (item.microchip_number as string | undefined) ?? (item.microchip_id as string | undefined) ?? undefined,
+    microchip_id: (item.microchip_id as string | undefined) ?? (item.microchip_number as string | undefined) ?? undefined,
+    notes: (item.notes as string | undefined) ?? (item.special_notes as string | undefined) ?? undefined,
+    special_notes: (item.special_notes as string | undefined) ?? (item.notes as string | undefined) ?? undefined,
   };
 }
 
@@ -31,9 +34,9 @@ export const petService = {
   /** Lấy tất cả thú cưng của owner hiện tại */
   async getMyPets(): Promise<Pet[]> {
     if (USE_MOCK) return mockDelay([..._mockPets]);
-    const res = await axiosClient.get<any>("/pets");
+    const res = await axiosClient.get<ApiResponse<Pet[]> | Pet[]>("/pets");
     const rawList = Array.isArray(res.data) ? res.data : (res.data?.data ?? []);
-    return rawList.map(normalizePet);
+    return (rawList as Array<Partial<Pet> & Record<string, unknown>>).map(normalizePet);
   },
 
   /** Alias: getMyPets (cho phép gọi petService.list()) */
@@ -54,9 +57,9 @@ export const petService = {
       if (!pet) throw new Error("NOT_FOUND");
       return mockDelay({ ...pet });
     }
-    const res = await axiosClient.get<any>(`/pets/${cleanId}`);
-    const raw = res.data?.data !== undefined ? res.data.data : res.data;
-    return normalizePet(raw);
+    const res = await axiosClient.get<ApiResponse<Pet> | Pet>(`/pets/${cleanId}`);
+    const raw = (res.data as ApiResponse<Pet>)?.data !== undefined ? (res.data as ApiResponse<Pet>).data : (res.data as Pet);
+    return normalizePet(raw as Partial<Pet> & Record<string, unknown>);
   },
 
   /** Alias: getPetById (cho phép gọi petService.getById(id)) */
@@ -78,9 +81,9 @@ export const petService = {
       return mockDelay(newPet);
     }
     // Chuyển đổi DTO và làm sạch chuỗi rỗng
-    const rawChip = (dto as any).microchip_id ?? dto.microchip_number;
+    const rawChip = dto.microchip_id ?? dto.microchip_number;
     const cleanMicrochip = typeof rawChip === "string" && rawChip.trim() !== "" ? rawChip.trim() : undefined;
-    const rawNotes = (dto as any).special_notes ?? dto.notes;
+    const rawNotes = dto.special_notes ?? dto.notes;
     const cleanNotes = typeof rawNotes === "string" && rawNotes.trim() !== "" ? rawNotes.trim() : undefined;
     const cleanDob = typeof dto.date_of_birth === "string" && dto.date_of_birth.trim() !== "" ? dto.date_of_birth.trim() : undefined;
     const cleanBreed = typeof dto.breed === "string" && dto.breed.trim() !== "" ? dto.breed.trim() : undefined;
@@ -103,9 +106,9 @@ export const petService = {
       chronic_conditions: cleanChronic,
       special_notes: cleanNotes,
     };
-    const res = await axiosClient.post<any>("/pets", payload);
-    const raw = res.data?.data !== undefined ? res.data.data : res.data;
-    return normalizePet(raw);
+    const res = await axiosClient.post<ApiResponse<Pet> | Pet>("/pets", payload);
+    const raw = (res.data as ApiResponse<Pet>)?.data !== undefined ? (res.data as ApiResponse<Pet>).data : (res.data as Pet);
+    return normalizePet(raw as Partial<Pet> & Record<string, unknown>);
   },
 
   /** Alias: createPet */
@@ -131,9 +134,9 @@ export const petService = {
       _mockPets = _mockPets.map((p) => (String(p.id) === cleanId ? updated : p));
       return mockDelay(updated);
     }
-    const rawChip = (dto as any).microchip_id ?? dto.microchip_number;
+    const rawChip = dto.microchip_id ?? dto.microchip_number;
     const cleanMicrochip = typeof rawChip === "string" && rawChip.trim() !== "" ? rawChip.trim() : (rawChip === "" ? null : undefined);
-    const rawNotes = (dto as any).special_notes ?? dto.notes;
+    const rawNotes = dto.special_notes ?? dto.notes;
     const cleanNotes = typeof rawNotes === "string" && rawNotes.trim() !== "" ? rawNotes.trim() : (rawNotes === "" ? null : undefined);
     const cleanDob = typeof dto.date_of_birth === "string" && dto.date_of_birth.trim() !== "" ? dto.date_of_birth.trim() : (dto.date_of_birth === "" ? null : undefined);
     const cleanBreed = typeof dto.breed === "string" && dto.breed.trim() !== "" ? dto.breed.trim() : (dto.breed === "" ? null : undefined);
@@ -155,15 +158,16 @@ export const petService = {
       special_notes: cleanNotes,
     };
     try {
-      const res = await axiosClient.patch<any>(`/pets/${cleanId}`, payload);
-      const raw = res.data?.data !== undefined ? res.data.data : res.data;
-      return normalizePet(raw);
-    } catch (err: any) {
+      const res = await axiosClient.patch<ApiResponse<Pet> | Pet>(`/pets/${cleanId}`, payload);
+      const raw = (res.data as ApiResponse<Pet>)?.data !== undefined ? (res.data as ApiResponse<Pet>).data : (res.data as Pet);
+      return normalizePet(raw as Partial<Pet> & Record<string, unknown>);
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { status?: number } };
       // If 403 Forbidden or 404 from /pets/:id (e.g. user is admin editing someone else's pet), try admin route
-      if (err?.response?.status === 403 || err?.response?.status === 404) {
-        const adminRes = await axiosClient.put<any>(`/admin/pets/${cleanId}`, payload);
-        const adminRaw = adminRes.data?.data !== undefined ? adminRes.data.data : adminRes.data;
-        return normalizePet(adminRaw);
+      if (errorObj?.response?.status === 403 || errorObj?.response?.status === 404) {
+        const adminRes = await axiosClient.put<ApiResponse<Pet> | Pet>(`/admin/pets/${cleanId}`, payload);
+        const adminRaw = (adminRes.data as ApiResponse<Pet>)?.data !== undefined ? (adminRes.data as ApiResponse<Pet>).data : (adminRes.data as Pet);
+        return normalizePet(adminRaw as Partial<Pet> & Record<string, unknown>);
       }
       throw err;
     }
@@ -183,8 +187,9 @@ export const petService = {
     }
     try {
       await axiosClient.delete(`/pets/${cleanId}`);
-    } catch (err: any) {
-      if (err?.response?.status === 403 || err?.response?.status === 404) {
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { status?: number } };
+      if (errorObj?.response?.status === 403 || errorObj?.response?.status === 404) {
         await axiosClient.delete(`/admin/pets/${cleanId}`);
         return;
       }
@@ -197,3 +202,9 @@ export const petService = {
     return petService.deletePet(id);
   },
 };
+
+export const pet = {
+  service: petService,
+};
+
+export default petService;

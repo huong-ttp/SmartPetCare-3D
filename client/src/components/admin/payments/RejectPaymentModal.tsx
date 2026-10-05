@@ -70,7 +70,7 @@ export default function RejectPaymentModal({
       showSuccess(`Đã từ chối thanh toán #PAY-${paymentId}.`);
       onSuccess(res);
       onClose();
-    } catch (err: any) {
+    } catch (err) {
       console.error("[RejectPaymentModal] Error rejecting payment:", err);
       const msg =
         err?.response?.data?.message ||

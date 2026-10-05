@@ -146,7 +146,7 @@ export const VaccineTypeModal: React.FC<VaccineTypeModalProps> = ({
       }
       onSuccess();
       onClose();
-    } catch (err: any) {
+    } catch (err) {
       console.error("Save vaccine type error:", err);
       const msg =
         err?.response?.data?.message ||

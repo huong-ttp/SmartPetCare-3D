@@ -71,7 +71,7 @@ export default function DoctorVaccinationCreatePage() {
       if (petData) {
         setPet(petData);
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error("[VaccinationCreate] Load data failed:", err);
     } finally {
       setIsLoading(false);
@@ -114,7 +114,7 @@ export default function DoctorVaccinationCreatePage() {
 
       showSuccess("Đã ghi nhận mũi tiêm thành công và tự động tính hạn tiêm nhắc!");
       router.push(petId ? `/pets/${petId}/vaccinations` : "/doctor/appointments");
-    } catch (err: any) {
+    } catch (err) {
       console.error("[VaccinationCreate] Save failed:", err);
       showError(err?.message || "Không thể lưu mũi tiêm. Vui lòng thử lại.");
     } finally {

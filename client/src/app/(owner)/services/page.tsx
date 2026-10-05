@@ -54,7 +54,7 @@ export default function ServicesPage() {
       // Đảm bảo chỉ lấy dịch vụ active
       const activeOnly = data.filter((s) => s.is_active);
       setServices(activeOnly);
-    } catch (err: any) {
+    } catch (err) {
       console.error("[ServicesPage] Error loading services:", err);
       setErrorMsg(
         err?.response?.data?.message ||
@@ -222,7 +222,7 @@ export default function ServicesPage() {
             <div className="block lg:hidden">
               <select
                 value={activeCategory}
-                onChange={(e) => setActiveCategory(e.target.value as any)}
+                onChange={(e) => setActiveCategory(e.target.value as ServiceCategory | "all")}
                 aria-label="Chọn danh mục"
                 className="appearance-none px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0EA5B7]/30"
               >

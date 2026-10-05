@@ -146,8 +146,8 @@ export default function DoctorVaccinationRecordPage() {
       // 3. Determine and load medical record context if provided or existing on appointment
       const medRecId =
         initialMedicalRecordId ||
-        (apptData as any)?.medical_record_id ||
-        (apptData as any)?.record_id;
+        apptData?.medical_record_id ||
+        (apptData as { record_id?: string | number })?.record_id;
 
       if (medRecId) {
         const medData = await medicalRecordService.getById(medRecId).catch(() => null);
@@ -170,7 +170,7 @@ export default function DoctorVaccinationRecordPage() {
           )
         );
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error("[DoctorVaccinatePage] Error loading context data:", err);
       setErrorMessage(
         err?.message || "Không thể tải thông tin lịch hẹn hoặc danh mục vắc xin. Vui lòng thử lại."
@@ -295,7 +295,7 @@ export default function DoctorVaccinationRecordPage() {
       showToastSuccess(
         `Đã ghi nhận thành công ${dtos.length} mũi tiêm vắc xin cho ${pet?.name || "thú cưng"}!`
       );
-    } catch (err: any) {
+    } catch (err) {
       console.error("[DoctorVaccinatePage] Submit error:", err);
       const errMsg =
         err?.response?.data?.message ||

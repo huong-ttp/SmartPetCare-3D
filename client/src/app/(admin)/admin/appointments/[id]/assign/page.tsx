@@ -71,7 +71,7 @@ export default function AssignDoctorPage() {
       } else if (activeDoctors.length > 0) {
         setSelectedDoctorId(String(activeDoctors[0].id));
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error("Lỗi khi tải thông tin gán bác sĩ:", err);
       setErrorMessage(
         err?.response?.data?.message ||
@@ -107,7 +107,7 @@ export default function AssignDoctorPage() {
       await appointmentService.assignDoctor(appointmentId, selectedDoctorId);
       toast.success("Gán bác sĩ cho lịch hẹn thành công!");
       router.push("/admin/appointments");
-    } catch (err: any) {
+    } catch (err) {
       console.error("Lỗi khi gán bác sĩ:", err);
       const msg =
         err?.response?.data?.message ||

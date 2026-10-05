@@ -16,6 +16,7 @@ export interface Pet {
   avatar_url?: string;
   color?: string;
   microchip_number?: string;
+  microchip_id?: string;
   /**
    * CHỈ ĐỌC — được cache từ PET_HEALTH_LOGS.weight_kg hoặc
    * MEDICAL_RECORDS.weight_at_visit mới nhất.
@@ -28,6 +29,7 @@ export interface Pet {
   /** Bệnh mãn tính đã biết */
   chronic_conditions?: string | string[];
   notes?: string;
+  special_notes?: string;
   owner_name?: string;
   owner_phone?: string;
   owner_email?: string;

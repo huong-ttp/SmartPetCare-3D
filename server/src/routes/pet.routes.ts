@@ -4,6 +4,7 @@ import authMiddleware from "../middleware/auth.middleware";
 import validate from "../middleware/validate.middleware";
 
 import {
+  createPetSchema,
   updatePetSchema,
 } from "../validations/pet.validation";
 const router = Router();
@@ -11,6 +12,7 @@ const router = Router();
 router.post(
   "/",
   authMiddleware,
+  validate(createPetSchema),
   petController.createPet
 );
 

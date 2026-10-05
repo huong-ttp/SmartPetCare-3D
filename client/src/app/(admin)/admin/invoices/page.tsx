@@ -95,7 +95,7 @@ export default function AdminInvoicesPage() {
         if (res.pagination) {
           setPagination(res.pagination);
         }
-      } catch (err: any) {
+      } catch (err) {
         console.error("[AdminInvoices] Failed to load invoices:", err);
         setErrorMessage(
           err?.response?.data?.message ||

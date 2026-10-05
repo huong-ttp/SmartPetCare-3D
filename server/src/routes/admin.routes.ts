@@ -60,6 +60,20 @@ router.patch(
   adminController.toggleUserActive
 );
 
+router.delete(
+  "/users/:id",
+  authMiddleware,
+  authorize("admin"),
+  adminController.deleteUser
+);
+
+router.patch(
+  "/users/:id/restore",
+  authMiddleware,
+  authorize("admin"),
+  adminController.restoreUser
+);
+
 router.get(
   "/pets",
   authMiddleware,

@@ -1,12 +1,18 @@
 import { Router } from "express";
 import authMiddleware, {authorize} from "../middleware/auth.middleware";
-import appointmentController from "../controllers/appointment.controller"
+import validate from "../middleware/validate.middleware";
+import appointmentController from "../controllers/appointment.controller";
+import {
+  createAppointmentSchema,
+  cancelAppointmentSchema,
+} from "../validations/appointment.validation";
 
 const router = Router();
 
 router.post(
     "/",
     authMiddleware,
+    validate(createAppointmentSchema),
     appointmentController.createAppointment
 );
 
@@ -52,6 +58,7 @@ router.get(
 router.put(
   "/:id/cancel",
   authMiddleware,
+  validate(cancelAppointmentSchema),
   appointmentController.cancelAppointment
 );
 

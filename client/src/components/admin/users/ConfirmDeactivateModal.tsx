@@ -37,7 +37,7 @@ export const ConfirmDeactivateModal: React.FC<ConfirmDeactivateModalProps> = ({
       );
       onSuccess(updated);
       onClose();
-    } catch (err: any) {
+    } catch (err) {
       console.error("Failed to deactivate user:", err);
       toast.error(
         err?.response?.data?.message ||

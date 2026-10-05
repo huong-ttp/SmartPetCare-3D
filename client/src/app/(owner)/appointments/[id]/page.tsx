@@ -81,7 +81,7 @@ export default function AppointmentDetailPage() {
       // Calls appointmentService.getById(id)
       const data = await appointmentService.getById(appointmentId);
       setAppointment(data);
-    } catch (err: any) {
+    } catch (err) {
       console.error("[AppointmentDetail] Fetch error:", err);
       setErrorMessage(
         err?.response?.data?.message ||
@@ -158,7 +158,7 @@ export default function AppointmentDetailPage() {
       showSuccess("Đã hủy lịch hẹn thành công.");
       setIsCancelModalOpen(false);
       loadAppointment();
-    } catch (err: any) {
+    } catch (err) {
       console.error("[AppointmentDetail] Cancel failed:", err);
       showError(err?.message || "Không thể hủy lịch hẹn. Vui lòng thử lại.");
     } finally {

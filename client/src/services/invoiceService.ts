@@ -2,9 +2,11 @@ import axiosClient from "@/lib/axiosClient";
 import type {
   Invoice,
   InvoiceItem,
+  InvoicePaymentInfo,
   InvoiceFilterDTO,
   UpdateInvoiceStatusDTO,
 } from "@/types/invoice.type";
+import type { ApiResponse } from "@/types/api.type";
 import { MOCK_INVOICES, MOCK_INVOICE_ITEMS, MOCK_PAYMENTS } from "@/lib/mock";
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === "true";
@@ -13,88 +15,79 @@ function mockDelay<T>(data: T, ms = 350): Promise<T> {
   return new Promise((resolve) => setTimeout(() => resolve(data), ms));
 }
 
-function normalizeInvoice(raw: any): Invoice {
+function normalizeInvoice(item: unknown): Invoice {
+  if (!item) return item as unknown as Invoice;
+  const raw = item as Record<string, unknown>;
   const cleanId = String(raw.invoice_id ?? raw.id ?? "");
   const items: InvoiceItem[] = Array.isArray(raw.items)
-    ? raw.items.map((it: any) => ({
+    ? (raw.items as Array<Record<string, unknown>>).map((it) => ({
         id: String(it.item_id ?? it.id ?? ""),
-        item_id: it.item_id ?? it.id,
+        item_id: (it.item_id as number | undefined) ?? (it.id as number | undefined),
         invoice_id: cleanId,
-        service_id: it.service_id,
-        service_name: it.service_name || it.description || "Dịch vụ thú y",
-        service_description: it.service_description,
-        description: it.description || it.service_name || "Dịch vụ y tế",
+        service_id: it.service_id as number | string | undefined,
+        service_name: (it.service_name as string) || (it.description as string) || "Dịch vụ thú y",
+        service_description: it.service_description as string | undefined,
+        description: (it.description as string) || (it.service_name as string) || "Dịch vụ y tế",
         quantity: Number(it.quantity || 1),
         unit_price: Number(it.unit_price || 0),
         subtotal: Number(it.subtotal || 0),
       }))
     : [];
 
+  const rawPayments = Array.isArray(raw.payments) ? (raw.payments as Array<Record<string, unknown>>) : [];
+
+  const mapPayment = (p: Record<string, unknown>): InvoicePaymentInfo => ({
+    payment_id: (p.payment_id as number | string | undefined) ?? (p.id as number | string | undefined) ?? 0,
+    invoice_id: String(p.invoice_id ?? cleanId),
+    amount: Number(p.amount || 0),
+    payment_method: (p.payment_method as "cash" | "bank_transfer") || "cash",
+    payment_date: (p.payment_date as string) || (p.created_at as string) || new Date().toISOString(),
+    transaction_ref: p.transaction_ref as string | undefined,
+    status: (p.status as "pending" | "success" | "failed") || "pending",
+  });
+
+  const paymentObj = raw.payment
+    ? mapPayment(raw.payment as Record<string, unknown>)
+    : rawPayments.length > 0
+    ? mapPayment(rawPayments[0])
+    : null;
+
   return {
+    ...(item as Invoice),
     id: cleanId,
-    invoice_id: raw.invoice_id ?? raw.id,
+    invoice_id: (raw.invoice_id as number | undefined) ?? (raw.id as number | undefined),
     appointment_id: String(raw.appointment_id ?? ""),
     owner_id: String(raw.owner_id ?? ""),
-    status: raw.status || "unpaid",
+    status: (raw.status as Invoice["status"]) || "unpaid",
     total_amount: Number(raw.total_amount ?? 0),
-    issued_at: raw.issued_at || raw.issued_date || raw.created_at,
-    issued_date: raw.issued_date || raw.issued_at,
-    due_date: raw.due_date,
-    notes: raw.notes,
+    issued_at: (raw.issued_at as string) || (raw.issued_date as string) || (raw.created_at as string),
+    issued_date: (raw.issued_date as string) || (raw.issued_at as string),
+    due_date: raw.due_date as string | undefined,
+    notes: raw.notes as string | undefined,
 
-    pet_id: raw.pet_id,
-    pet_name: raw.pet_name,
-    pet_species: raw.pet_species,
-    pet_breed: raw.pet_breed,
+    pet_id: raw.pet_id as number | string | undefined,
+    pet_name: raw.pet_name as string | undefined,
+    pet_species: raw.pet_species as string | undefined,
+    pet_breed: raw.pet_breed as string | undefined,
     pet_weight: raw.pet_weight ? Number(raw.pet_weight) : undefined,
 
-    appointment_date: raw.appointment_date,
-    start_time: raw.start_time,
-    end_time: raw.end_time,
-    reason: raw.reason,
-    service_name: raw.service_name,
+    appointment_date: raw.appointment_date as string | undefined,
+    start_time: raw.start_time as string | undefined,
+    end_time: raw.end_time as string | undefined,
+    reason: raw.reason as string | undefined,
+    service_name: raw.service_name as string | undefined,
 
-    owner_name: raw.owner_name,
-    owner_phone: raw.owner_phone,
-    owner_email: raw.owner_email,
+    owner_name: raw.owner_name as string | undefined,
+    owner_phone: raw.owner_phone as string | undefined,
+    owner_email: raw.owner_email as string | undefined,
 
     items,
-    payments: Array.isArray(raw.payments)
-      ? raw.payments.map((p: any) => ({
-          payment_id: p.payment_id,
-          invoice_id: p.invoice_id ?? cleanId,
-          amount: Number(p.amount || 0),
-          payment_method: p.payment_method || "cash",
-          payment_date: p.payment_date || p.created_at,
-          transaction_ref: p.transaction_ref,
-          status: p.status || "pending",
-        }))
-      : undefined,
-    payment: raw.payment
-      ? {
-          payment_id: raw.payment.payment_id,
-          invoice_id: raw.payment.invoice_id,
-          amount: Number(raw.payment.amount || 0),
-          payment_method: raw.payment.payment_method || "cash",
-          payment_date: raw.payment.payment_date || raw.payment.created_at,
-          transaction_ref: raw.payment.transaction_ref,
-          status: raw.payment.status || "success",
-        }
-      : Array.isArray(raw.payments) && raw.payments.length > 0
-      ? {
-          payment_id: raw.payments[0].payment_id,
-          invoice_id: raw.payments[0].invoice_id ?? cleanId,
-          amount: Number(raw.payments[0].amount || 0),
-          payment_method: raw.payments[0].payment_method || "cash",
-          payment_date: raw.payments[0].payment_date || raw.payments[0].created_at,
-          transaction_ref: raw.payments[0].transaction_ref,
-          status: raw.payments[0].status || "pending",
-        }
-      : null,
-    cancel_reason: raw.cancel_reason,
+    payments: rawPayments.length > 0 ? rawPayments.map(mapPayment) : undefined,
+    payment: paymentObj,
+    cancel_reason: raw.cancel_reason as string | undefined,
 
-    created_at: raw.created_at || new Date().toISOString(),
-    updated_at: raw.updated_at,
+    created_at: (raw.created_at as string) || new Date().toISOString(),
+    updated_at: raw.updated_at as string | undefined,
   };
 }
 
@@ -109,22 +102,19 @@ export const invoiceService = {
       return mockDelay(list);
     }
 
-    try {
-      const params: any = {};
-      if (filter?.status && filter.status !== "all") {
-        params.status = filter.status;
-      }
-      const res = await axiosClient.get<any>("/invoices", { params });
-      const raw = res.data;
-      let list: any[] = [];
-      if (Array.isArray(raw)) list = raw;
-      else if (raw && Array.isArray(raw.data)) list = raw.data;
-      else if (raw && Array.isArray(raw.invoices)) list = raw.invoices;
-      return list.map(normalizeInvoice);
-    } catch (err) {
-      console.warn("[invoiceService] Backend fetch failed, fallback to mock:", err);
-      return mockDelay(MOCK_INVOICES.map(normalizeInvoice));
+    const params: Record<string, unknown> = {};
+    if (filter?.status && filter.status !== "all") {
+      params.status = filter.status;
     }
+    const res = await axiosClient.get<ApiResponse<Invoice[]> | Invoice[]>("/invoices", { params });
+    const raw = res.data;
+    let list: unknown[] = [];
+    if (Array.isArray(raw)) list = raw;
+    else if (raw && Array.isArray((raw as ApiResponse<Invoice[]>).data)) list = (raw as ApiResponse<Invoice[]>).data ?? [];
+    else if (raw && typeof raw === "object" && "invoices" in raw && Array.isArray((raw as { invoices?: Invoice[] }).invoices)) {
+      list = (raw as { invoices: Invoice[] }).invoices;
+    }
+    return list.map(normalizeInvoice);
   },
 
   /** Alias: invoice.service.list({owner: me}) */
@@ -157,22 +147,21 @@ export const invoiceService = {
 
     const endpoint = asAdmin ? `/admin/invoices/${cleanId}` : `/invoices/${cleanId}`;
     try {
-      const res = await axiosClient.get<any>(endpoint);
-      const raw = res.data?.data ?? res.data;
+      const res = await axiosClient.get<ApiResponse<Invoice> | Invoice>(endpoint);
+      const raw = (res.data as ApiResponse<Invoice>)?.data ?? (res.data as Invoice);
       if (!raw) throw new Error("Hóa đơn không tồn tại.");
-      return normalizeInvoice(raw);
-    } catch (err: any) {
-      // Fallback try admin endpoint if owner endpoint failed (e.g. 403 / not owner)
+      return normalizeInvoice(raw as Partial<Invoice> & Record<string, unknown>);
+    } catch (err: unknown) {
+      // Try admin endpoint if owner endpoint failed (e.g. 403 / not owner)
       if (!asAdmin) {
         try {
-          const adminRes = await axiosClient.get<any>(`/admin/invoices/${cleanId}`);
-          const adminRaw = adminRes.data?.data ?? adminRes.data;
-          if (adminRaw) return normalizeInvoice(adminRaw);
-        } catch (_) {}
+          const adminRes = await axiosClient.get<ApiResponse<Invoice> | Invoice>(`/admin/invoices/${cleanId}`);
+          const adminRaw = (adminRes.data as ApiResponse<Invoice>)?.data ?? (adminRes.data as Invoice);
+          if (adminRaw) return normalizeInvoice(adminRaw as Partial<Invoice> & Record<string, unknown>);
+        } catch {
+          // Ignore and rethrow original error
+        }
       }
-      // Fallback to mock data if API call failed
-      const mockInv = getMockInvoice();
-      if (mockInv) return mockDelay(mockInv);
       throw err;
     }
   },
@@ -190,8 +179,8 @@ export const invoiceService = {
         MOCK_INVOICE_ITEMS.filter((i) => String(i.invoice_id) === cleanId)
       );
     }
-    const res = await axiosClient.get<any>(`/invoices/${cleanId}/items`);
-    const raw = res.data?.data ?? res.data;
+    const res = await axiosClient.get<ApiResponse<InvoiceItem[]> | InvoiceItem[]>(`/invoices/${cleanId}/items`);
+    const raw = (res.data as ApiResponse<InvoiceItem[]>)?.data ?? res.data;
     return Array.isArray(raw) ? raw : [];
   },
 
@@ -208,9 +197,9 @@ export const invoiceService = {
       inv.cancel_reason = reason;
       return mockDelay(normalizeInvoice(inv));
     }
-    const res = await axiosClient.put<any>(`/admin/invoices/${cleanId}/cancel`, { reason });
-    const raw = res.data?.data ?? res.data;
-    return normalizeInvoice(raw);
+    const res = await axiosClient.put<ApiResponse<Invoice> | Invoice>(`/admin/invoices/${cleanId}/cancel`, { reason });
+    const raw = (res.data as ApiResponse<Invoice>)?.data ?? (res.data as Invoice);
+    return normalizeInvoice(raw as Partial<Invoice> & Record<string, unknown>);
   },
 
   /** Cập nhật trạng thái hóa đơn */
@@ -223,9 +212,9 @@ export const invoiceService = {
         normalizeInvoice({ ...inv, ...dto, updated_at: new Date().toISOString() })
       );
     }
-    const res = await axiosClient.patch<any>(`/invoices/${cleanId}/status`, dto);
-    const raw = res.data?.data ?? res.data;
-    return normalizeInvoice(raw);
+    const res = await axiosClient.patch<ApiResponse<Invoice> | Invoice>(`/invoices/${cleanId}/status`, dto);
+    const raw = (res.data as ApiResponse<Invoice>)?.data ?? (res.data as Invoice);
+    return normalizeInvoice(raw as Partial<Invoice> & Record<string, unknown>);
   },
 };
 
@@ -234,4 +223,3 @@ export const invoice = {
 };
 
 export default invoiceService;
-

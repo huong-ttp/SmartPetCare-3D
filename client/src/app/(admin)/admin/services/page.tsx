@@ -107,7 +107,7 @@ export default function AdminServicesPage() {
             totalPages: Math.ceil(result.length / prev.limit) || 1,
           }));
         }
-      } catch (err: any) {
+      } catch (err) {
         console.error("Failed to fetch services:", err);
         setErrorMessage(
           err?.response?.data?.message ||
@@ -153,7 +153,7 @@ export default function AdminServicesPage() {
       } else {
         toast.info(`Đã tạm dừng dịch vụ "${targetService.name}".`);
       }
-    } catch (err: any) {
+    } catch (err) {
       // Revert optimistic update on failure
       setServices((prev) =>
         prev.map((s) => (s.id === targetService.id ? { ...s, is_active: previousState } : s))

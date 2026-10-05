@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import appointmentService from "../services/appointment.service";
+import { availableSlotsQuerySchema } from "../validations/appointment.validation";
 
 export const createAppointment = async (
   req: Request,
@@ -131,32 +132,29 @@ export const getAvailableSlots = async (
   req: Request,
   res: Response,
   next: NextFunction,
-
 ) => {
-
   try {
-    
     const ownerId = req.user!.user_id;
+    const validatedQuery = availableSlotsQuerySchema.parse({
+      pet_id: req.query.pet_id,
+      date: req.query.date,
+    });
 
-    const slots =
-      await appointmentService.getAvailableSlots(
-        ownerId,
-        {
-          pet_id: Number(req.query.pet_id),
-          date: String(req.query.date)
-        }
-      );
+    const slots = await appointmentService.getAvailableSlots(
+      ownerId,
+      {
+        pet_id: Number(validatedQuery.pet_id),
+        date: String(validatedQuery.date),
+      }
+    );
 
     res.json({
       success: true,
-      data: slots
+      data: slots,
     });
-
   } catch (error) {
     next(error);
   }
-
-
 };
 
 export const getDoctorAppointments = async (

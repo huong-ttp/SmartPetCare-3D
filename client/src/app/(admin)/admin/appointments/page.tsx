@@ -101,7 +101,7 @@ export default function AdminAppointmentsPage() {
         if (result.pagination) {
           setPagination(result.pagination);
         }
-      } catch (err: any) {
+      } catch (err) {
         console.error("Lỗi khi tải danh sách lịch hẹn:", err);
         setErrorMessage(
           err?.response?.data?.message ||

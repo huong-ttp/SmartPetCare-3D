@@ -10,6 +10,8 @@ import type {
   UpdateMedicalRecordDTO,
   DoctorPatient,
 } from "@/types/medical-record.type";
+import type { Pet } from "@/types/pet.type";
+import type { ApiResponse } from "@/types/api.type";
 import { MOCK_MEDICAL_RECORDS, MOCK_APPOINTMENTS, MOCK_PETS, MOCK_USERS } from "@/lib/mock";
 import { DEMO_DOCTOR_APPOINTMENTS } from "@/services/appointmentService";
 
@@ -25,7 +27,7 @@ export const medicalRecordService = {
         MOCK_MEDICAL_RECORDS.filter((r) => String(r.pet_id) === String(petId))
       );
     }
-    const res = await axiosClient.get<any>(`/medical-records/pet/${petId}`);
+    const res = await axiosClient.get<ApiResponse<MedicalRecord[]> | MedicalRecord[]>(`/medical-records/pet/${petId}`);
     const rawList = Array.isArray(res.data) ? res.data : (res.data?.data ?? []);
     return rawList;
   },
@@ -39,7 +41,7 @@ export const medicalRecordService = {
     const cleanId = String(id);
     const findInMock = () => {
       const r = MOCK_MEDICAL_RECORDS.find(
-        (r) => String(r.id) === cleanId || String(r.record_id) === cleanId
+        (rec) => String(rec.id) === cleanId || String(rec.record_id) === cleanId
       );
       if (!r) throw new Error("Hồ sơ không tồn tại.");
       return r;
@@ -49,26 +51,17 @@ export const medicalRecordService = {
       return mockDelay(findInMock());
     }
 
-    try {
-      const res = await axiosClient.get<any>(`/medical-records/${cleanId}`);
-      const data = res.data?.data ?? res.data;
-      if (!data) throw new Error("Hồ sơ không tồn tại.");
-      return data;
-    } catch (err) {
-      console.warn("[medicalRecordService.getById] API call failed, falling back to mock:", err);
-      try {
-        return mockDelay(findInMock());
-      } catch {
-        throw err;
-      }
-    }
+    const res = await axiosClient.get<ApiResponse<MedicalRecord> | MedicalRecord>(`/medical-records/${cleanId}`);
+    const data = (res.data as ApiResponse<MedicalRecord>)?.data ?? (res.data as MedicalRecord);
+    if (!data) throw new Error("Hồ sơ không tồn tại.");
+    return data;
   },
 
-  async create(dto: CreateMedicalRecordDTO): Promise<any> {
+  async create(dto: CreateMedicalRecordDTO): Promise<MedicalRecord> {
     if (USE_MOCK) {
       const newRecId = "mr_" + Date.now();
       const numRecId = Date.now();
-      const newRec = {
+      const newRec: MedicalRecord = {
         id: newRecId,
         record_id: numRecId,
         doctor_id: "u2",
@@ -76,7 +69,7 @@ export const medicalRecordService = {
         ...dto,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-      } as unknown as MedicalRecord;
+      };
       MOCK_MEDICAL_RECORDS.unshift(newRec);
 
       // Cập nhật appointment status thành completed
@@ -97,44 +90,30 @@ export const medicalRecordService = {
       if (dto.pet_id && dto.weight_at_visit) {
         const pet = MOCK_PETS.find((p) => String(p.id) === String(dto.pet_id));
         if (pet) {
-          (pet as any).weight_kg = Number(dto.weight_at_visit);
+          (pet as Partial<Pet> & { weight_kg?: number }).weight_kg = Number(dto.weight_at_visit);
         }
       }
 
-      // Mock tự động sinh invoice
-      const mockInvoice = {
-        invoice_id: "inv_" + Date.now(),
-        appointment_id: dto.appointment_id,
-        status: "unpaid",
-        total_amount: 250000,
-        issued_date: new Date().toISOString().split("T")[0],
-      };
-
-      return mockDelay({
-        medical_record: newRec,
-        invoice: mockInvoice,
-        ...newRec,
-        message: "Medical record created successfully. Invoice generated automatically.",
-      });
+      return mockDelay(newRec);
     }
 
     if (dto.appointment_id) {
       try {
-        const res = await axiosClient.post<any>(
+        const res = await axiosClient.post<ApiResponse<MedicalRecord> | MedicalRecord>(
           `/medical-records/appointment/${dto.appointment_id}`,
           dto
         );
-        const responseData = res.data?.data ?? res.data;
+        const responseData = (res.data as ApiResponse<MedicalRecord>)?.data ?? (res.data as MedicalRecord);
         return responseData;
-      } catch (err: any) {
+      } catch {
         // Fallback to standard POST /medical-records if appointment endpoint is unavailable
-        const res = await axiosClient.post<any>("/medical-records", dto);
-        return res.data?.data ?? res.data;
+        const res = await axiosClient.post<ApiResponse<MedicalRecord> | MedicalRecord>("/medical-records", dto);
+        return (res.data as ApiResponse<MedicalRecord>)?.data ?? (res.data as MedicalRecord);
       }
     }
 
-    const res = await axiosClient.post<any>("/medical-records", dto);
-    return res.data?.data ?? res.data;
+    const res = await axiosClient.post<ApiResponse<MedicalRecord> | MedicalRecord>("/medical-records", dto);
+    return (res.data as ApiResponse<MedicalRecord>)?.data ?? (res.data as MedicalRecord);
   },
 
   async update(id: string | number, dto: UpdateMedicalRecordDTO): Promise<MedicalRecord> {
@@ -158,16 +137,11 @@ export const medicalRecordService = {
     }
 
     try {
-      const res = await axiosClient.put<any>(`/medical-records/${cleanId}`, dto);
-      return res.data?.data ?? res.data;
+      const res = await axiosClient.put<ApiResponse<MedicalRecord> | MedicalRecord>(`/medical-records/${cleanId}`, dto);
+      return (res.data as ApiResponse<MedicalRecord>)?.data ?? (res.data as MedicalRecord);
     } catch {
-      try {
-        const res = await axiosClient.patch<any>(`/medical-records/${cleanId}`, dto);
-        return res.data?.data ?? res.data;
-      } catch (err) {
-        console.warn("[medicalRecordService.update] API error, falling back to mock:", err);
-        return mockDelay(updateInMock());
-      }
+      const res = await axiosClient.patch<ApiResponse<MedicalRecord> | MedicalRecord>(`/medical-records/${cleanId}`, dto);
+      return (res.data as ApiResponse<MedicalRecord>)?.data ?? (res.data as MedicalRecord);
     }
   },
 
@@ -195,13 +169,9 @@ export const medicalRecordService = {
       return mockDelay(deleteInMock());
     }
 
-    try {
-      const res = await axiosClient.delete<any>(`/medical-records/${cleanId}`);
-      return res.data?.data ?? res.data;
-    } catch (err) {
-      console.warn("[medicalRecordService.delete] API error, falling back to mock:", err);
-      return mockDelay(deleteInMock());
-    }
+    const res = await axiosClient.delete<ApiResponse<{ message?: string }> | { message?: string }>(`/medical-records/${cleanId}`);
+    const data = (res.data as ApiResponse<{ message?: string }>)?.data ?? (res.data as { message?: string });
+    return { message: data?.message ?? "Xóa hồ sơ bệnh án thành công." };
   },
 
   /**
@@ -292,74 +262,35 @@ export const medicalRecordService = {
       return mockDelay(result);
     }
 
-    try {
-      const params: Record<string, string> = {};
-      if (search && search.trim()) {
-        params.search = search.trim();
-      }
-      const res = await axiosClient.get<any>("/medical-records/doctor/patients", { params });
-      const raw = Array.isArray(res.data) ? res.data : (res.data?.data ?? []);
-      return raw.map((item: any) => ({
-        ...item,
-        pet_id: item.pet_id ?? item.id,
-        name: item.name ?? item.pet_name,
-        species: item.species ?? item.pet_species ?? "dog",
-        breed: item.breed ?? item.pet_breed,
-        gender: item.gender ?? item.pet_gender,
-        avatar_url: item.avatar_url,
-        date_of_birth: item.date_of_birth ?? item.dob,
-        weight_kg: item.weight_kg ? Number(item.weight_kg) : undefined,
-        owner_id: item.owner_id,
-        owner_name: item.owner_name ?? "Chủ nuôi",
-        owner_phone: item.owner_phone,
-        owner_email: item.owner_email,
-        total_records: item.total_records ? Number(item.total_records) : 0,
-        total_appointments: item.total_appointments ? Number(item.total_appointments) : 0,
-        last_visit_date: item.last_visit_date,
-      }));
-    } catch (err: any) {
-      console.warn("[medicalRecordService.listPatientsByDoctor] API error, using mock fallback:", err);
-      const fallbackList: DoctorPatient[] = MOCK_PETS.map((pet) => {
-        const owner = MOCK_USERS.find((u) => String(u.id) === String(pet.owner_id)) || {
-          full_name: "Nguyễn Văn An",
-          phone: "0901234567",
-          email: "owner@example.com",
-        };
-        return {
-          pet_id: pet.id,
-          name: pet.name,
-          species: pet.species,
-          breed: pet.breed,
-          gender: pet.gender,
-          avatar_url: pet.avatar_url,
-          date_of_birth: pet.date_of_birth,
-          weight_kg: pet.weight_kg,
-          owner_id: pet.owner_id,
-          owner_name: owner.full_name,
-          owner_phone: owner.phone,
-          owner_email: owner.email,
-          total_records: 1,
-          total_appointments: 1,
-          last_visit_date: "2025-07-10",
-        };
-      });
-
-      if (search && search.trim()) {
-        const q = search.trim().toLowerCase();
-        return fallbackList.filter(
-          (p) =>
-            p.name.toLowerCase().includes(q) ||
-            p.owner_name.toLowerCase().includes(q)
-        );
-      }
-      return fallbackList;
+    const params: Record<string, string> = {};
+    if (search && search.trim()) {
+      params.search = search.trim();
     }
+    const res = await axiosClient.get<ApiResponse<DoctorPatient[]> | DoctorPatient[]>("/medical-records/doctor/patients", { params });
+    const raw = Array.isArray(res.data) ? res.data : (res.data?.data ?? []);
+    return (raw as Array<Partial<DoctorPatient> & Record<string, unknown>>).map((item) => ({
+      ...item,
+      pet_id: String(item.pet_id ?? item.id ?? ""),
+      name: (item.name as string | undefined) ?? (item.pet_name as string | undefined) ?? "",
+      species: (item.species as DoctorPatient["species"]) ?? (item.pet_species as DoctorPatient["species"]) ?? "dog",
+      breed: (item.breed as string | undefined) ?? (item.pet_breed as string | undefined) ?? "",
+      gender: (item.gender as DoctorPatient["gender"]) ?? (item.pet_gender as DoctorPatient["gender"]) ?? "male",
+      avatar_url: item.avatar_url as string | undefined,
+      date_of_birth: (item.date_of_birth as string | undefined) ?? (item.dob as string | undefined),
+      weight_kg: item.weight_kg ? Number(item.weight_kg) : undefined,
+      owner_id: String(item.owner_id ?? ""),
+      owner_name: (item.owner_name as string | undefined) ?? "Chủ nuôi",
+      owner_phone: item.owner_phone as string | undefined,
+      owner_email: item.owner_email as string | undefined,
+      total_records: item.total_records ? Number(item.total_records) : 0,
+      total_appointments: item.total_appointments ? Number(item.total_appointments) : 0,
+      last_visit_date: item.last_visit_date as string | undefined,
+    }));
   },
 
   /**
    * listByDoctor
    * Lấy toàn bộ danh sách bệnh án do bác sĩ phụ trách.
-   * Kết hợp dữ liệu bệnh nhân & bệnh án từng pet, tự động fallback sang mock khi ngắt kết nối.
    */
   async listByDoctor(doctorId?: string | number): Promise<MedicalRecord[]> {
     const currentDocId = String(doctorId || "u2");
@@ -378,61 +309,52 @@ export const medicalRecordService = {
       return mockDelay(getMockDoctorRecords());
     }
 
-    try {
-      // 1. Lấy danh sách bệnh nhân của bác sĩ
-      const patients = await this.listPatientsByDoctor(doctorId);
+    // 1. Lấy danh sách bệnh nhân của bác sĩ
+    const patients = await this.listPatientsByDoctor(doctorId);
 
-      if (!patients || patients.length === 0) {
-        return getMockDoctorRecords();
-      }
-
-      // 2. Tải danh sách bệnh án của từng thú cưng song song
-      const results = await Promise.allSettled(
-        patients.map((p) => this.listByPet(p.pet_id))
-      );
-
-      const allRecords: MedicalRecord[] = [];
-      const seenIds = new Set<string>();
-
-      results.forEach((res, idx) => {
-        if (res.status === "fulfilled" && Array.isArray(res.value)) {
-          const patient = patients[idx];
-          res.value.forEach((rec) => {
-            const key = String(rec.id || rec.record_id);
-            if (!seenIds.has(key)) {
-              seenIds.add(key);
-              allRecords.push({
-                ...rec,
-                id: rec.id || String(rec.record_id),
-                pet_name: rec.pet_name || patient.name,
-                pet_species: rec.pet_species || patient.species,
-                pet_breed: rec.pet_breed || patient.breed,
-                pet_avatar_url: rec.pet_avatar_url || patient.avatar_url,
-                owner_name: rec.owner_name || patient.owner_name,
-                owner_phone: rec.owner_phone || patient.owner_phone,
-                owner_email: rec.owner_email || patient.owner_email,
-              });
-            }
-          });
-        }
-      });
-
-      if (allRecords.length === 0) {
-        return getMockDoctorRecords();
-      }
-
-      // Sắp xếp ngày khám mới nhất lên đầu
-      allRecords.sort((a, b) => {
-        const dateA = new Date(a.record_date || a.created_at || "").getTime();
-        const dateB = new Date(b.record_date || b.created_at || "").getTime();
-        return dateB - dateA;
-      });
-
-      return allRecords;
-    } catch (err) {
-      console.warn("[medicalRecordService.listByDoctor] Failed, falling back to mock:", err);
-      return mockDelay(getMockDoctorRecords());
+    if (!patients || patients.length === 0) {
+      return [];
     }
+
+    // 2. Tải danh sách bệnh án của từng thú cưng song song
+    const results = await Promise.allSettled(
+      patients.map((p) => this.listByPet(p.pet_id))
+    );
+
+    const allRecords: MedicalRecord[] = [];
+    const seenIds = new Set<string>();
+
+    results.forEach((res, idx) => {
+      if (res.status === "fulfilled" && Array.isArray(res.value)) {
+        const patient = patients[idx];
+        res.value.forEach((rec) => {
+          const key = String(rec.id || rec.record_id);
+          if (!seenIds.has(key)) {
+            seenIds.add(key);
+            allRecords.push({
+              ...rec,
+              id: rec.id || String(rec.record_id),
+              pet_name: rec.pet_name || patient.name,
+              pet_species: rec.pet_species || patient.species,
+              pet_breed: rec.pet_breed || patient.breed,
+              pet_avatar_url: rec.pet_avatar_url || patient.avatar_url,
+              owner_name: rec.owner_name || patient.owner_name,
+              owner_phone: rec.owner_phone || patient.owner_phone,
+              owner_email: rec.owner_email || patient.owner_email,
+            });
+          }
+        });
+      }
+    });
+
+    // Sắp xếp ngày khám mới nhất lên đầu
+    allRecords.sort((a, b) => {
+      const dateA = new Date(a.record_date || a.created_at || "").getTime();
+      const dateB = new Date(b.record_date || b.created_at || "").getTime();
+      return dateB - dateA;
+    });
+
+    return allRecords;
   },
 };
 

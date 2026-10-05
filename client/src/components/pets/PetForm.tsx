@@ -73,10 +73,10 @@ export const PetForm: React.FC<PetFormProps> = ({ mode, initialData, petId }) =>
     gender: (initialData?.gender as PetGender) || "male",
     date_of_birth: formatInitialDate(initialData?.date_of_birth),
     color: initialData?.color || "",
-    microchip_id: (initialData as any)?.microchip_id || initialData?.microchip_number || "",
+    microchip_id: initialData?.microchip_id || initialData?.microchip_number || "",
     allergies: formatInitialText(initialData?.allergies),
     chronic_conditions: formatInitialText(initialData?.chronic_conditions),
-    special_notes: (initialData as any)?.special_notes || initialData?.notes || "",
+    special_notes: initialData?.special_notes || initialData?.notes || "",
   });
 
   const [errors, setErrors] = useState<FormErrors>({});
@@ -208,7 +208,7 @@ export const PetForm: React.FC<PetFormProps> = ({ mode, initialData, petId }) =>
         showToastSuccess(`Đã cập nhật thông tin thú cưng "${updatedPet.name}"!`);
         router.push(`/pets/${updatedPet.id || targetId}`);
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error("Pet form submit error:", err);
       const responseData = err.response?.data;
       const apiMessage = responseData?.message || err.message || "Có lỗi xảy ra, vui lòng thử lại.";

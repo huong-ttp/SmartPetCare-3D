@@ -210,7 +210,7 @@ export default function AdminVaccinationsPage() {
           vaccineType: vaccineTypeFilter !== "all" ? vaccineTypeFilter : undefined,
           dueStatus:
             dueStatusFilter !== "all"
-              ? (dueStatusFilter as any)
+              ? (dueStatusFilter as AdminVaccinationFilterParams["dueStatus"])
               : undefined,
           page: pagination.page,
           limit: pagination.limit,
@@ -221,7 +221,7 @@ export default function AdminVaccinationsPage() {
         if (result.pagination) {
           setPagination(result.pagination);
         }
-      } catch (err: any) {
+      } catch (err) {
         console.error("Lỗi khi tải danh sách tiêm chủng:", err);
         setErrorMessage(
           err?.response?.data?.message ||
@@ -317,7 +317,7 @@ export default function AdminVaccinationsPage() {
       showToastSuccess("Đã cập nhật hồ sơ tiêm chủng thành công!");
       setEditItem(null);
       fetchVaccinations(false);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Lỗi khi cập nhật mũi tiêm:", err);
       showToastError(
         err?.response?.data?.message ||
@@ -341,7 +341,7 @@ export default function AdminVaccinationsPage() {
       showToastSuccess("Đã xóa bản ghi tiêm phòng khỏi hệ thống!");
       setItemToDelete(null);
       fetchVaccinations(false);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Lỗi khi xóa bản ghi tiêm phòng:", err);
       showToastError(
         err?.response?.data?.message ||

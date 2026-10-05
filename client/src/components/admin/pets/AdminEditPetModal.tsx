@@ -109,11 +109,11 @@ export const AdminEditPetModal: React.FC<AdminEditPetModalProps> = ({
         date_of_birth: formatInitialDate(pet.date_of_birth),
         color: pet.color || "",
         microchip_id:
-          (pet as any).microchip_id || pet.microchip_number || "",
+          pet.microchip_id || pet.microchip_number || "",
         is_neutered: pet.is_neutered || false,
         allergies: formatInitialText(pet.allergies),
         chronic_conditions: formatInitialText(pet.chronic_conditions),
-        special_notes: (pet as any).special_notes || pet.notes || "",
+        special_notes: pet.special_notes || pet.notes || "",
         owner_id: pet.owner_id || "",
       });
       setAvatarPreview(pet.avatar_url || "");
@@ -256,7 +256,7 @@ export const AdminEditPetModal: React.FC<AdminEditPetModalProps> = ({
       );
       onSuccess(updated);
       onClose();
-    } catch (err: any) {
+    } catch (err) {
       console.error("Failed to update pet:", err);
       const errMsg =
         err?.response?.data?.message ||

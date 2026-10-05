@@ -264,7 +264,7 @@ export default function PetVaccinationsPage() {
 
       setPet(petData);
       setVaccinations(vacData);
-    } catch (err: any) {
+    } catch (err) {
       const status = err?.response?.status;
       const isNotFoundErr =
         status === 404 ||

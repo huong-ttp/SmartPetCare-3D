@@ -56,7 +56,7 @@ export default function AdminVaccineTypesPage() {
     try {
       const data = await vaccineTypeApi.service.list();
       setVaccineTypes(Array.isArray(data) ? data : []);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Failed to load vaccine types:", err);
       setErrorMessage(
         err?.response?.data?.message ||
@@ -249,7 +249,7 @@ export default function AdminVaccineTypesPage() {
               <button
                 key={tab.id}
                 type="button"
-                onClick={() => setIntervalFilter(tab.id as any)}
+                onClick={() => setIntervalFilter(tab.id as "all" | "short" | "medium" | "long")}
                 className={cn(
                   "px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all",
                   intervalFilter === tab.id

@@ -17,6 +17,10 @@ export interface User {
 
   is_active: boolean;
 
+  is_deleted: boolean;
+
+  deleted_at?: Date | null;
+
   created_at: Date;
 
   updated_at: Date;

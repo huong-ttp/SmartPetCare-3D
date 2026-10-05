@@ -133,7 +133,7 @@ export default function DoctorDashboardPage() {
       });
 
       setTodayAppointments(normalizedToday);
-    } catch (err: any) {
+    } catch (err) {
       console.error("[DoctorDashboard] Failed to fetch dashboard data:", err);
       setErrorMsg(
         err?.response?.data?.message ||
@@ -447,7 +447,7 @@ export default function DoctorDashboardPage() {
             {/* Status Filter */}
             <select
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as any)}
+              onChange={(e) => setStatusFilter(e.target.value as "all" | "confirmed" | "completed" | "cancelled")}
               className="py-2 px-3 rounded-xl border border-slate-200 text-xs sm:text-sm text-slate-700 bg-slate-50/50 hover:bg-white focus:outline-none focus:ring-2 focus:ring-[#0EA5B7]/20 focus:border-[#0EA5B7] transition-all cursor-pointer"
             >
               <option value="all">Tất cả trạng thái</option>

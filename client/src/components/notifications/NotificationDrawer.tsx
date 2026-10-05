@@ -55,7 +55,7 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
         limit: 15,
       });
       setNotifications(data);
-    } catch (err: any) {
+    } catch (err) {
       console.error("[NotificationDrawer] Error fetching notifications:", err);
       setError("Không thể tải thông báo. Vui lòng thử lại!");
     } finally {

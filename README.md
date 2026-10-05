@@ -7,6 +7,9 @@ Veterinary Healthcare Management Platform on Interactive Web 3D.
 - Huong
 - Long
 
+## đồng bộ database
+npm run migrate
+
 ## Technologies
 
 - Next.js

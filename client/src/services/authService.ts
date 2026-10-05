@@ -65,8 +65,9 @@ export const authService = {
   /** Cập nhật profile */
   async updateProfile(dto: UpdateProfileDTO): Promise<User> {
     if (USE_MOCK) return mockDelay({ ...MOCK_USERS[0], ...dto });
-    const res = await axiosClient.patch<User>("/auth/profile", dto);
-    return res.data;
+    const res = await axiosClient.put<{ success?: boolean; data?: User } | User>("/users/profile", dto);
+    const raw = (res.data as { data?: User })?.data ?? res.data;
+    return raw as User;
   },
 
   /** Admin tạo tài khoản doctor */
@@ -82,7 +83,8 @@ export const authService = {
       };
       return mockDelay(newDoctor);
     }
-    const res = await axiosClient.post<User>("/admin/doctors", dto);
-    return res.data;
+    const res = await axiosClient.post<{ success?: boolean; data?: User } | User>("/admin/doctors", dto);
+    const raw = (res.data as { data?: User })?.data ?? res.data;
+    return raw as User;
   },
 };

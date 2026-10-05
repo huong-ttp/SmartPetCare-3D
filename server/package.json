@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "nodemon -L --watch . --exec tsx server.ts",
     "start": "tsx server.ts",
-    "build": "tsc"
+    "build": "tsc",
+    "migrate": "tsx src/scripts/migrate.ts"
   },
   "keywords": [],
   "author": "",

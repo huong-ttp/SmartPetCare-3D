@@ -152,198 +152,190 @@ class MedicalRecordService {
     appointmentId: number,
     data: CreateMedicalRecordData
   ) {
-    const appointmentResult = await pool.query(
-      `
-      SELECT
-        a.*,
-        p.owner_id,
-        s.price
-      FROM appointments a
-      JOIN pets p
-        ON a.pet_id = p.pet_id
-      JOIN services s
-        ON a.service_id = s.service_id
-      WHERE
-        a.appointment_id = $1
-        AND a.doctor_id = $2;
-      `,
-      [
-        appointmentId,
-        doctorId
-      ]
-    );
+    const client = await pool.connect();
 
-    if (appointmentResult.rowCount === 0) {
-      throw new AppError(
-        "Appointment not found",
-        404
-      );
-    }
+    try {
+      await client.query("BEGIN;");
 
-    const appointment = appointmentResult.rows[0];
-
-    // 1
-    const existed = await pool.query(
-      `
-      SELECT record_id
-      FROM medical_records
-      WHERE appointment_id = $1
-      `,
-      [appointmentId]
-    );
-
-    if (existed.rowCount! > 0) {
-      throw new AppError(
-        "Medical record already exists",
-        400
-      );
-    }
-
-    // 2
-    if (appointment.status !== "confirmed") {
-      throw new AppError(
-        "Appointment is not confirmed",
-        400
-      );
-    }
-
-    // 3
-    if (!data.diagnosis) {
-      throw new AppError(
-        "Diagnosis is required",
-        400
-      );
-    }
-
-    const medicalRecordResult = await pool.query(
-      `
-      INSERT INTO medical_records
-      (
-        pet_id,
-        appointment_id,
-        doctor_id,
-        diagnosis,
-        treatment,
-        prescription,
-        weight_at_visit,
-        record_date,
-        notes
-      )
-      VALUES
-      (
-        $1,
-        $2,
-        $3,
-        $4,
-        $5,
-        $6,
-        $7,
-        COALESCE($8, CURRENT_DATE),
-        $9
-      )
-      RETURNING *;
-      `,
-      [
-        appointment.pet_id,
-        appointmentId,
-        doctorId,
-        data.diagnosis,
-        data.treatment ?? null,
-        data.prescription ?? null,
-        data.weight_at_visit ?? null,
-        data.record_date ?? null,
-        data.notes ?? null
-      ]
-    );
-
-    const medicalRecord = medicalRecordResult.rows[0];
-
-    await pool.query(
-      `
-      UPDATE appointments
-      SET
-        status = 'completed',
-        updated_at = NOW()
-      WHERE appointment_id = $1;
-      `,
-      [
-        appointmentId
-      ]
-    );
-
-    // Cập nhật Pet.weight_kg (cache) từ weight_at_visit nếu có
-    if (data.weight_at_visit) {
-      await pool.query(
+      const appointmentResult = await client.query(
         `
-        UPDATE pets
-        SET weight_kg = $1, updated_at = NOW()
-        WHERE pet_id = $2;
+        SELECT
+          a.*,
+          p.owner_id,
+          s.price
+        FROM appointments a
+        JOIN pets p
+          ON a.pet_id = p.pet_id
+        JOIN services s
+          ON a.service_id = s.service_id
+        WHERE
+          a.appointment_id = $1
+          AND a.doctor_id = $2;
         `,
-        [data.weight_at_visit, appointment.pet_id]
+        [appointmentId, doctorId]
       );
+
+      if (appointmentResult.rowCount === 0) {
+        throw new AppError("Appointment not found", 404);
+      }
+
+      const appointment = appointmentResult.rows[0];
+
+      // 1. Kiểm tra xem medical record cho appointment này đã tồn tại chưa
+      const existed = await client.query(
+        `
+        SELECT record_id
+        FROM medical_records
+        WHERE appointment_id = $1;
+        `,
+        [appointmentId]
+      );
+
+      if (existed.rowCount! > 0) {
+        throw new AppError("Medical record already exists", 400);
+      }
+
+      // 2. Chỉ ca hẹn có trạng thái confirmed mới được tạo bệnh án
+      if (appointment.status !== "confirmed") {
+        throw new AppError("Appointment is not confirmed", 400);
+      }
+
+      // 3. Chẩn đoán bắt buộc
+      if (!data.diagnosis) {
+        throw new AppError("Diagnosis is required", 400);
+      }
+
+      // 4. Tạo bệnh án
+      const medicalRecordResult = await client.query(
+        `
+        INSERT INTO medical_records
+        (
+          pet_id,
+          appointment_id,
+          doctor_id,
+          diagnosis,
+          treatment,
+          prescription,
+          weight_at_visit,
+          record_date,
+          notes
+        )
+        VALUES
+        (
+          $1,
+          $2,
+          $3,
+          $4,
+          $5,
+          $6,
+          $7,
+          COALESCE($8, CURRENT_DATE),
+          $9
+        )
+        RETURNING *;
+        `,
+        [
+          appointment.pet_id,
+          appointmentId,
+          doctorId,
+          data.diagnosis,
+          data.treatment ?? null,
+          data.prescription ?? null,
+          data.weight_at_visit ?? null,
+          data.record_date ?? null,
+          data.notes ?? null,
+        ]
+      );
+
+      const medicalRecord = medicalRecordResult.rows[0];
+
+      // 5. Cập nhật trạng thái lịch hẹn thành completed
+      await client.query(
+        `
+        UPDATE appointments
+        SET
+          status = 'completed',
+          updated_at = NOW()
+        WHERE appointment_id = $1;
+        `,
+        [appointmentId]
+      );
+
+      // 6. Cập nhật Pet.weight_kg (cache) từ weight_at_visit nếu có
+      if (data.weight_at_visit) {
+        await client.query(
+          `
+          UPDATE pets
+          SET weight_kg = $1, updated_at = NOW()
+          WHERE pet_id = $2;
+          `,
+          [data.weight_at_visit, appointment.pet_id]
+        );
+      }
+
+      // 7. Tự động sinh hóa đơn dịch vụ
+      const invoiceResult = await client.query(
+        `
+        INSERT INTO invoices
+        (
+          appointment_id,
+          owner_id,
+          total_amount,
+          status,
+          issued_date
+        )
+        VALUES
+        (
+          $1,
+          $2,
+          $3,
+          'unpaid',
+          CURRENT_DATE
+        )
+        RETURNING *;
+        `,
+        [appointmentId, appointment.owner_id, appointment.price]
+      );
+
+      const invoice = invoiceResult.rows[0];
+
+      // 8. Tạo chi tiết hóa đơn
+      await client.query(
+        `
+        INSERT INTO invoice_items
+        (
+          invoice_id,
+          service_id,
+          quantity,
+          unit_price,
+          subtotal
+        )
+        VALUES
+        (
+          $1,
+          $2,
+          1,
+          $3,
+          $3
+        );
+        `,
+        [invoice.invoice_id, appointment.service_id, appointment.price]
+      );
+
+      await client.query("COMMIT;");
+
+      return {
+        medical_record: medicalRecord,
+        invoice,
+        message:
+          "Medical record created successfully. Invoice generated automatically.",
+      };
+    } catch (error) {
+      await client.query("ROLLBACK;");
+      throw error;
+    } finally {
+      client.release();
     }
-
-    const invoiceResult = await pool.query(
-      `
-      INSERT INTO invoices
-      (
-        appointment_id,
-        owner_id,
-        total_amount,
-        status,
-        issued_date
-      )
-      VALUES
-      (
-        $1,
-        $2,
-        $3,
-        'unpaid',
-        CURRENT_DATE
-      )
-      RETURNING *;
-      `,
-      [
-        appointmentId,
-        appointment.owner_id,
-        appointment.price
-      ]
-    );
-
-    const invoice = invoiceResult.rows[0];
-
-    await pool.query(
-      `
-      INSERT INTO invoice_items
-      (
-        invoice_id,
-        service_id,
-        quantity,
-        unit_price,
-        subtotal
-      )
-      VALUES
-      (
-        $1,
-        $2,
-        1,
-        $3,
-        $3
-      );
-      `,
-      [
-        invoice.invoice_id,
-        appointment.service_id,
-        appointment.price
-      ]
-    );
-
-    return {
-      medical_record: medicalRecord,
-      invoice,
-      message:
-        "Medical record created successfully. Invoice generated automatically."
-    };
   }
 
   async updateMedicalRecord(

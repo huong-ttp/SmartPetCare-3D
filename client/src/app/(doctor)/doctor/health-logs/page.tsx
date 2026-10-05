@@ -228,7 +228,7 @@ export default function DoctorHealthLogsPage() {
 
       showToastSuccess(`Đã ghi nhận nhật ký sức khỏe cho bé ${selectedPatient?.name || ""} thành công.`);
       setIsAddModalOpen(false);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Lỗi khi thêm nhật ký:", err);
       const msg = err?.response?.data?.message || err?.message || "Không thể lưu nhật ký sức khỏe.";
       setModalError(msg);
@@ -684,7 +684,7 @@ export default function DoctorHealthLogsPage() {
                     </label>
                     <select
                       value={formAppetite}
-                      onChange={(e) => setFormAppetite(e.target.value as any)}
+                      onChange={(e) => setFormAppetite(e.target.value as PetHealthLog["appetite"])}
                       className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 bg-white transition-all font-medium text-slate-800"
                     >
                       <option value="normal">Bình thường (Ăn tốt)</option>
@@ -702,7 +702,7 @@ export default function DoctorHealthLogsPage() {
                     </label>
                     <select
                       value={formActivity}
-                      onChange={(e) => setFormActivity(e.target.value as any)}
+                      onChange={(e) => setFormActivity(e.target.value as PetHealthLog["activity_level"])}
                       className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 bg-white transition-all font-medium text-slate-800"
                     >
                       <option value="normal">Bình thường (Linh hoạt)</option>
@@ -722,7 +722,7 @@ export default function DoctorHealthLogsPage() {
                     </label>
                     <select
                       value={formStool}
-                      onChange={(e) => setFormStool(e.target.value as any)}
+                      onChange={(e) => setFormStool(e.target.value as PetHealthLog["stool_condition"])}
                       className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 bg-white transition-all font-medium text-slate-800"
                     >
                       <option value="normal">Phân tốt (Có khuôn chuẩn)</option>

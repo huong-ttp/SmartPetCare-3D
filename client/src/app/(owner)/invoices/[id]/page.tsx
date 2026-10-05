@@ -69,7 +69,7 @@ export default function InvoiceDetailPage() {
       try {
         const data = await invoiceService.getById(invoiceId);
         setInvoice(data);
-      } catch (err: any) {
+      } catch (err) {
         console.error("[InvoiceDetail] Fetch error:", err);
         setErrorMessage(
           err?.response?.data?.message ||
@@ -127,7 +127,7 @@ export default function InvoiceDetailPage() {
 
       // Refetch invoice to reflect pending payment state
       await loadInvoice(true);
-    } catch (err: any) {
+    } catch (err) {
       console.error("[InvoiceDetail] Payment submit error:", err);
       const apiMsg =
         err?.response?.data?.message ||

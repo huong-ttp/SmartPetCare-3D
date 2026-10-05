@@ -30,14 +30,24 @@ axiosClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// ─── Response interceptor: xử lý 401 ────────────────────────────────────────
+// ─── Response interceptor: xử lý 401 & Mất kết nối máy chủ ───────────────────
 axiosClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401 && typeof window !== "undefined") {
-      localStorage.removeItem("spc_access_token");
-      localStorage.removeItem("spc_user");
-      window.location.href = "/login";
+    if (typeof window !== "undefined") {
+      if (error.response?.status === 401) {
+        localStorage.removeItem("spc_access_token");
+        localStorage.removeItem("spc_user");
+        window.location.href = "/login";
+      } else if (!error.response || error.code === "ERR_NETWORK" || error.code === "ECONNABORTED") {
+        window.dispatchEvent(
+          new CustomEvent("spc-network-error", {
+            detail: {
+              message: "Không thể kết nối đến máy chủ SmartPetCare. Vui lòng kiểm tra lại kết nối mạng hoặc thử lại sau.",
+            },
+          })
+        );
+      }
     }
     return Promise.reject(error);
   }

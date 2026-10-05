@@ -14,6 +14,7 @@ import type {
   UpdateAppointmentStatusDTO,
   DoctorDashboardData,
 } from "@/types/appointment.type";
+import type { ApiResponse } from "@/types/api.type";
 import { MOCK_APPOINTMENTS, MOCK_USERS } from "@/lib/mock";
 import { _adminMockAppointments } from "@/services/adminService";
 
@@ -251,29 +252,34 @@ const DEFAULT_SLOTS = [
   "16:30"
 ];
 
-function normalizeAppointment(raw: any): Appointment {
-  if (!raw) return raw;
+function normalizeAppointment(item: unknown): Appointment {
+  if (!item) return item as unknown as Appointment;
+  const raw = item as Record<string, unknown>;
   const id = String(raw.id ?? raw.appointment_id ?? "");
+  const petObj = raw.pet as Record<string, unknown> | undefined;
+  const ownerObj = raw.owner as Record<string, unknown> | undefined;
+  const serviceObj = raw.service as Record<string, unknown> | undefined;
+  const doctorObj = raw.doctor as Record<string, unknown> | undefined;
   return {
-    ...raw,
+    ...(raw as unknown as Appointment),
     id,
-    appointment_id: raw.appointment_id ?? id,
-    pet_id: String(raw.pet_id ?? raw.pet?.pet_id ?? raw.pet?.id ?? ""),
-    pet_name: raw.pet_name ?? raw.pet?.name,
-    pet_species: raw.pet_species ?? raw.species ?? raw.pet?.species,
-    pet_breed: raw.pet_breed ?? raw.breed ?? raw.pet?.breed,
-    owner_id: String(raw.owner_id ?? raw.owner?.user_id ?? raw.owner?.id ?? ""),
-    owner_name: raw.owner_name ?? raw.owner?.full_name ?? raw.full_name,
+    appointment_id: (raw.appointment_id as number | undefined) ?? id,
+    pet_id: String(raw.pet_id ?? petObj?.pet_id ?? petObj?.id ?? ""),
+    pet_name: (raw.pet_name as string | undefined) ?? (petObj?.name as string | undefined),
+    pet_species: (raw.pet_species as string | undefined) ?? (raw.species as string | undefined) ?? (petObj?.species as string | undefined),
+    pet_breed: (raw.pet_breed as string | undefined) ?? (raw.breed as string | undefined) ?? (petObj?.breed as string | undefined),
+    owner_id: String(raw.owner_id ?? ownerObj?.user_id ?? ownerObj?.id ?? ""),
+    owner_name: (raw.owner_name as string | undefined) ?? (ownerObj?.full_name as string | undefined) ?? (raw.full_name as string | undefined),
     service_id: raw.service_id ? String(raw.service_id) : null,
-    service_name: raw.service_name ?? raw.service?.name,
+    service_name: (raw.service_name as string | undefined) ?? (serviceObj?.name as string | undefined),
     doctor_id: raw.doctor_id ? String(raw.doctor_id) : null,
-    doctor_name: raw.doctor_name ?? raw.doctor?.full_name,
-    status: raw.status ?? "confirmed",
+    doctor_name: (raw.doctor_name as string | undefined) ?? (doctorObj?.full_name as string | undefined),
+    status: (raw.status as Appointment["status"]) ?? "confirmed",
     appointment_date: raw.appointment_date ? String(raw.appointment_date).split("T")[0] : undefined,
     start_time: raw.start_time ? String(raw.start_time).slice(0, 5) : undefined,
     end_time: raw.end_time ? String(raw.end_time).slice(0, 5) : undefined,
-    created_at: raw.created_at ?? new Date().toISOString(),
-    updated_at: raw.updated_at ?? new Date().toISOString(),
+    created_at: (raw.created_at as string) ?? new Date().toISOString(),
+    updated_at: (raw.updated_at as string) ?? new Date().toISOString(),
   };
 }
 
@@ -294,23 +300,18 @@ export const appointmentService = {
       return mockDelay(list);
     }
 
-    try {
-      const params: any = {};
-      if (filter?.status && filter.status !== "all") params.status = filter.status;
-      if (filter?.from) params.from = filter.from;
-      if (filter?.to) params.to = filter.to;
+    const params: Record<string, unknown> = {};
+    if (filter?.status && filter.status !== "all") params.status = filter.status;
+    if (filter?.from) params.from = filter.from;
+    if (filter?.to) params.to = filter.to;
 
-      const res = await axiosClient.get<any>("/appointments", { params });
-      const raw = res.data;
-      let list: any[] = [];
-      if (Array.isArray(raw)) list = raw;
-      else if (Array.isArray(raw?.data)) list = raw.data;
-      else if (Array.isArray(raw?.items)) list = raw.items;
-      return list.map(normalizeAppointment);
-    } catch (err) {
-      console.warn("[appointmentService.getMyAppointments] fallback to mock:", err);
-      return mockDelay(MOCK_APPOINTMENTS.map(normalizeAppointment));
-    }
+    const res = await axiosClient.get<ApiResponse<Appointment[]> | Appointment[]>("/appointments", { params });
+    const raw = res.data;
+    let list: unknown[] = [];
+    if (Array.isArray(raw)) list = raw;
+    else if (Array.isArray((raw as ApiResponse<Appointment[]>).data)) list = (raw as ApiResponse<Appointment[]>).data as Array<Partial<Appointment> & Record<string, unknown>>;
+    else if (Array.isArray((raw as ApiResponse<Appointment[]>).items)) list = (raw as ApiResponse<Appointment[]>).items as Array<Partial<Appointment> & Record<string, unknown>>;
+    return list.map(normalizeAppointment);
   },
 
   /** Alias: appointment.service.list({ owner: me }) hoặc { doctor: me, ... } */
@@ -338,22 +339,17 @@ export const appointmentService = {
     }
 
     try {
-      const res = await axiosClient.get<any>(`/appointments/${cleanId}`);
-      const raw = res.data?.data ?? res.data;
-      if (raw) return normalizeAppointment(raw);
-    } catch (err: any) {
+      const res = await axiosClient.get<ApiResponse<Appointment> | Appointment>(`/appointments/${cleanId}`);
+      const raw = (res.data as ApiResponse<Appointment>)?.data ?? (res.data as Appointment);
+      if (raw) return normalizeAppointment(raw as Partial<Appointment> & Record<string, unknown>);
+    } catch (err: unknown) {
       try {
-        const docRes = await axiosClient.get<any>(`/appointments/doctor/${cleanId}`);
-        const docRaw = docRes.data?.data ?? docRes.data;
-        if (docRaw) return normalizeAppointment(docRaw);
+        const docRes = await axiosClient.get<ApiResponse<Appointment> | Appointment>(`/appointments/doctor/${cleanId}`);
+        const docRaw = (docRes.data as ApiResponse<Appointment>)?.data ?? (docRes.data as Appointment);
+        if (docRaw) return normalizeAppointment(docRaw as Partial<Appointment> & Record<string, unknown>);
       } catch {
-        // Tiếp tục fallback mock
+        // Continue to throw error
       }
-
-      const found = allMock.find(
-        (a) => String(a.id) === cleanId || String(a.appointment_id) === cleanId
-      );
-      if (found) return normalizeAppointment(found);
       throw err;
     }
     throw new Error("Lịch hẹn không tồn tại.");
@@ -386,19 +382,18 @@ export const appointmentService = {
     }
 
     try {
-      const res = await axiosClient.get<any>("/appointments/available-slots", {
+      const res = await axiosClient.get<ApiResponse<AvailableSlot[]> | AvailableSlot[]>("/appointments/available-slots", {
         params: {
           pet_id: Number(petId) || petId,
           date,
         },
       });
-      const data = res.data?.data ?? res.data;
+      const data = (res.data as ApiResponse<AvailableSlot[]>)?.data ?? res.data;
       if (Array.isArray(data)) {
         return data;
       }
       return DEFAULT_SLOTS.map((slot) => ({ time: slot, available: true }));
-    } catch (err) {
-      console.warn("[appointmentService.getAvailableSlots] failed, returning default slots:", err);
+    } catch {
       return DEFAULT_SLOTS.map((slot) => ({ time: slot, available: true }));
     }
   },
@@ -406,8 +401,9 @@ export const appointmentService = {
   /** Lấy tất cả lịch hẹn (admin/doctor view) */
   async getAllAppointments(): Promise<Appointment[]> {
     if (USE_MOCK) return mockDelay(MOCK_APPOINTMENTS);
-    const res = await axiosClient.get<Appointment[]>("/admin/appointments");
-    return res.data;
+    const res = await axiosClient.get<ApiResponse<Appointment[]> | Appointment[]>("/admin/appointments");
+    const raw = (res.data as ApiResponse<Appointment[]>)?.data ?? res.data;
+    return Array.isArray(raw) ? raw.map((a) => normalizeAppointment(a as Partial<Appointment> & Record<string, unknown>)) : [];
   },
 
   /** Lịch hẹn của doctor hiện tại */
@@ -425,8 +421,8 @@ export const appointmentService = {
 
     const todayStr = getTodayString();
     let tab: "today" | "upcoming" | "completed" = "today";
-    if ((filter as any).tab) {
-      tab = (filter as any).tab;
+    if (filter.tab && (filter.tab === "today" || filter.tab === "upcoming" || filter.tab === "completed")) {
+      tab = filter.tab;
     } else if (filter.upcoming) {
       tab = "upcoming";
     } else if (filter.status === "completed") {
@@ -470,37 +466,16 @@ export const appointmentService = {
       );
     }
 
-    try {
-      const res = await axiosClient.get<any>("/appointments/doctor", {
-        params: { tab },
-      });
-      const raw = res.data?.data ?? res.data;
-      let list: any[] = [];
-      if (Array.isArray(raw)) list = raw;
-      else if (Array.isArray(raw?.data)) list = raw.data;
-      else if (Array.isArray(raw?.items)) list = raw.items;
-      return list.map(normalizeAppointment);
-    } catch (err) {
-      console.warn("[appointmentService.getDoctorAppointments] API failed, falling back to mock:", err);
-      const allDoctorList = [
-        ...DEMO_DOCTOR_APPOINTMENTS,
-        ...MOCK_APPOINTMENTS.map(normalizeAppointment),
-      ];
-      if (tab === "upcoming") {
-        return mockDelay(
-          allDoctorList.filter((a) => {
-            const d = a.appointment_date || a.scheduled_at?.split("T")[0] || "";
-            return d > todayStr && a.status === "confirmed";
-          })
-        );
-      }
-      if (tab === "completed") {
-        return mockDelay(allDoctorList.filter((a) => a.status === "completed"));
-      }
-      return mockDelay(
-        allDoctorList.filter((a) => a.appointment_date === todayStr && a.status !== "cancelled")
-      );
+    const res = await axiosClient.get<ApiResponse<Appointment[]> | Appointment[]>("/appointments/doctor", {
+      params: { tab },
+    });
+    const raw = (res.data as ApiResponse<Appointment[]>)?.data ?? res.data;
+    let list: unknown[] = [];
+    if (Array.isArray(raw)) list = raw;
+    else if (raw && typeof raw === "object" && "items" in raw && Array.isArray((raw as { items?: Appointment[] }).items)) {
+      list = (raw as { items: Appointment[] }).items;
     }
+    return list.map(normalizeAppointment);
   },
 
   /** Lấy dữ liệu tổng quan Doctor Dashboard: overview stats + today appointments */
@@ -509,8 +484,8 @@ export const appointmentService = {
 
     if (!USE_MOCK) {
       try {
-        const res = await axiosClient.get<any>("/appointments/doctor/dashboard");
-        const raw = res.data?.data ?? res.data;
+        const res = await axiosClient.get<ApiResponse<DoctorDashboardData> | DoctorDashboardData>("/appointments/doctor/dashboard");
+        const raw = (res.data as ApiResponse<DoctorDashboardData>)?.data ?? (res.data as DoctorDashboardData);
         if (raw?.overview) {
           const rawToday = Array.isArray(raw.todayAppointments)
             ? raw.todayAppointments
@@ -522,10 +497,10 @@ export const appointmentService = {
               completedAppointments: Number(raw.overview.completedAppointments || 0),
               patients: Number(raw.overview.patients || 0),
             },
-            todayAppointments: rawToday.map(normalizeAppointment),
+            todayAppointments: (rawToday as Array<Partial<Appointment> & Record<string, unknown>>).map(normalizeAppointment),
           };
         }
-      } catch (err) {
+      } catch (err: unknown) {
         console.warn("[appointmentService.getDoctorDashboard] dashboard API failed, aggregating via list():", err);
       }
     }
@@ -589,9 +564,9 @@ export const appointmentService = {
       return mockDelay(newAppt);
     }
 
-    const res = await axiosClient.post<any>("/appointments", payload);
-    const raw = res.data?.data ?? res.data;
-    return normalizeAppointment(raw);
+    const res = await axiosClient.post<ApiResponse<Appointment> | Appointment>("/appointments", payload);
+    const raw = (res.data as ApiResponse<Appointment>)?.data ?? (res.data as Appointment);
+    return normalizeAppointment(raw as Partial<Appointment> & Record<string, unknown>);
   },
 
   /** Alias: appointment.service.create(...) */
@@ -616,7 +591,7 @@ export const appointmentService = {
       );
       if (appt) {
         appt.doctor_id = String(doctorId);
-        (appt as any).doctor_assigned_at = new Date().toISOString();
+        (appt as Partial<Appointment> & { doctor_assigned_at?: string }).doctor_assigned_at = new Date().toISOString();
         appt.updated_at = new Date().toISOString();
       }
       const adminAppt = _adminMockAppointments.find(
@@ -630,36 +605,17 @@ export const appointmentService = {
         adminAppt.doctor_email = doc?.email || "doctor@example.com";
         adminAppt.doctor_assigned_at = new Date().toISOString();
         adminAppt.updated_at = new Date().toISOString();
-        return mockDelay(normalizeAppointment(adminAppt));
+        return mockDelay(normalizeAppointment(adminAppt as Partial<Appointment> & Record<string, unknown>));
       }
-      if (appt) return mockDelay(normalizeAppointment(appt));
+      if (appt) return mockDelay(normalizeAppointment(appt as Partial<Appointment> & Record<string, unknown>));
       throw new Error("Lịch hẹn không tồn tại.");
     }
 
-    try {
-      const res = await axiosClient.put<any>(`/admin/appointments/${cleanId}/assign`, {
-        doctor_id: Number(doctorId) || doctorId,
-      });
-      const raw = res.data?.data ?? res.data;
-      return normalizeAppointment(raw);
-    } catch (err: any) {
-      // Fallback: try updating local admin mock
-      console.warn("[appointmentService.assignDoctor] API failed, updating local mock state:", err);
-      const adminAppt = _adminMockAppointments.find(
-        (a) => String(a.id) === cleanId || String(a.appointment_id) === cleanId
-      );
-      if (adminAppt) {
-        const doc = MOCK_USERS.find((u) => String(u.id) === String(doctorId));
-        adminAppt.doctor_id = String(doctorId);
-        adminAppt.doctor_name = doc?.full_name || "BS. Trần Thị Hoa";
-        adminAppt.doctor_phone = doc?.phone || "0912345678";
-        adminAppt.doctor_email = doc?.email || "doctor@example.com";
-        adminAppt.doctor_assigned_at = new Date().toISOString();
-        adminAppt.updated_at = new Date().toISOString();
-        return mockDelay(normalizeAppointment(adminAppt));
-      }
-      throw err;
-    }
+    const res = await axiosClient.put<ApiResponse<Appointment> | Appointment>(`/admin/appointments/${cleanId}/assign`, {
+      doctor_id: Number(doctorId) || doctorId,
+    });
+    const raw = (res.data as ApiResponse<Appointment>)?.data ?? (res.data as Appointment);
+    return normalizeAppointment(raw as Partial<Appointment> & Record<string, unknown>);
   },
 
   /** Cập nhật trạng thái lịch hẹn (chỉ admin/doctor) */
@@ -694,33 +650,17 @@ export const appointmentService = {
         adminAppt.status = "cancelled";
         adminAppt.cancel_reason = reasonText;
         adminAppt.updated_at = new Date().toISOString();
-        return mockDelay(normalizeAppointment(adminAppt));
+        return mockDelay(normalizeAppointment(adminAppt as Partial<Appointment> & Record<string, unknown>));
       }
-      if (appt) return mockDelay(normalizeAppointment(appt));
+      if (appt) return mockDelay(normalizeAppointment(appt as Partial<Appointment> & Record<string, unknown>));
       throw new Error("Lịch hẹn không tồn tại.");
     }
 
-    try {
-      // First try PUT /admin/appointments/:id/cancel
-      const res = await axiosClient.put<any>(`/admin/appointments/${cleanId}/cancel`, {
-        cancel_reason: reasonText,
-      });
-      const raw = res.data?.data ?? res.data;
-      return normalizeAppointment(raw);
-    } catch (err: any) {
-      // Fallback: try local admin mock if server fails
-      console.warn("[appointmentService.cancel] API failed, updating local mock state:", err);
-      const adminAppt = _adminMockAppointments.find(
-        (a) => String(a.id) === cleanId || String(a.appointment_id) === cleanId
-      );
-      if (adminAppt) {
-        adminAppt.status = "cancelled";
-        adminAppt.cancel_reason = reasonText;
-        adminAppt.updated_at = new Date().toISOString();
-        return mockDelay(normalizeAppointment(adminAppt));
-      }
-      throw err;
-    }
+    const res = await axiosClient.put<ApiResponse<Appointment> | Appointment>(`/admin/appointments/${cleanId}/cancel`, {
+      cancel_reason: reasonText,
+    });
+    const raw = (res.data as ApiResponse<Appointment>)?.data ?? (res.data as Appointment);
+    return normalizeAppointment(raw as Partial<Appointment> & Record<string, unknown>);
   },
 
   /** Alias: cancelAppointment */

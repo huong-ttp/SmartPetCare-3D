@@ -178,7 +178,7 @@ export default function DoctorMedicalRecordsPage() {
         const docId = user?.user_id || user?.id || "u2";
         const data = await medicalRecordService.listByDoctor(docId);
         setRecords(data || []);
-      } catch (err: any) {
+      } catch (err) {
         console.error("[DoctorMedicalRecordsPage] Failed to load medical records:", err);
         setErrorMessage(
           err?.response?.data?.message ||
@@ -358,7 +358,7 @@ export default function DoctorMedicalRecordsPage() {
 
       showToastSuccess(`Đã cập nhật hồ sơ bệnh án #${recId} thành công!`);
       setSelectedRecordForEdit(null);
-    } catch (err: any) {
+    } catch (err) {
       console.error("[DoctorMedicalRecordsPage] Update record error:", err);
       showToastError(
         err?.response?.data?.message ||

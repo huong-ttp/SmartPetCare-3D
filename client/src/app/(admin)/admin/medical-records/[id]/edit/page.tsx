@@ -82,7 +82,7 @@ export default function AdminEditMedicalRecordPage() {
       setPrescription(data.prescription || "");
       setWeightAtVisit(data.weight_at_visit ? String(data.weight_at_visit) : "");
       setNotes(data.notes || "");
-    } catch (err: any) {
+    } catch (err) {
       console.error("[AdminEditRecord] Fetch error:", err);
       setErrorMessage(
         err?.response?.data?.message ||
@@ -144,7 +144,7 @@ export default function AdminEditMedicalRecordPage() {
 
       showToastSuccess("Đã cập nhật hồ sơ bệnh án thành công!");
       router.push(`/admin/medical-records/${recordId}`);
-    } catch (err: any) {
+    } catch (err) {
       console.error("[AdminEditRecord] Update failed:", err);
       showToastError(
         err?.response?.data?.message ||

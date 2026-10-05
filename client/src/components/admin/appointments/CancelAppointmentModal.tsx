@@ -60,7 +60,7 @@ export const CancelAppointmentModal: React.FC<CancelAppointmentModalProps> = ({
       setReason("");
       onSuccess();
       onClose();
-    } catch (err: any) {
+    } catch (err) {
       const msg =
         err?.response?.data?.message ||
         err?.message ||

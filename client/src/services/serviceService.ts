@@ -11,6 +11,7 @@ import type {
   ServicePagination,
   ServiceListResult,
 } from "@/types/service.type";
+import type { ApiResponse } from "@/types/api.type";
 import { MOCK_SERVICES } from "@/lib/mock";
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === "true";
@@ -59,21 +60,22 @@ export function normalizeCategory(cat?: string, name?: string, description?: str
 /**
  * Chuẩn hóa entity Service từ API hoặc Mock
  */
-export function normalizeService(item: any): Service {
-  if (!item) return item;
-  const name = item.name ?? "Dịch vụ phòng khám";
-  const desc = item.description ?? "";
+export function normalizeService(item: unknown): Service {
+  if (!item) return item as unknown as Service;
+  const s = item as Record<string, unknown>;
+  const name = (s.name as string) ?? "Dịch vụ phòng khám";
+  const desc = (s.description as string) ?? "";
   return {
-    ...item,
-    id: String(item.id ?? item.service_id ?? ""),
+    ...(item as Service),
+    id: String(s.id ?? s.service_id ?? ""),
     name,
     description: desc,
-    price: Number(item.price ?? 0),
-    duration_minutes: item.duration_minutes !== undefined ? Number(item.duration_minutes) : 30,
-    category: normalizeCategory(item.category, name, desc),
-    is_active: item.is_active !== undefined ? Boolean(item.is_active) : true,
-    created_at: item.created_at ?? new Date().toISOString(),
-    updated_at: item.updated_at ?? new Date().toISOString(),
+    price: Number(s.price ?? 0),
+    duration_minutes: s.duration_minutes !== undefined && s.duration_minutes !== null ? Number(s.duration_minutes) : 30,
+    category: normalizeCategory(s.category as string | undefined, name, desc),
+    is_active: s.is_active !== undefined ? Boolean(s.is_active) : true,
+    created_at: (s.created_at as string) ?? new Date().toISOString(),
+    updated_at: (s.updated_at as string) ?? new Date().toISOString(),
   };
 }
 
@@ -84,7 +86,7 @@ export function normalizeService(item: any): Service {
  */
 export async function listServices(filters: ServiceFilterParams): Promise<ServiceListResult>;
 export async function listServices(params?: { is_active?: boolean }): Promise<Service[]>;
-export async function listServices(params?: ServiceFilterParams | { is_active?: boolean }): Promise<any> {
+export async function listServices(params?: ServiceFilterParams | { is_active?: boolean }): Promise<ServiceListResult | Service[]> {
   const isAdminQuery =
     params &&
     ((params as ServiceFilterParams).page !== undefined ||
@@ -122,40 +124,18 @@ export async function listServices(params?: ServiceFilterParams | { is_active?: 
       });
     }
 
-    try {
-      const res = await axiosClient.get<any>("/services/admin", {
-        params: { search, category, status, page, limit },
-      });
-      const raw = res.data?.data ?? res.data;
-      const items = (raw?.items ?? []).map(normalizeService);
-      const pagination: ServicePagination = raw?.pagination ?? {
-        page,
-        limit,
-        total: items.length,
-        totalPages: Math.ceil(items.length / limit) || 1,
-      };
-      return { items, pagination };
-    } catch (err: any) {
-      console.warn("[serviceService.list admin] API failed, falling back to mock:", err);
-      let list = MOCK_SERVICES.map(normalizeService);
-      if (search) {
-        list = list.filter((s) => s.name.toLowerCase().includes(search.toLowerCase()));
-      }
-      if (category) {
-        list = list.filter((s) => s.category.toLowerCase() === category);
-      }
-      if (status) {
-        list = list.filter((s) => (status === "active" ? s.is_active : !s.is_active));
-      }
-      const total = list.length;
-      const totalPages = Math.ceil(total / limit) || 1;
-      const startIndex = (page - 1) * limit;
-      const paginatedItems = list.slice(startIndex, startIndex + limit);
-      return {
-        items: paginatedItems,
-        pagination: { page, limit, total, totalPages },
-      };
-    }
+    const res = await axiosClient.get<ApiResponse<{ items?: Service[]; pagination?: ServicePagination }>>("/services/admin", {
+      params: { search, category, status, page, limit },
+    });
+    const raw = res.data?.data ?? (res.data as unknown as { items?: Service[]; pagination?: ServicePagination });
+    const items = ((raw?.items ?? []) as Array<Partial<Service> & Record<string, unknown>>).map(normalizeService);
+    const pagination: ServicePagination = raw?.pagination ?? {
+      page,
+      limit,
+      total: items.length,
+      totalPages: Math.ceil(items.length / limit) || 1,
+    };
+    return { items, pagination };
   }
 
   return serviceService.getAll(params as { is_active?: boolean });
@@ -174,35 +154,25 @@ export const serviceService = {
       return mockDelay(list);
     }
 
-    try {
-      const res = await axiosClient.get<any>("/services", { params });
-      const raw = res.data;
-      let list: any[] = [];
-      if (Array.isArray(raw)) {
-        list = raw;
-      } else if (Array.isArray(raw?.data)) {
-        list = raw.data;
-      } else if (Array.isArray(raw?.items)) {
-        list = raw.items;
-      }
-
-      let normalized = list.map(normalizeService);
-      if (params?.is_active !== undefined) {
-        normalized = normalized.filter((s) => s.is_active === params.is_active);
-      }
-      return normalized;
-    } catch (err) {
-      console.warn("[serviceService.getAll] API failed, using fallback mock data:", err);
-      let list = MOCK_SERVICES.map(normalizeService);
-      if (params?.is_active !== undefined) {
-        list = list.filter((s) => s.is_active === params.is_active);
-      }
-      return list;
+    const res = await axiosClient.get<ApiResponse<Service[]> | Service[]>("/services", { params });
+    const raw = res.data;
+    let list: unknown[] = [];
+    if (Array.isArray(raw)) {
+      list = raw;
+    } else if (raw && Array.isArray((raw as ApiResponse<Service[]>).data)) {
+      list = (raw as ApiResponse<Service[]>).data ?? [];
+    } else if (raw && typeof raw === "object" && "items" in raw && Array.isArray((raw as { items?: Service[] }).items)) {
+      list = (raw as { items: Service[] }).items;
     }
+
+    let normalized = list.map(normalizeService);
+    if (params?.is_active !== undefined) {
+      normalized = normalized.filter((s) => s.is_active === params.is_active);
+    }
+    return normalized;
   },
 
   list: listServices,
-
 
   async getById(id: string | number): Promise<Service> {
     if (USE_MOCK) {
@@ -210,17 +180,17 @@ export const serviceService = {
       if (!s) throw new Error("Dịch vụ không tồn tại.");
       return mockDelay(normalizeService(s));
     }
-    const res = await axiosClient.get<any>(`/services/${id}`);
-    const raw = res.data?.data ?? res.data;
-    return normalizeService(raw);
+    const res = await axiosClient.get<ApiResponse<Service> | Service>(`/services/${id}`);
+    const raw = (res.data as ApiResponse<Service>)?.data ?? (res.data as Service);
+    return normalizeService(raw as Partial<Service> & Record<string, unknown>);
   },
 
   async create(dto: CreateServiceDTO): Promise<Service> {
     const payload = {
       name: dto.name.trim(),
-      description: dto.description?.trim() || null,
+      description: dto.description?.trim() || undefined,
       price: Number(dto.price),
-      duration_minutes: dto.duration_minutes ? Number(dto.duration_minutes) : null,
+      duration_minutes: dto.duration_minutes ? Number(dto.duration_minutes) : undefined,
       category: (dto.category || "other").toLowerCase(),
       is_active: dto.is_active ?? true,
     };
@@ -232,22 +202,22 @@ export const serviceService = {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       });
-      MOCK_SERVICES.unshift(created as any);
+      MOCK_SERVICES.unshift(created);
       return mockDelay(created);
     }
 
-    const res = await axiosClient.post<any>("/services/admin", payload);
-    const raw = res.data?.data ?? res.data;
-    return normalizeService(raw);
+    const res = await axiosClient.post<ApiResponse<Service> | Service>("/services/admin", payload);
+    const raw = (res.data as ApiResponse<Service>)?.data ?? (res.data as Service);
+    return normalizeService(raw as Partial<Service> & Record<string, unknown>);
   },
 
   async update(id: string | number, dto: UpdateServiceDTO): Promise<Service> {
-    const payload: any = {};
+    const payload: Partial<CreateServiceDTO> = {};
     if (dto.name !== undefined) payload.name = dto.name.trim();
-    if (dto.description !== undefined) payload.description = dto.description?.trim() || null;
+    if (dto.description !== undefined) payload.description = dto.description?.trim() || undefined;
     if (dto.price !== undefined) payload.price = Number(dto.price);
-    if (dto.duration_minutes !== undefined) payload.duration_minutes = dto.duration_minutes ? Number(dto.duration_minutes) : null;
-    if (dto.category !== undefined) payload.category = (dto.category as string).toLowerCase();
+    if (dto.duration_minutes !== undefined) payload.duration_minutes = dto.duration_minutes ? Number(dto.duration_minutes) : undefined;
+    if (dto.category !== undefined) payload.category = dto.category;
 
     if (USE_MOCK) {
       const index = MOCK_SERVICES.findIndex((s) => String(s.id) === String(id));
@@ -257,13 +227,13 @@ export const serviceService = {
         ...payload,
         updated_at: new Date().toISOString(),
       });
-      MOCK_SERVICES[index] = updated as any;
+      MOCK_SERVICES[index] = updated;
       return mockDelay(updated);
     }
 
-    const res = await axiosClient.put<any>(`/services/admin/${id}`, payload);
-    const raw = res.data?.data ?? res.data;
-    return normalizeService(raw);
+    const res = await axiosClient.put<ApiResponse<Service> | Service>(`/services/admin/${id}`, payload);
+    const raw = (res.data as ApiResponse<Service>)?.data ?? (res.data as Service);
+    return normalizeService(raw as Partial<Service> & Record<string, unknown>);
   },
 
   async toggleActive(id: string | number): Promise<Service> {
@@ -276,13 +246,13 @@ export const serviceService = {
         is_active: !current.is_active,
         updated_at: new Date().toISOString(),
       });
-      MOCK_SERVICES[index] = updated as any;
+      MOCK_SERVICES[index] = updated;
       return mockDelay(updated);
     }
 
-    const res = await axiosClient.patch<any>(`/services/admin/${id}/toggle-active`);
-    const raw = res.data?.data ?? res.data;
-    return normalizeService(raw);
+    const res = await axiosClient.patch<ApiResponse<Service> | Service>(`/services/admin/${id}/toggle-active`);
+    const raw = (res.data as ApiResponse<Service>)?.data ?? (res.data as Service);
+    return normalizeService(raw as Partial<Service> & Record<string, unknown>);
   },
 
   async delete(id: string | number): Promise<void> {
@@ -296,10 +266,11 @@ export const serviceService = {
 
     try {
       await axiosClient.delete(`/services/admin/${id}`);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } }; message?: string };
       const message =
-        error?.response?.data?.message ||
-        error?.message ||
+        err?.response?.data?.message ||
+        err?.message ||
         "Không thể xóa dịch vụ.";
       throw new Error(message);
     }
@@ -314,4 +285,3 @@ export const service = {
 };
 
 export default serviceService;
-

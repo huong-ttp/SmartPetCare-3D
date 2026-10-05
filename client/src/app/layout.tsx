@@ -3,6 +3,7 @@ import { Inter, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth-context";
 import { ToastProvider } from "@/components/ui/Toast";
+import { NetworkStatusBanner } from "@/components/ui/NetworkStatusBanner";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -47,6 +48,7 @@ export default function RootLayout({
       <body className="min-h-screen antialiased bg-slate-50 text-slate-900 font-sans">
         <AuthProvider>
           <ToastProvider>
+            <NetworkStatusBanner />
             {children}
           </ToastProvider>
         </AuthProvider>

@@ -70,8 +70,8 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
       const userId = user.user_id || user.id;
       const updated = await adminService.updateUser(userId, {
         full_name: formData.full_name?.trim(),
-        phone: formData.phone?.trim() || null as any,
-        address: formData.address?.trim() || null as any,
+        phone: formData.phone?.trim() || null,
+        address: formData.address?.trim() || null,
       });
 
       toast.success(
@@ -80,7 +80,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
       );
       onSuccess(updated);
       onClose();
-    } catch (err: any) {
+    } catch (err) {
       console.error("Failed to update user:", err);
       toast.error(
         err?.response?.data?.message ||

@@ -328,8 +328,8 @@ export const AdminPetDetailModal: React.FC<AdminPetDetailModalProps> = ({
                     Ghi chú chăm sóc đặc biệt:
                   </p>
                   <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/70 text-xs text-slate-700 leading-relaxed min-h-[60px]">
-                    {pet.notes || (pet as any).special_notes ? (
-                      pet.notes || (pet as any).special_notes
+                    {pet.notes || pet.special_notes ? (
+                      pet.notes || pet.special_notes
                     ) : (
                       <span className="text-slate-400 italic">
                         Chưa có ghi chú chăm sóc đặc biệt nào cho thú cưng này.

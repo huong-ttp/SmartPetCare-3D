@@ -97,6 +97,15 @@ async login(data: LoginData) {
 }
 
 const user = result.rows[0];
+
+if (user.is_deleted) {
+  throw new AppError("Tài khoản của bạn đã bị xóa khỏi hệ thống", 403);
+}
+
+if (user.is_active !== true) {
+  throw new AppError("Tài khoản của bạn chưa được kích hoạt hoặc đang bị vô hiệu hóa", 403);
+}
+
 const isMatch = await bcrypt.compare(
   data.password,
   user.password_hash
@@ -115,6 +124,17 @@ const refreshToken = generateRefreshToken({
   user_id: user.user_id,
   role: user.role,
 });
+
+// Lưu refresh token vào database bảng refresh_tokens (hạn 30 ngày)
+const refreshExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+await pool.query(
+  `
+  INSERT INTO refresh_tokens (user_id, refresh_token, expires_at)
+  VALUES ($1, $2, $3);
+  `,
+  [user.user_id, refreshToken, refreshExpiresAt]
+);
+
 return {
   message: "Login successful",
   access_token: accessToken,
@@ -130,6 +150,25 @@ return {
 };
 }
 async refreshToken(refreshToken: string) {
+  if (!refreshToken) {
+    throw new AppError("Refresh token không được để trống", 400);
+  }
+
+  // 1. Kiểm tra refresh token trong database bảng refresh_tokens
+  const tokenRecord = await pool.query(
+    `
+    SELECT *
+    FROM refresh_tokens
+    WHERE refresh_token = $1
+      AND expires_at > NOW();
+    `,
+    [refreshToken]
+  );
+
+  if (tokenRecord.rowCount === 0) {
+    throw new AppError("Refresh token không hợp lệ hoặc đã hết hạn", 401);
+  }
+
   try {
     const decoded = jwt.verify(
       refreshToken,
@@ -139,15 +178,38 @@ async refreshToken(refreshToken: string) {
       role: string;
     };
 
+    // 2. Xác thực trạng thái người dùng trong users
+    const userResult = await pool.query(
+      `
+      SELECT user_id, role, is_active, is_deleted
+      FROM users
+      WHERE user_id = $1;
+      `,
+      [decoded.user_id]
+    );
+
+    if (
+      userResult.rowCount === 0 ||
+      userResult.rows[0].is_deleted ||
+      !userResult.rows[0].is_active
+    ) {
+      await pool.query(
+        `DELETE FROM refresh_tokens WHERE refresh_token = $1;`,
+        [refreshToken]
+      );
+      throw new AppError("Tài khoản không tồn tại hoặc đã bị khóa", 403);
+    }
+
     const accessToken = generateAccessToken({
       user_id: decoded.user_id,
-      role: decoded.role,
+      role: userResult.rows[0].role,
     });
 
     return {
       access_token: accessToken,
     };
-  } catch {
+  } catch (err: any) {
+    if (err instanceof AppError) throw err;
     throw new AppError("Invalid refresh token", 401);
   }
 }
@@ -175,7 +237,19 @@ async getProfile(userId: number) {
 
   return result.rows[0];
 }
-async logout() {
+async logout(refreshToken?: string, userId?: number) {
+  if (refreshToken) {
+    await pool.query(
+      `DELETE FROM refresh_tokens WHERE refresh_token = $1;`,
+      [refreshToken]
+    );
+  } else if (userId) {
+    await pool.query(
+      `DELETE FROM refresh_tokens WHERE user_id = $1;`,
+      [userId]
+    );
+  }
+
   return {
     message: "Logout successful",
   };
@@ -188,14 +262,14 @@ async forgotPassword(
     `
       SELECT user_id, email
       FROM users
-      WHERE email = $1
+      WHERE email = $1 AND is_deleted = false
     `,
     [data.email]
   );
 
   if (userResult.rows.length === 0) {
     throw new AppError(
-      "Email không tồn tại",
+      "Email không tồn tại hoặc tài khoản đã bị khóa",
       404
     );
   }
