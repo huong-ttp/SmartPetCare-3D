@@ -21,6 +21,7 @@ import {
   getNotificationTargetRoute,
   formatRelativeTime,
 } from "@/utils/notificationRoutes";
+import NotificationDetailModal from "./NotificationDetailModal";
 import { cn } from "@/utils/cn";
 
 interface NotificationDrawerProps {
@@ -43,6 +44,10 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isMarkingAll, setIsMarkingAll] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Modal xem bảng nhỏ chi tiết thông báo
+  const [selectedNotification, setSelectedNotification] = useState<ReminderNotification | null>(null);
+  const [isDetailOpen, setIsDetailOpen] = useState<boolean>(false);
 
   // Fetch notifications when drawer opens
   const fetchNotifications = async () => {
@@ -98,7 +103,7 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
       ? notifications.filter((n) => !n.is_read)
       : notifications;
 
-  // Handle single notification click
+  // Handle single notification click: đánh dấu đã đọc & mở bảng nhỏ chi tiết
   const handleItemClick = async (item: ReminderNotification) => {
     const id = item.notification_id ?? item.id;
     if (!item.is_read && id) {
@@ -118,9 +123,39 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
       }
     }
 
+    setSelectedNotification({ ...item, is_read: true });
+    setIsDetailOpen(true);
+  };
+
+  // Điều hướng từ bảng nhỏ chi tiết
+  const handleDetailNavigate = (targetRoute: string, item: ReminderNotification) => {
+    setIsDetailOpen(false);
     onClose();
-    const targetRoute = getNotificationTargetRoute(item, user?.role);
     router.push(targetRoute);
+  };
+
+  // Đánh dấu đã đọc từ modal
+  const handleDetailMarkAsRead = async (item: ReminderNotification) => {
+    const id = item.notification_id ?? item.id;
+    if (!id) return;
+    setNotifications((prev) =>
+      prev.map((n) =>
+        String(n.notification_id ?? n.id) === String(id)
+          ? { ...n, is_read: true }
+          : n
+      )
+    );
+    setSelectedNotification((prev) =>
+      prev && String(prev.notification_id ?? prev.id) === String(id)
+        ? { ...prev, is_read: true }
+        : prev
+    );
+    try {
+      await notificationService.markAsRead(id);
+      onItemRead?.();
+    } catch (err) {
+      console.error("[NotificationDrawer] Failed to mark as read:", err);
+    }
   };
 
   // Handle Mark All as Read
@@ -394,6 +429,19 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Notification Detail Modal */}
+      <NotificationDetailModal
+        notification={selectedNotification}
+        isOpen={isDetailOpen}
+        onClose={() => {
+          setIsDetailOpen(false);
+          setSelectedNotification(null);
+        }}
+        onMarkAsRead={handleDetailMarkAsRead}
+        onNavigate={handleDetailNavigate}
+        userRole={user?.role}
+      />
     </div>
   );
 };

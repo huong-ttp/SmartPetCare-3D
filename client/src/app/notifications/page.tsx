@@ -23,6 +23,7 @@ import {
   X,
 } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
+import NotificationDetailModal from "@/components/notifications/NotificationDetailModal";
 import { useAuth } from "@/lib/auth-context";
 import { notificationService } from "@/services/notificationService";
 import type { ReminderNotification, NotificationType } from "@/types/notification.type";
@@ -42,6 +43,10 @@ export default function NotificationsPage() {
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [isMarkingAll, setIsMarkingAll] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Modal xem chi tiết thông báo
+  const [selectedNotification, setSelectedNotification] = useState<ReminderNotification | null>(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState<boolean>(false);
 
   // Filters & Search
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -99,11 +104,24 @@ export default function NotificationsPage() {
       )
     );
 
+    // Cập nhật modal nếu đang hiển thị
+    setSelectedNotification((prev) =>
+      prev && String(prev.notification_id ?? prev.id) === String(id)
+        ? { ...prev, is_read: true }
+        : prev
+    );
+
     try {
       await notificationService.markAsRead(id);
     } catch (err) {
       console.error("[NotificationsPage] Failed to mark as read:", err);
     }
+  };
+
+  // Mở bảng nhỏ chi tiết thông báo
+  const handleOpenDetail = (item: ReminderNotification) => {
+    setSelectedNotification(item);
+    setIsDetailModalOpen(true);
   };
 
   // Mark all as read
@@ -124,10 +142,18 @@ export default function NotificationsPage() {
   };
 
   // Navigate to target route
-  const handleNavigate = (item: ReminderNotification) => {
-    handleMarkAsRead(item);
-    const target = getNotificationTargetRoute(item, user?.role);
-    router.push(target);
+  const handleNavigate = (
+    targetOrItem: string | ReminderNotification,
+    item?: ReminderNotification
+  ) => {
+    if (typeof targetOrItem === "string") {
+      if (item) handleMarkAsRead(item);
+      router.push(targetOrItem);
+    } else {
+      handleMarkAsRead(targetOrItem);
+      const target = getNotificationTargetRoute(targetOrItem, user?.role);
+      router.push(target);
+    }
   };
 
   // Filtered list
@@ -482,8 +508,9 @@ export default function NotificationsPage() {
               return (
                 <div
                   key={item.notification_id ?? item.id}
+                  onClick={() => handleOpenDetail(item)}
                   className={cn(
-                    "group bg-white rounded-2xl p-4 sm:p-5 border transition-all duration-200 relative flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4",
+                    "group bg-white rounded-2xl p-4 sm:p-5 border transition-all duration-200 relative flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 cursor-pointer",
                     isUnread
                       ? "border-sky-200 bg-sky-50/30 hover:border-sky-300 hover:shadow-md"
                       : "border-slate-100 hover:border-slate-200 hover:shadow-sm"
@@ -540,26 +567,29 @@ export default function NotificationsPage() {
                         {item.title}
                       </h3>
 
-                      <p className="text-xs text-slate-500 leading-relaxed max-w-2xl">
+                      <p className="text-xs text-slate-500 leading-relaxed max-w-2xl line-clamp-2">
                         {item.content || item.message}
                       </p>
                     </div>
                   </div>
 
                   {/* Actions */}
-                  <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                  <div
+                    className="flex items-center gap-2 self-end sm:self-center shrink-0"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     {isUnread && (
                       <button
                         onClick={() => handleMarkAsRead(item)}
-                        className="px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-[#0EA5B7] hover:bg-sky-50 rounded-xl transition-colors"
+                        className="px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-[#0EA5B7] hover:bg-sky-50 rounded-xl transition-colors cursor-pointer"
                       >
                         Đánh dấu đã đọc
                       </button>
                     )}
 
                     <button
-                      onClick={() => handleNavigate(item)}
-                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-100 group-hover:bg-[#0EA5B7] text-slate-700 group-hover:text-white text-xs font-semibold rounded-xl transition-all shadow-sm"
+                      onClick={() => handleOpenDetail(item)}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-100 group-hover:bg-[#0EA5B7] text-slate-700 group-hover:text-white text-xs font-semibold rounded-xl transition-all shadow-sm cursor-pointer"
                     >
                       <span>Xem chi tiết</span>
                       <ArrowRight size={14} />
@@ -650,6 +680,19 @@ export default function NotificationsPage() {
             </div>
           </div>
         )}
+
+        {/* Notification Detail Modal */}
+        <NotificationDetailModal
+          notification={selectedNotification}
+          isOpen={isDetailModalOpen}
+          onClose={() => {
+            setIsDetailModalOpen(false);
+            setSelectedNotification(null);
+          }}
+          onMarkAsRead={handleMarkAsRead}
+          onNavigate={(targetRoute, item) => handleNavigate(targetRoute, item)}
+          userRole={user?.role}
+        />
       </div>
     </DashboardLayout>
   );
