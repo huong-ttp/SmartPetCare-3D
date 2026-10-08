@@ -4,11 +4,9 @@ import {
   Syringe,
   Stethoscope,
   CreditCard,
-  Bell,
   Sparkles,
   CheckCircle2,
   AlertCircle,
-  Clock,
   FileText,
   UserCheck,
 } from "lucide-react";
@@ -150,11 +148,11 @@ export function getNotificationTargetRoute(
   if (type.startsWith("appointment")) {
     return "/appointments";
   }
-  if (type.includes("vaccine")) {
-    return petId ? `/pets/${petId}/vaccinations` : "/reminders";
+  if (type.includes("vaccin")) {
+    return petId ? `/pets/${petId}/vaccinations` : "/notifications?type=vaccine";
   }
   if (type.includes("checkup")) {
-    return petId ? `/pets/${petId}` : "/reminders";
+    return petId ? `/pets/${petId}` : "/notifications?type=checkup";
   }
   if (type.includes("payment") || type.includes("invoice")) {
     return "/invoices";

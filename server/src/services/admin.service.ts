@@ -1675,17 +1675,19 @@ async assignDoctor(
   appointmentId: number,
   doctorId: number
 ) {
-
   // Appointment tồn tại?
-
   const appointment = await pool.query(
     `
     SELECT
-      appointment_id,
-      doctor_id,
-      status
-    FROM appointments
-    WHERE appointment_id = $1;
+      a.appointment_id,
+      a.doctor_id,
+      a.status,
+      to_char(a.appointment_date, 'YYYY-MM-DD') AS appointment_date,
+      to_char(a.start_time, 'HH24:MI') AS start_time,
+      p.name AS pet_name
+    FROM appointments a
+    LEFT JOIN pets p ON p.pet_id = a.pet_id
+    WHERE a.appointment_id = $1;
     `,
     [appointmentId]
   );
@@ -1697,8 +1699,7 @@ async assignDoctor(
     );
   }
 
-  const current =
-    appointment.rows[0];
+  const current = appointment.rows[0];
 
   if (current.status !== "confirmed") {
     throw new AppError(
@@ -1714,20 +1715,13 @@ async assignDoctor(
     );
   }
 
-  // Doctor tồn tại?
-
+  // Doctor tồn tại và đang hoạt động?
   const doctor = await pool.query(
     `
-    SELECT user_id
-
+    SELECT user_id, full_name
     FROM users
-
-    WHERE
-
-      user_id = $1
-
+    WHERE user_id = $1
       AND role = 'doctor'
-
       AND is_active = true;
     `,
     [doctorId]
@@ -1740,20 +1734,62 @@ async assignDoctor(
     );
   }
 
+  // Kiểm tra ca trực của bác sĩ vào ngày và khung giờ này (nếu có ca trực)
+  if (current.appointment_date && current.start_time) {
+    const shiftQuery = await pool.query(
+      `
+      SELECT shift_id, shift_type, start_time, end_time, max_patients, is_off
+      FROM doctor_shifts
+      WHERE doctor_id = $1
+        AND shift_date = $2
+        AND start_time <= $3::time
+        AND end_time > $3::time;
+      `,
+      [doctorId, current.appointment_date, current.start_time]
+    );
+
+    if (shiftQuery.rowCount && shiftQuery.rowCount > 0) {
+      const shift = shiftQuery.rows[0];
+      if (shift.is_off) {
+        throw new AppError(
+          `Bác sĩ đã đăng ký nghỉ trực vào ca này (ngày ${current.appointment_date}, lúc ${current.start_time})`,
+          400
+        );
+      }
+
+      // Đếm số lượng appointment confirmed của bác sĩ trong ca này
+      const countQuery = await pool.query(
+        `
+        SELECT COUNT(*) as total
+        FROM appointments
+        WHERE doctor_id = $1
+          AND appointment_date = $2
+          AND start_time >= $3
+          AND start_time < $4
+          AND status = 'confirmed'
+          AND appointment_id <> $5;
+        `,
+        [doctorId, current.appointment_date, shift.start_time, shift.end_time, appointmentId]
+      );
+
+      const totalInShift = Number(countQuery.rows[0].total);
+      if (totalInShift >= shift.max_patients) {
+        throw new AppError(
+          `Ca trực của bác sĩ đã đầy số lượng bệnh nhân (${totalInShift}/${shift.max_patients} lịch hẹn)`,
+          400
+        );
+      }
+    }
+  }
+
   const result = await pool.query(
     `
     UPDATE appointments
-
     SET
-
       doctor_id = $1,
-
       doctor_assigned_at = NOW(),
-
       updated_at = NOW()
-
     WHERE appointment_id = $2
-
     RETURNING *;
     `,
     [
@@ -1762,8 +1798,20 @@ async assignDoctor(
     ]
   );
 
-  return result.rows[0];
+  // Gửi thông báo hệ thống cho bác sĩ được phân công
+  await pool.query(
+    `
+    INSERT INTO notifications (user_id, type, title, content, sent_at)
+    VALUES ($1, 'system', $2, $3, NOW())
+    `,
+    [
+      doctorId,
+      "Lịch hẹn mới được phân công",
+      `Bạn vừa được phân công phụ trách lịch hẹn khám cho thú cưng ${current.pet_name || ""} vào ngày ${current.appointment_date} lúc ${current.start_time}.`,
+    ]
+  ).catch((err) => console.warn("[assignDoctor] Gửi thông báo cho bác sĩ thất bại:", err));
 
+  return result.rows[0];
 }
 
 async cancelAppointment(

@@ -15,6 +15,7 @@ import adminRoutes from "./admin.routes";
 import invoiceRoutes from "./invoice.routes";
 import notificationRoutes from "./notification.routes";
 import healthLogRoutes from "./healthLog.routes";
+import shiftRoutes from "./shift.routes";
 
 const router = Router();
 
@@ -31,6 +32,7 @@ router.use("/vaccinations", vaccinationRoutes);
 router.use("/vaccine-types", vaccineTypeRoutes);
 router.use("/admin/vaccine-types", vaccineTypeRoutes);
 router.use("/services", serviceRoutes);
+router.use("/", shiftRoutes);
 router.use("/admin", adminRoutes);
 router.use("/invoices", invoiceRoutes);
 router.use("/notifications", notificationRoutes);

@@ -12,7 +12,6 @@ import {
   CalendarClock,
   Loader2,
   AlertCircle,
-  Sparkles,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { notificationService } from "@/services/notificationService";
@@ -376,7 +375,7 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
           {/* Footer Navigation */}
           <div className="p-3 px-4 border-t border-slate-100 bg-slate-50/80 flex items-center justify-between text-xs">
             <Link
-              href="/reminders"
+              href="/notifications?type=reminder"
               onClick={onClose}
               className="inline-flex items-center gap-1.5 text-slate-600 hover:text-[#0EA5B7] font-medium py-1 px-2 rounded-lg hover:bg-white transition-colors"
             >

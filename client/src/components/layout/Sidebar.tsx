@@ -19,7 +19,8 @@ import {
   Receipt,
   Wallet,
   ShieldCheck,
-  LayoutDashboard
+  LayoutDashboard,
+  CalendarClock
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 
@@ -34,7 +35,7 @@ export const OWNER_NAV: NavItem[] = [
   { name: "Thú cưng", href: "/pets", icon: <Dog size={20} /> },
   { name: "Dịch vụ", href: "/services", icon: <Sparkles size={20} /> },
   { name: "Lịch hẹn", href: "/appointments", icon: <Calendar size={20} /> },
-  { name: "Nhắc lịch", href: "/reminders", icon: <BellRing size={20} /> },
+  { name: "Thông báo", href: "/notifications", icon: <BellRing size={20} /> },
   { name: "Hóa đơn", href: "/invoices", icon: <CreditCard size={20} /> },
 ];
 
@@ -43,6 +44,7 @@ export const DOCTOR_NAV: NavItem[] = [
   { name: "Lịch hẹn", href: "/doctor/appointments", icon: <Calendar size={20} /> },
   { name: "Bệnh nhân", href: "/doctor/patients", icon: <Dog size={20} /> },
   { name: "Lịch làm việc", href: "/doctor/schedule", icon: <Calendar size={20} /> },
+  { name: "Thông báo", href: "/notifications", icon: <BellRing size={20} /> },
   { name: "Bệnh án", href: "/doctor/medical-records", icon: <FileText size={20} /> },
   { name: "Nhật ký sức khỏe", href: "/doctor/health-logs", icon: <Activity size={20} /> },
 ];
@@ -52,6 +54,7 @@ export const ADMIN_NAV: NavItem[] = [
   { name: "Users", href: "/admin/users", icon: <Users size={20} /> },
   { name: "Pets", href: "/admin/pets", icon: <Dog size={20} /> },
   { name: "Appointments", href: "/admin/appointments", icon: <Calendar size={20} /> },
+  { name: "Ca trực bác sĩ", href: "/admin/shifts", icon: <CalendarClock size={20} /> },
   { name: "Services", href: "/admin/services", icon: <Settings size={20} /> },
   { name: "Vaccine Types", href: "/admin/vaccine-types", icon: <Syringe size={20} /> },
   { name: "Medical Records", href: "/admin/medical-records", icon: <FileText size={20} /> },

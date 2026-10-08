@@ -22,11 +22,17 @@ import {
   Activity,
   HeartPulse,
   Info,
+  Sun,
+  Sunset,
+  Coffee,
+  Building,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/lib/auth-context";
 import { appointment, appointmentService } from "@/services/appointmentService";
+import scheduleService from "@/services/scheduleService";
 import type { Appointment, AppointmentStatus, DoctorDashboardOverview } from "@/types/appointment.type";
+import type { DoctorShift, ShiftStatus } from "@/types/schedule.type";
 import { cn } from "@/utils/cn";
 
 // Dynamic import 3D Doctor Badge with SSR disabled
@@ -55,6 +61,9 @@ export default function DoctorDashboardPage() {
 
   // Today's Appointments List
   const [todayAppointments, setTodayAppointments] = useState<Appointment[]>([]);
+
+  // Today's Shifts List
+  const [todayShifts, setTodayShifts] = useState<DoctorShift[]>([]);
 
   // States
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -94,10 +103,11 @@ export default function DoctorDashboardPage() {
     try {
       // Cách 1: Gọi song song API appointment.service.list theo yêu cầu đề bài
       // API: appointment.service.list({doctor: me, date: today}), appointment.service.list({doctor: me, upcoming: true}), appointment.service.list({doctor: me, status: 'completed'})
-      const [todayList, upcomingList, completedList] = await Promise.all([
+      const [todayList, upcomingList, completedList, shiftsList] = await Promise.all([
         appointment.service.list({ doctor: "me", date: todayIsoString }),
         appointment.service.list({ doctor: "me", upcoming: true }),
         appointment.service.list({ doctor: "me", status: "completed" }),
+        scheduleService.getDoctorShifts(todayIsoString, todayIsoString).catch(() => []),
       ]);
 
       // Normalize lists
@@ -133,6 +143,7 @@ export default function DoctorDashboardPage() {
       });
 
       setTodayAppointments(normalizedToday);
+      setTodayShifts(Array.isArray(shiftsList) ? shiftsList : []);
     } catch (err) {
       console.error("[DoctorDashboard] Failed to fetch dashboard data:", err);
       setErrorMsg(
@@ -195,6 +206,48 @@ export default function DoctorDashboardPage() {
         return (
           <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
             {status}
+          </span>
+        );
+    }
+  };
+
+  const morningShift = useMemo(() => todayShifts.find((s) => s.shift_type === "morning"), [todayShifts]);
+  const afternoonShift = useMemo(() => todayShifts.find((s) => s.shift_type === "afternoon"), [todayShifts]);
+
+  const renderShiftStatusBadge = (status?: ShiftStatus) => {
+    switch (status) {
+      case "active":
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-300">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            Đang trực
+          </span>
+        );
+      case "scheduled":
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-sky-50 text-sky-700 border border-sky-200">
+            <Clock size={12} className="text-sky-500" />
+            Sắp diễn ra
+          </span>
+        );
+      case "completed":
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200">
+            <CheckCircle2 size={12} className="text-slate-500" />
+            Đã hoàn thành
+          </span>
+        );
+      case "off":
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
+            <Coffee size={12} className="text-amber-500" />
+            Nghỉ trực
+          </span>
+        );
+      default:
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-500 border border-slate-200">
+            Chưa xếp ca
           </span>
         );
     }
@@ -409,6 +462,188 @@ export default function DoctorDashboardPage() {
             </span>
           </div>
         </Link>
+      </div>
+
+      {/* ─── TODAY'S SHIFTS OVERVIEW ───────────────────────────────────────── */}
+      <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-5 sm:p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-cyan-50 text-[#0EA5B7] flex items-center justify-center">
+              <Clock size={20} />
+            </div>
+            <div>
+              <h2 className="font-heading font-extrabold text-base sm:text-lg text-slate-900">
+                Ca Trực Hôm Nay Của Bạn
+              </h2>
+              <p className="text-xs text-slate-500">
+                Lịch phân ca lâm sàng, phòng khám & tiến độ tiếp nhận bệnh nhân hôm nay ({todayFormatted})
+              </p>
+            </div>
+          </div>
+
+          <Link
+            href="/doctor/schedule"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#0EA5B7] hover:underline self-start sm:self-auto"
+          >
+            <span>Chi tiết lịch làm việc</span>
+            <ChevronRight size={14} />
+          </Link>
+        </div>
+
+        {/* 2 Shift Cards: Morning & Afternoon */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5">
+          {/* Ca Sáng */}
+          <div
+            className={cn(
+              "p-4 sm:p-5 rounded-2xl border transition-all",
+              morningShift?.status === "active"
+                ? "bg-emerald-50/40 border-emerald-300 ring-2 ring-emerald-400/20 shadow-xs"
+                : morningShift
+                ? "bg-slate-50/70 border-slate-200/80"
+                : "bg-slate-50/40 border-dashed border-slate-200"
+            )}
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-500 flex items-center justify-center shrink-0 border border-amber-100">
+                  <Sun size={20} />
+                </div>
+                <div>
+                  <h3 className="font-heading font-bold text-slate-900 text-sm sm:text-base">
+                    Ca Sáng
+                  </h3>
+                  <p className="text-xs font-medium text-slate-500">
+                    {morningShift?.start_time && morningShift?.end_time
+                      ? `${morningShift.start_time.slice(0, 5)} - ${morningShift.end_time.slice(0, 5)}`
+                      : "08:00 - 12:00"}
+                  </p>
+                </div>
+              </div>
+
+              <div>{renderShiftStatusBadge(morningShift?.status)}</div>
+            </div>
+
+            <div className="mt-4 pt-3 border-t border-slate-200/60 space-y-2">
+              <div className="flex items-center justify-between text-xs text-slate-600">
+                <span className="flex items-center gap-1.5 text-slate-500">
+                  <Building size={14} className="text-slate-400" />
+                  <span>Phòng khám:</span>
+                </span>
+                <span className="font-semibold text-slate-800">
+                  {morningShift?.room || (morningShift ? "Phòng khám" : "Chưa phân phòng")}
+                </span>
+              </div>
+
+              {morningShift ? (
+                morningShift.is_off ? (
+                  <p className="text-xs text-amber-700 font-medium">Ca nghỉ theo lịch trực</p>
+                ) : (
+                  <div>
+                    <div className="flex items-center justify-between text-xs mb-1.5">
+                      <span className="text-slate-500">Bệnh nhân đã xếp:</span>
+                      <span className="font-bold text-slate-900">
+                        {morningShift.appointments_count || 0} / {morningShift.max_patients} hẹn
+                      </span>
+                    </div>
+                    <div className="w-full bg-slate-200/80 h-2 rounded-full overflow-hidden">
+                      <div
+                        className="bg-amber-500 h-full rounded-full transition-all duration-500"
+                        style={{
+                          width: `${Math.min(
+                            100,
+                            Math.round(
+                              ((morningShift.appointments_count || 0) /
+                                (morningShift.max_patients || 1)) *
+                                100
+                            )
+                          )}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                )
+              ) : (
+                <p className="text-xs text-slate-400 italic">Chưa xếp ca sáng hôm nay</p>
+              )}
+            </div>
+          </div>
+
+          {/* Ca Chiều */}
+          <div
+            className={cn(
+              "p-4 sm:p-5 rounded-2xl border transition-all",
+              afternoonShift?.status === "active"
+                ? "bg-emerald-50/40 border-emerald-300 ring-2 ring-emerald-400/20 shadow-xs"
+                : afternoonShift
+                ? "bg-slate-50/70 border-slate-200/80"
+                : "bg-slate-50/40 border-dashed border-slate-200"
+            )}
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center shrink-0 border border-teal-100">
+                  <Sunset size={20} />
+                </div>
+                <div>
+                  <h3 className="font-heading font-bold text-slate-900 text-sm sm:text-base">
+                    Ca Chiều
+                  </h3>
+                  <p className="text-xs font-medium text-slate-500">
+                    {afternoonShift?.start_time && afternoonShift?.end_time
+                      ? `${afternoonShift.start_time.slice(0, 5)} - ${afternoonShift.end_time.slice(0, 5)}`
+                      : "13:00 - 17:00"}
+                  </p>
+                </div>
+              </div>
+
+              <div>{renderShiftStatusBadge(afternoonShift?.status)}</div>
+            </div>
+
+            <div className="mt-4 pt-3 border-t border-slate-200/60 space-y-2">
+              <div className="flex items-center justify-between text-xs text-slate-600">
+                <span className="flex items-center gap-1.5 text-slate-500">
+                  <Building size={14} className="text-slate-400" />
+                  <span>Phòng khám:</span>
+                </span>
+                <span className="font-semibold text-slate-800">
+                  {afternoonShift?.room || (afternoonShift ? "Phòng khám" : "Chưa phân phòng")}
+                </span>
+              </div>
+
+              {afternoonShift ? (
+                afternoonShift.is_off ? (
+                  <p className="text-xs text-amber-700 font-medium">Ca nghỉ theo lịch trực</p>
+                ) : (
+                  <div>
+                    <div className="flex items-center justify-between text-xs mb-1.5">
+                      <span className="text-slate-500">Bệnh nhân đã xếp:</span>
+                      <span className="font-bold text-slate-900">
+                        {afternoonShift.appointments_count || 0} / {afternoonShift.max_patients} hẹn
+                      </span>
+                    </div>
+                    <div className="w-full bg-slate-200/80 h-2 rounded-full overflow-hidden">
+                      <div
+                        className="bg-teal-500 h-full rounded-full transition-all duration-500"
+                        style={{
+                          width: `${Math.min(
+                            100,
+                            Math.round(
+                              ((afternoonShift.appointments_count || 0) /
+                                (afternoonShift.max_patients || 1)) *
+                                100
+                            )
+                          )}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                )
+              ) : (
+                <p className="text-xs text-slate-400 italic">Chưa xếp ca chiều hôm nay</p>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* ─── TODAY'S APPOINTMENTS CONDENSED LIST ────────────────────────────── */}

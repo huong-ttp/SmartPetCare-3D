@@ -7,7 +7,15 @@
 import axiosClient from "@/lib/axiosClient";
 import appointmentService from "./appointmentService";
 import type { Appointment } from "@/types/appointment.type";
-import type { DoctorShift, ScheduleSummary, ShiftType } from "@/types/schedule.type";
+import type {
+  DoctorShift,
+  ScheduleSummary,
+  ShiftType,
+  CreateShiftDTO,
+  UpdateShiftDTO,
+  CreateShiftResult,
+  ShiftDoctorOption,
+} from "@/types/schedule.type";
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === "true";
 
@@ -95,13 +103,6 @@ function calculateShiftStatus(
     return "completed";
   }
 
-  if (shiftType === "on_call") {
-    // 17:00 (1020) - 21:00 (1260)
-    if (currentMinutes < 1020) return "scheduled";
-    if (currentMinutes <= 1260) return "active";
-    return "completed";
-  }
-
   return "scheduled";
 }
 
@@ -117,10 +118,7 @@ function isApptInShift(appt: Appointment, shiftType: ShiftType): boolean {
     return hour < 12;
   }
   if (shiftType === "afternoon") {
-    return hour >= 12 && hour < 17;
-  }
-  if (shiftType === "on_call") {
-    return hour >= 17;
+    return hour >= 12;
   }
   return false;
 }
@@ -132,18 +130,18 @@ export const scheduleService = {
    */
   async getDoctorShifts(startDate: string, endDate: string): Promise<DoctorShift[]> {
     try {
-      // Nếu có API backend /doctor/shifts hoặc /appointments/doctor/shifts
+      // API thật: GET /doctor/shifts (nguồn dữ liệu chính)
       if (!USE_MOCK) {
         try {
           const res = await axiosClient.get<{ data?: DoctorShift[] } | DoctorShift[]>("/doctor/shifts", {
             params: { startDate, endDate },
           });
           const raw = (res.data as { data?: DoctorShift[] })?.data ?? (res.data as DoctorShift[]);
-          if (Array.isArray(raw) && raw.length > 0) {
+          if (Array.isArray(raw)) {
             return raw;
           }
-        } catch {
-          // Bỏ qua lỗi 404/500 và fallback sang cơ chế mapping appointments
+        } catch (err) {
+          console.warn("[scheduleService.getDoctorShifts] API lỗi, dùng dữ liệu suy ra từ lịch hẹn:", err);
         }
       }
 
@@ -238,6 +236,47 @@ export const scheduleService = {
       console.error("[scheduleService.getDoctorShifts] Error:", error);
       return [];
     }
+  },
+
+  // ─── ADMIN: quản lý ca trực ───
+
+  /** Danh sách ca trực của tất cả (hoặc 1) bác sĩ trong khoảng ngày */
+  async listAdminShifts(
+    startDate: string,
+    endDate: string,
+    doctorId?: number | null
+  ): Promise<DoctorShift[]> {
+    const res = await axiosClient.get<{ data?: DoctorShift[] }>("/admin/shifts", {
+      params: { startDate, endDate, ...(doctorId ? { doctor_id: doctorId } : {}) },
+    });
+    return Array.isArray(res.data?.data) ? res.data.data : [];
+  },
+
+  async createShifts(dto: CreateShiftDTO): Promise<CreateShiftResult> {
+    const res = await axiosClient.post<{ data: CreateShiftResult }>("/admin/shifts", dto);
+    return res.data.data;
+  },
+
+  async updateShift(shiftId: number | string, dto: UpdateShiftDTO): Promise<DoctorShift> {
+    const res = await axiosClient.put<{ data: DoctorShift }>(`/admin/shifts/${shiftId}`, dto);
+    return res.data.data;
+  },
+
+  async deleteShift(shiftId: number | string): Promise<void> {
+    await axiosClient.delete(`/admin/shifts/${shiftId}`);
+  },
+
+  /** Bác sĩ đang hoạt động để chọn khi phân ca */
+  async getDoctorOptions(): Promise<ShiftDoctorOption[]> {
+    const res = await axiosClient.get<{ data?: Array<Record<string, unknown>> }>("/admin/doctors");
+    const list = Array.isArray(res.data?.data) ? res.data.data : [];
+    return list
+      .filter((d) => d.is_active !== false)
+      .map((d) => ({
+        id: Number(d.user_id ?? d.id),
+        full_name: String(d.full_name ?? "Bác sĩ"),
+      }))
+      .filter((d) => Number.isFinite(d.id));
   },
 
   /**

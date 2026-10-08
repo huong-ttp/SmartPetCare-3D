@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Bell,
@@ -48,6 +47,15 @@ export default function NotificationsPage() {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<"all" | "unread" | "read">("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
+
+  // Hỗ trợ deep-link từ trang nhắc lịch cũ: /notifications?type=reminder|appointment|vaccine|checkup|payment|system
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const t = new URLSearchParams(window.location.search).get("type");
+    if (t && ["reminder", "appointment", "vaccine", "checkup", "payment", "system"].includes(t)) {
+      setTypeFilter(t);
+    }
+  }, []);
 
   // Pagination
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -131,10 +139,12 @@ export default function NotificationsPage() {
 
       // 2. Type filter
       if (typeFilter !== "all") {
-        if (typeFilter === "appointment") {
+        if (typeFilter === "reminder") {
+          if (!item.type.includes("reminder")) return false;
+        } else if (typeFilter === "appointment") {
           if (!item.type.startsWith("appointment")) return false;
         } else if (typeFilter === "vaccine") {
-          if (!item.type.includes("vaccine")) return false;
+          if (!item.type.includes("vaccin")) return false;
         } else if (typeFilter === "checkup") {
           if (!item.type.includes("checkup")) return false;
         } else if (typeFilter === "payment") {
@@ -161,13 +171,7 @@ export default function NotificationsPage() {
   const totalCount = notifications.length;
   const unreadCount = notifications.filter((n) => !n.is_read).length;
   const readCount = totalCount - unreadCount;
-  const reminderCount = notifications.filter(
-    (n) =>
-      n.type.includes("reminder") ||
-      n.type.includes("appointment") ||
-      n.type.includes("vaccine") ||
-      n.type.includes("checkup")
-  ).length;
+  const reminderCount = notifications.filter((n) => n.type.includes("reminder")).length;
 
   // Pagination calculation
   const totalPages = Math.ceil(filteredList.length / pageSize) || 1;
@@ -216,13 +220,6 @@ export default function NotificationsPage() {
           </div>
 
           <div className="flex items-center gap-2.5 shrink-0">
-            <Link
-              href="/reminders"
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:border-[#0EA5B7] hover:text-[#0EA5B7] transition-all shadow-sm"
-            >
-              <CalendarClock size={15} />
-              <span>Trung tâm nhắc lịch</span>
-            </Link>
 
             <button
               onClick={() => fetchAllNotifications(true)}
@@ -362,6 +359,7 @@ export default function NotificationsPage() {
 
             {[
               { key: "all", label: "Tất cả loại" },
+              { key: "reminder", label: "Nhắc lịch", icon: CalendarClock },
               { key: "appointment", label: "Lịch hẹn khám", icon: Calendar },
               { key: "vaccine", label: "Tiêm phòng", icon: Syringe },
               { key: "checkup", label: "Tái khám", icon: Stethoscope },

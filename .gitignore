@@ -32,6 +32,9 @@ coverage/
 
 src/uploads/*
 !src/uploads/.gitkeep
+uploads/*
+server/uploads/*
+!server/uploads/.gitkeep
 
 # AI agent
 AGENTS.md
