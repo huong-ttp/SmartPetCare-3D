@@ -1,5 +1,6 @@
 import pool from "../config/database.config";
 import AppError from "../utils/AppError";
+import { deleteCloudinaryImageByUrl } from "../middleware/upload.middleware";
 
 interface CreatePetData {
   owner_id: number;
@@ -282,6 +283,15 @@ class PetService {
         petId,
       ]
     );
+
+    // Xóa avatar thú cưng cũ trên Cloudinary nếu đổi avatar mới hoặc gỡ avatar
+    if (
+      data.avatar_url !== undefined &&
+      pet.avatar_url &&
+      pet.avatar_url !== avatar_url
+    ) {
+      deleteCloudinaryImageByUrl(pet.avatar_url);
+    }
 
     return result.rows[0];
   }

@@ -463,4 +463,65 @@ export const deleteUploadedFiles = async (
   });
 };
 
+/**
+ * Trích xuất Cloudinary public_id từ URL ảnh Cloudinary.
+ * Hỗ trợ URL có hoặc không có transformations, version (v12345...), và phần mở rộng (.jpg, .png...).
+ * Trả về null nếu URL không thuộc về Cloudinary hoặc không trích xuất được.
+ */
+export const extractCloudinaryPublicId = (
+  url: string | null | undefined
+): string | null => {
+  if (!url || typeof url !== "string") return null;
+
+  // Đảm bảo là URL Cloudinary
+  if (!url.includes("cloudinary.com") || !url.includes("/image/upload/")) {
+    return null;
+  }
+
+  // Khớp định dạng thư mục của dự án (clinic_system/...)
+  const clinicMatch = url.match(/(clinic_system\/[^?#]+)/);
+  let rawPath = clinicMatch ? clinicMatch[1] : null;
+
+  if (!rawPath) {
+    // Fallback cho URL sau /image/upload/ (bỏ qua transformations và version)
+    const generalMatch = url.match(
+      /\/image\/upload\/(?:[a-zA-Z0-9_,-]+\/)*(?:v\d+\/)?([^?#]+)/
+    );
+    if (generalMatch) {
+      rawPath = generalMatch[1];
+    }
+  }
+
+  if (!rawPath) return null;
+
+  // Loại bỏ phần mở rộng đuôi file ảnh nếu có (.jpg, .jpeg, .png, .webp, .svg...)
+  return rawPath.replace(/\.(jpe?g|png|webp|gif|svg|bmp|tiff)$/i, "");
+};
+
+/**
+ * Xóa một ảnh trên Cloudinary dựa theo URL ảnh.
+ * Dùng khi người dùng thay đổi hoặc gỡ ảnh đại diện (avatar).
+ * Không ném lỗi ra ngoài (best-effort), ghi log nếu thất bại để không chặn luồng nghiệp vụ.
+ */
+export const deleteCloudinaryImageByUrl = async (
+  imageUrl: string | null | undefined
+): Promise<boolean> => {
+  if (!imageUrl) return false;
+
+  const publicId = extractCloudinaryPublicId(imageUrl);
+  if (!publicId) return false;
+
+  try {
+    const result = await cloudinary.uploader.destroy(publicId, {
+      resource_type: "image",
+      invalidate: true,
+    });
+    return result.result === "ok";
+  } catch (error) {
+    console.error(`[Cloudinary] Không thể xóa ảnh cũ "${publicId}":`, error);
+    return false;
+  }
+};
+
 export default upload;
+

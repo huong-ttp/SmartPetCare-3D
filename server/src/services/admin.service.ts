@@ -1,6 +1,7 @@
 import pool from "../config/database.config";
 import bcrypt from "bcryptjs";
 import AppError from "../utils/AppError";
+import { deleteCloudinaryImageByUrl } from "../middleware/upload.middleware";
 
 interface UserFilter {
   search?: string;
@@ -1023,7 +1024,7 @@ async updatePet(
 
   const existed = await pool.query(
     `
-    SELECT pet_id
+    SELECT pet_id, avatar_url
     FROM pets
     WHERE pet_id = $1;
     `,
@@ -1036,6 +1037,14 @@ async updatePet(
       404
     );
   }
+
+  const oldPet = existed.rows[0];
+  const avatarUrl =
+    data.avatar_url !== undefined
+      ? data.avatar_url && data.avatar_url.trim() !== ""
+        ? data.avatar_url.trim()
+        : null
+      : oldPet.avatar_url;
 
   const result = await pool.query(
     `
@@ -1066,13 +1075,22 @@ async updatePet(
       data.date_of_birth,
       data.color ?? null,
       data.microchip_id ?? null,
-      data.avatar_url ?? null,
+      avatarUrl,
       data.allergies ?? null,
       data.chronic_conditions ?? null,
       data.special_notes ?? null,
       petId
     ]
   );
+
+  // Xóa avatar cũ trên Cloudinary nếu đổi avatar mới hoặc gỡ avatar
+  if (
+    data.avatar_url !== undefined &&
+    oldPet.avatar_url &&
+    oldPet.avatar_url !== avatarUrl
+  ) {
+    deleteCloudinaryImageByUrl(oldPet.avatar_url);
+  }
 
   return result.rows[0];
 
