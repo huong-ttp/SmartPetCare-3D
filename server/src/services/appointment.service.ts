@@ -28,6 +28,7 @@ interface AppointmentFilter {
 
 interface DoctorAppointmentFilter {
   tab?: "today" | "upcoming" | "completed";
+  date?: string;
 }
 
 interface DoctorDashboard {
@@ -438,18 +439,21 @@ async getDoctorAppointments(
   let query = `
     SELECT
       a.appointment_id,
-      a.appointment_date,
-      a.start_time,
-      a.end_time,
+      to_char(a.appointment_date, 'YYYY-MM-DD') AS appointment_date,
+      to_char(a.start_time, 'HH24:MI') AS start_time,
+      to_char(a.end_time, 'HH24:MI') AS end_time,
       a.status,
       a.reason,
       a.notes,
+      a.created_at,
+      a.updated_at,
 
       p.pet_id,
       p.name AS pet_name,
       p.species AS pet_species,
       p.breed AS pet_breed,
 
+      u.user_id AS owner_id,
       u.full_name AS owner_name,
       u.phone AS owner_phone,
 
@@ -474,28 +478,25 @@ async getDoctorAppointments(
   const values: any[] = [doctorId];
 
   if (filter.tab === "today") {
-
-    query += `
-      AND a.appointment_date = CURRENT_DATE
-    `;
-
+    if (filter.date) {
+      values.push(filter.date);
+      query += ` AND a.appointment_date = $${values.length}`;
+    } else {
+      query += ` AND a.appointment_date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Ho_Chi_Minh')::date`;
+    }
   }
 
   if (filter.tab === "upcoming") {
-
     query += `
-      AND a.appointment_date > CURRENT_DATE
+      AND a.appointment_date > (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Ho_Chi_Minh')::date
       AND a.status = 'confirmed'
     `;
-
   }
 
   if (filter.tab === "completed") {
-
     query += `
       AND a.status = 'completed'
     `;
-
   }
 
   query += `
@@ -520,7 +521,15 @@ async getDoctorAppointmentById(
   const result = await pool.query(
     `
     SELECT
-      a.*,
+      a.appointment_id,
+      to_char(a.appointment_date, 'YYYY-MM-DD') AS appointment_date,
+      to_char(a.start_time, 'HH24:MI') AS start_time,
+      to_char(a.end_time, 'HH24:MI') AS end_time,
+      a.status,
+      a.reason,
+      a.notes,
+      a.created_at,
+      a.updated_at,
 
       p.pet_id,
       p.name AS pet_name,
@@ -558,57 +567,42 @@ async getDoctorAppointmentById(
   );
 
   if (result.rowCount === 0) {
-  throw new AppError(
-    "Appointment not found",
-    404
+    throw new AppError(
+      "Appointment not found",
+      404
+    );
+  }
+
+  const appointment = result.rows[0];
+
+  const appointmentDateTime = new Date(
+    `${appointment.appointment_date}T${appointment.start_time}`
   );
+
+  // Thời gian hiện tại
+  const now = new Date();
+
+  // Chỉ được tạo Medical Record khi lịch hẹn đã đến hoặc đã qua
+  appointment.canCreateMedicalRecord =
+    appointment.status === "confirmed" &&
+    appointmentDateTime <= now;
+
+  return appointment;
 }
 
-const appointment = result.rows[0];
-
-// Ghép ngày + giờ hẹn
-const appointmentDate = new Date(
-  appointment.appointment_date
-);
-
-const dateString =
-  appointmentDate
-    .toISOString()
-    .split("T")[0];
-
-const appointmentDateTime = new Date(
-  `${appointment.appointment_date}T${appointment.start_time}`
-);
-
-if (appointmentDateTime > new Date()) {
-  throw new AppError(
-    "Appointment has not started yet",
-    400
-  );
-}
-
-// Thời gian hiện tại
-const now = new Date();
-
-// Chỉ được tạo Medical Record
-// khi lịch hẹn đã đến hoặc đã qua
-appointment.canCreateMedicalRecord =
-  appointment.status === "confirmed" &&
-  appointmentDateTime <= now;
-
-return appointment;
-}
 async getDoctorDashboard(
   doctorId: number
 ): Promise<DoctorDashboard> {
 
+  // Hôm nay: Đếm các ca hẹn đang hoạt động (không tính ca đã hủy để khớp với ca trực và KPI "Cần khám hôm nay")
   const today = await pool.query(
     `
     SELECT COUNT(*) AS total
     FROM appointments
     WHERE
       doctor_id = $1
-      AND appointment_date = CURRENT_DATE;
+      AND appointment_date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Ho_Chi_Minh')::date
+      AND status <> 'cancelled';
     `,
     [doctorId]
   );
@@ -619,7 +613,7 @@ async getDoctorDashboard(
     FROM appointments
     WHERE
       doctor_id = $1
-      AND appointment_date > CURRENT_DATE
+      AND appointment_date > (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Ho_Chi_Minh')::date
       AND status = 'confirmed';
     `,
     [doctorId]
@@ -636,11 +630,16 @@ async getDoctorDashboard(
     [doctorId]
   );
 
+  // Bệnh nhân từng khám: Đếm số lượng pet distinct có medical_record HOẶC có lịch hẹn đã hoàn thành của bác sĩ này
+  // (Đồng bộ chuẩn 100% với định nghĩa bệnh nhân trong listPatientsByDoctor)
   const patients = await pool.query(
     `
     SELECT COUNT(DISTINCT pet_id) AS total
-    FROM medical_records
-    WHERE doctor_id = $1;
+    FROM (
+      SELECT pet_id FROM medical_records WHERE doctor_id = $1
+      UNION
+      SELECT pet_id FROM appointments WHERE doctor_id = $1 AND status = 'completed'
+    ) p;
     `,
     [doctorId]
   );
@@ -649,14 +648,23 @@ async getDoctorDashboard(
     `
     SELECT
       a.appointment_id,
-      a.start_time,
+      to_char(a.appointment_date, 'YYYY-MM-DD') AS appointment_date,
+      to_char(a.start_time, 'HH24:MI') AS start_time,
+      to_char(a.end_time, 'HH24:MI') AS end_time,
       a.status,
+      a.reason,
+      a.notes,
 
       p.pet_id,
       p.name AS pet_name,
+      p.species AS pet_species,
+      p.breed AS pet_breed,
 
+      u.user_id AS owner_id,
       u.full_name AS owner_name,
+      u.phone AS owner_phone,
 
+      s.service_id,
       s.name AS service_name
 
     FROM appointments a
@@ -672,7 +680,7 @@ async getDoctorDashboard(
 
     WHERE
       a.doctor_id = $1
-      AND a.appointment_date = CURRENT_DATE
+      AND a.appointment_date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Ho_Chi_Minh')::date
 
     ORDER BY a.start_time;
     `,

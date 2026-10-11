@@ -101,46 +101,40 @@ export default function DoctorDashboardPage() {
     setErrorMsg(null);
 
     try {
-      // Cách 1: Gọi song song API appointment.service.list theo yêu cầu đề bài
-      // API: appointment.service.list({doctor: me, date: today}), appointment.service.list({doctor: me, upcoming: true}), appointment.service.list({doctor: me, status: 'completed'})
-      const [todayList, upcomingList, completedList, shiftsList] = await Promise.all([
-        appointment.service.list({ doctor: "me", date: todayIsoString }),
-        appointment.service.list({ doctor: "me", upcoming: true }),
-        appointment.service.list({ doctor: "me", status: "completed" }),
+      // Gọi đồng thời dashboard overview + danh sách lịch hẹn hôm nay + ca trực hôm nay
+      const [dashboardData, todayList, shiftsList] = await Promise.all([
+        appointmentService.getDoctorDashboard().catch(() => null),
+        appointment.service.list({ doctor: "me", date: todayIsoString }).catch(() => []),
         scheduleService.getDoctorShifts(todayIsoString, todayIsoString).catch(() => []),
       ]);
 
-      // Normalize lists
-      const normalizedToday = Array.isArray(todayList) ? todayList : [];
-      const normalizedUpcoming = Array.isArray(upcomingList) ? upcomingList : [];
-      const normalizedCompleted = Array.isArray(completedList) ? completedList : [];
+      // Normalize danh sách lịch hẹn hôm nay
+      const normalizedToday = Array.isArray(todayList) && todayList.length > 0
+        ? todayList
+        : Array.isArray(dashboardData?.todayAppointments)
+        ? dashboardData.todayAppointments
+        : [];
 
-      // Tính số lượng pet distinct đã từng được khám bởi bác sĩ này
-      const distinctPetSet = new Set<string>();
-      normalizedToday.forEach((a) => a.pet_id && distinctPetSet.add(String(a.pet_id)));
-      normalizedCompleted.forEach((a) => a.pet_id && distinctPetSet.add(String(a.pet_id)));
-      normalizedUpcoming.forEach((a) => a.pet_id && distinctPetSet.add(String(a.pet_id)));
+      // Số ca hẹn hoạt động cần khám hôm nay (loại bỏ đã hủy để đồng nhất với ca trực)
+      const activeTodayCount = normalizedToday.filter((a) => a.status !== "cancelled").length;
 
-      // Thử đồng bộ thêm số liệu từ getDoctorDashboard() nếu backend có bảng medical_records đếm riêng
-      let backendOverviewPatients = distinctPetSet.size;
-      try {
-        const dashboardData = await appointmentService.getDoctorDashboard();
-        if (dashboardData?.overview) {
-          backendOverviewPatients = Math.max(
-            distinctPetSet.size,
-            dashboardData.overview.patients || 0
-          );
-        }
-      } catch (err) {
-        // Fallback to computed distinct pet count
+      // Cập nhật thông số Overview chuẩn xác từ backend
+      if (dashboardData?.overview) {
+        setOverview({
+          todayAppointments: dashboardData.overview.todayAppointments,
+          upcomingAppointments: dashboardData.overview.upcomingAppointments,
+          completedAppointments: dashboardData.overview.completedAppointments,
+          patients: dashboardData.overview.patients,
+        });
+      } else {
+        // Fallback an toàn nếu backend dashboard endpoint gặp sự cố
+        setOverview({
+          todayAppointments: activeTodayCount,
+          upcomingAppointments: 0,
+          completedAppointments: 0,
+          patients: 0,
+        });
       }
-
-      setOverview({
-        todayAppointments: normalizedToday.length,
-        upcomingAppointments: normalizedUpcoming.length,
-        completedAppointments: normalizedCompleted.length,
-        patients: backendOverviewPatients || (normalizedToday.length > 0 ? distinctPetSet.size : 3),
-      });
 
       setTodayAppointments(normalizedToday);
       setTodayShifts(Array.isArray(shiftsList) ? shiftsList : []);

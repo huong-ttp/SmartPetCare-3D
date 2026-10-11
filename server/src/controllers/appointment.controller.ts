@@ -174,7 +174,8 @@ export const getDoctorAppointments = async (
           tab: req.query.tab as
             | "today"
             | "upcoming"
-            | "completed"
+            | "completed",
+          date: req.query.date as string | undefined,
         }
       );
 
