@@ -175,12 +175,15 @@ export default function DoctorSchedulePage() {
   const todayAllAppointments = useMemo(() => {
     const list: (Appointment & { shift_label: string; room: string })[] = [];
     todayShifts.forEach((shift) => {
-      const shiftLabel = shift.shift_type === "morning" ? "Ca Sáng (08:00 - 12:00)" : "Ca Chiều (13:00 - 17:00)";
+      const startTime = shift.start_time ? shift.start_time.slice(0, 5) : (shift.shift_type === "morning" ? "08:00" : "13:00");
+      const endTime = shift.end_time ? shift.end_time.slice(0, 5) : (shift.shift_type === "morning" ? "12:00" : "17:00");
+      const shiftName = shift.shift_type === "morning" ? "Ca Sáng" : "Ca Chiều";
+      const shiftLabel = `${shiftName} (${startTime} - ${endTime})`;
       (shift.appointments || []).forEach((appt) => {
         list.push({
           ...appt,
           shift_label: shiftLabel,
-          room: shift.room,
+          room: shift.room || "Phòng khám",
         });
       });
     });
@@ -553,15 +556,21 @@ export default function DoctorSchedulePage() {
                         </div>
 
                         <div className="mt-2 flex items-center justify-between text-[11px] text-slate-500 font-medium">
-                          <span>08:00 - 12:00</span>
+                          <span>
+                            {morningShift?.start_time && morningShift?.end_time
+                              ? `${morningShift.start_time.slice(0, 5)} - ${morningShift.end_time.slice(0, 5)}`
+                              : "08:00 - 12:00"}
+                          </span>
                           <span className="font-semibold text-slate-700">
-                            {morningShift?.appointments_count || 0}/{morningShift?.max_patients || 6} hẹn
+                            {morningShift
+                              ? `${morningShift.appointments_count || 0}/${morningShift.max_patients} hẹn`
+                              : "Chưa phân ca"}
                           </span>
                         </div>
 
                         <div className="mt-1 text-[11px] text-slate-500 truncate" title={morningShift?.room}>
                           <Building size={11} className="inline mr-1 text-slate-400" />
-                          <span>P.101 Tổng quát</span>
+                          <span>{morningShift?.room || (morningShift ? "Phòng khám" : "Chưa xếp phòng")}</span>
                         </div>
 
                         {/* Morning Appointments */}
@@ -655,10 +664,15 @@ export default function DoctorSchedulePage() {
                         ) : (
                           <>
                             <div className="mt-2 flex items-center justify-between text-[11px] text-slate-500 font-medium">
-                              <span>13:00 - 17:00</span>
+                              <span>
+                                {afternoonShift?.start_time && afternoonShift?.end_time
+                                  ? `${afternoonShift.start_time.slice(0, 5)} - ${afternoonShift.end_time.slice(0, 5)}`
+                                  : "13:00 - 17:00"}
+                              </span>
                               <span className="font-semibold text-slate-700">
-                                {afternoonShift?.appointments_count || 0}/
-                                {afternoonShift?.max_patients || 6} hẹn
+                                {afternoonShift
+                                  ? `${afternoonShift.appointments_count || 0}/${afternoonShift.max_patients} hẹn`
+                                  : "Chưa phân ca"}
                               </span>
                             </div>
 
@@ -667,7 +681,7 @@ export default function DoctorSchedulePage() {
                               title={afternoonShift?.room}
                             >
                               <Building size={11} className="inline mr-1 text-slate-400" />
-                              <span>P.103 Da liễu</span>
+                              <span>{afternoonShift?.room || (afternoonShift ? "Phòng khám" : "Chưa xếp phòng")}</span>
                             </div>
 
                             {/* Afternoon Appointments */}
@@ -770,11 +784,13 @@ export default function DoctorSchedulePage() {
                     )}
                     <div>
                       <h4 className="font-heading font-extrabold text-slate-900 text-base">
-                        {shift.shift_type === "morning" ? "Ca Sáng (08:00 - 12:00)" : "Ca Chiều (13:00 - 17:00)"}
+                        {shift.shift_type === "morning" ? "Ca Sáng" : "Ca Chiều"} (
+                        {shift.start_time ? shift.start_time.slice(0, 5) : "08:00"} -{" "}
+                        {shift.end_time ? shift.end_time.slice(0, 5) : "12:00"})
                       </h4>
                       <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
                         <Building size={12} className="text-slate-400" />
-                        <span>{shift.room}</span>
+                        <span>{shift.room || "Phòng khám"}</span>
                       </p>
                     </div>
                   </div>

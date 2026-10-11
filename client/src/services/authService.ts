@@ -27,9 +27,23 @@ function mockDelay<T>(data: T, ms = 400): Promise<T> {
 // ─── Auth service ─────────────────────────────────────────────────────────────
 
 export const authService = {
-  /** Owner tự đăng ký — sau đó cần xác thực OTP */
+  /** Owner tự đăng ký — sau đó cần xác thực OTP (nếu có avatar thì dùng multipart/form-data) */
   async register(dto: RegisterDTO): Promise<{ message: string }> {
     if (USE_MOCK) return mockDelay({ message: "OTP đã gửi đến email của bạn." });
+
+    if (dto.avatar instanceof File) {
+      const formData = new FormData();
+      formData.append("full_name", dto.full_name);
+      formData.append("email", dto.email);
+      formData.append("password", dto.password);
+      if (dto.phone) formData.append("phone", dto.phone);
+      if (dto.address) formData.append("address", dto.address);
+      formData.append("avatar", dto.avatar);
+
+      const res = await axiosClient.post<{ success: boolean; data: { message: string } }>("/auth/register", formData);
+      return res.data.data;
+    }
+
     const res = await axiosClient.post<{ success: boolean; data: { message: string } }>("/auth/register", dto);
     return res.data.data;
   },

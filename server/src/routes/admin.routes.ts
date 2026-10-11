@@ -7,7 +7,7 @@ import authMiddleware, {
 import invoiceController from "../controllers/invoice.controller";
 import paymentController from "../controllers/payment.controller";
 import notificationController from "../controllers/notification.controller";
-
+import { uploadSingleImage } from "../middleware/upload.middleware";
 
 const router = Router();
 
@@ -92,6 +92,7 @@ router.put(
   "/pets/:id",
   authMiddleware,
   authorize("admin"),
+  uploadSingleImage("avatar"),
   adminController.updatePet
 );
 

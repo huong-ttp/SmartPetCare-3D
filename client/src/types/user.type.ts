@@ -31,6 +31,7 @@ export interface RegisterDTO {
   phone?: string;
   address?: string;
   avatar_url?: string;
+  avatar?: File | null;
   password: string;
 }
 
@@ -99,6 +100,7 @@ export interface UpdateProfileDTO {
   phone?: string;
   address?: string;
   avatar_url?: string;
+  avatar?: File | null;
 }
 
 export interface ChangePasswordDTO {

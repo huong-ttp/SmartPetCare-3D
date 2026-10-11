@@ -1,6 +1,7 @@
 import pool from "../config/database.config";
 import AppError from "../utils/AppError";
 import bcrypt from "bcryptjs";
+import { deleteCloudinaryImageByUrl } from "../middleware/upload.middleware";
 
 interface ChangePasswordData {
   current_password: string;
@@ -62,6 +63,15 @@ class UserService {
         userId
       ]
     );
+
+    // Xóa avatar cũ trên Cloudinary nếu người dùng đổi avatar mới hoặc gỡ avatar
+    if (
+      data.avatar_url !== undefined &&
+      currentUser.avatar_url &&
+      currentUser.avatar_url !== avatarUrl
+    ) {
+      deleteCloudinaryImageByUrl(currentUser.avatar_url);
+    }
 
     return result.rows[0];
   }

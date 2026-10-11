@@ -44,6 +44,7 @@ export interface CreatePetDTO {
   gender: PetGender;
   date_of_birth?: string;
   avatar_url?: string;
+  avatar?: File | null;
   color?: string;
   microchip_id?: string;
   microchip_number?: string;

@@ -7,6 +7,8 @@ import {
   updateProfileSchema,
 } from "../validations/user.validation";
 import { changePasswordSchema } from "../validations/user.validation";
+import { uploadSingleImage } from "../middleware/upload.middleware";
+
 const router = Router();
 
 router.post(
@@ -23,6 +25,7 @@ router.post(
 router.put(
   "/profile",
   authMiddleware,
+  uploadSingleImage("avatar"),
   validate(updateProfileSchema),
   userController.updateProfile
 );

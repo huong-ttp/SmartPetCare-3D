@@ -1,6 +1,6 @@
-import type { MedicalRecord } from "@/types/medical-record.type";
 "use client";
 
+import type { MedicalRecord } from "@/types/medical-record.type";
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";

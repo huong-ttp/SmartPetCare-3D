@@ -13,10 +13,9 @@ const BASE_URL = rawBaseUrl.replace(/\/+$/, "");
 export const axiosClient = axios.create({
   baseURL: BASE_URL,
   timeout: 15_000,
-  headers: { "Content-Type": "application/json" },
 });
 
-// ─── Request interceptor: đính kèm JWT ───────────────────────────────────────
+// ─── Request interceptor: đính kèm JWT & xử lý FormData ─────────────────────
 axiosClient.interceptors.request.use(
   (config) => {
     if (typeof window !== "undefined") {
@@ -25,6 +24,17 @@ axiosClient.interceptors.request.use(
         config.headers.Authorization = `Bearer ${token}`;
       }
     }
+
+    // Nếu request gửi FormData, xóa Content-Type để trình duyệt tự tạo multipart/form-data kèm boundary
+    if (config.data instanceof FormData && config.headers) {
+      delete config.headers["Content-Type"];
+      delete config.headers["content-type"];
+      if (typeof config.headers.delete === "function") {
+        config.headers.delete("Content-Type");
+        config.headers.delete("content-type");
+      }
+    }
+
     return config;
   },
   (error) => Promise.reject(error)

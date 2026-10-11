@@ -49,6 +49,7 @@ export default function ProfilePage() {
   });
 
   const [avatarPreview, setAvatarPreview] = useState<string>("");
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [isFetching, setIsFetching] = useState<boolean>(true);
   const [isUpdatingProfile, setIsUpdatingProfile] = useState<boolean>(false);
   const [profileErrors, setProfileErrors] = useState<Record<string, string>>({});
@@ -105,9 +106,9 @@ export default function ProfilePage() {
     }
 
     loadProfile();
-  }, [user]);
+  }, [user?.user_id]);
 
-  // Handle Avatar Selection & Compress via Canvas
+  // Handle Avatar Selection
   const handleAvatarChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -122,44 +123,12 @@ export default function ProfilePage() {
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const img = new Image();
-      img.onload = () => {
-        // Resize to maximum 320x320 to keep lightweight
-        const maxDim = 320;
-        let width = img.width;
-        let height = img.height;
-
-        if (width > height) {
-          if (width > maxDim) {
-            height = Math.round((height * maxDim) / width);
-            width = maxDim;
-          }
-        } else {
-          if (height > maxDim) {
-            width = Math.round((width * maxDim) / height);
-            height = maxDim;
-          }
-        }
-
-        const canvas = document.createElement("canvas");
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext("2d");
-        if (ctx) {
-          ctx.drawImage(img, 0, 0, width, height);
-          const compressedDataUrl = canvas.toDataURL("image/jpeg", 0.85);
-          setAvatarPreview(compressedDataUrl);
-          setProfileData((prev) => ({ ...prev, avatar_url: compressedDataUrl }));
-        }
-      };
-      img.src = event.target?.result as string;
-    };
-    reader.readAsDataURL(file);
+    setAvatarFile(file);
+    setAvatarPreview(URL.createObjectURL(file));
   };
 
   const handleRemoveAvatar = () => {
+    setAvatarFile(null);
     setAvatarPreview("");
     setProfileData((prev) => ({ ...prev, avatar_url: "" }));
     if (fileInputRef.current) fileInputRef.current.value = "";
@@ -199,7 +168,8 @@ export default function ProfilePage() {
         full_name: profileData.full_name.trim(),
         phone: profileData.phone.trim() || undefined,
         address: profileData.address.trim() || undefined,
-        avatar_url: profileData.avatar_url || undefined,
+        avatar_url: avatarFile ? undefined : profileData.avatar_url || undefined,
+        avatar: avatarFile,
       });
 
       // Synchronize with global AuthContext
@@ -209,6 +179,16 @@ export default function ProfilePage() {
         address: updated.address,
         avatar_url: updated.avatar_url,
       });
+
+      setAvatarPreview(updated.avatar_url || "");
+      setProfileData((prev) => ({
+        ...prev,
+        full_name: updated.full_name,
+        phone: updated.phone || "",
+        address: updated.address || "",
+        avatar_url: updated.avatar_url || "",
+      }));
+      setAvatarFile(null);
 
       toast.success("Thông tin tài khoản đã được cập nhật thành công!", "Cập nhật thành công");
     } catch (err) {

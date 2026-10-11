@@ -29,29 +29,44 @@ export const createUserSchema = z.object({
 export const updateUserSchema =
   createUserSchema.partial();
 
+const emptyStringToUndefined = (value: unknown): unknown =>
+  typeof value === "string" && value.trim() === "" ? undefined : value;
+
+const emptyStringToNull = (value: unknown): unknown =>
+  typeof value === "string" && value.trim() === "" ? null : value;
+
 export const updateProfileSchema = z.object({
-  full_name: z.string().trim().min(2, "Họ và tên tối thiểu 2 ký tự").max(100).optional(),
+  full_name: z.preprocess(
+    emptyStringToUndefined,
+    z.string().trim().min(2, "Họ và tên tối thiểu 2 ký tự").max(100).optional()
+  ),
 
-  phone: z
-    .string()
-    .regex(/^0\d{9}$/, "Số điện thoại không hợp lệ (10 chữ số bắt đầu bằng 0)")
-    .optional()
-    .nullable()
-    .or(z.literal("")),
+  phone: z.preprocess(
+    emptyStringToUndefined,
+    z
+      .string()
+      .regex(/^0\d{9}$/, "Số điện thoại không hợp lệ (10 chữ số bắt đầu bằng 0)")
+      .optional()
+      .nullable()
+  ),
 
-  address: z
-    .string()
-    .trim()
-    .max(255)
-    .optional()
-    .nullable()
-    .or(z.literal("")),
+  address: z.preprocess(
+    emptyStringToUndefined,
+    z
+      .string()
+      .trim()
+      .max(255)
+      .optional()
+      .nullable()
+  ),
 
-  avatar_url: z
-    .string()
-    .optional()
-    .nullable()
-    .or(z.literal("")),
+  avatar_url: z.preprocess(
+    emptyStringToNull,
+    z
+      .string()
+      .optional()
+      .nullable()
+  ),
 });
 
 export const changePasswordSchema = z.object({

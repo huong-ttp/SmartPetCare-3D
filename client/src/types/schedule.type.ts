@@ -4,7 +4,7 @@
 
 import type { Appointment } from "./appointment.type";
 
-export type ShiftType = "morning" | "afternoon" | "on_call";
+export type ShiftType = "morning" | "afternoon";
 
 export type ShiftStatus = "scheduled" | "active" | "completed" | "off";
 
@@ -20,6 +20,41 @@ export interface DoctorShift {
   appointments_count?: number;
   appointments?: Appointment[];
   note?: string;
+  shift_id?: number;
+  doctor_id?: number;
+  doctor_name?: string;
+  is_off?: boolean;
+}
+
+export interface CreateShiftDTO {
+  doctor_id: number;
+  dates: string[];
+  shift_types: ShiftType[];
+  start_time?: string;
+  end_time?: string;
+  room?: string | null;
+  max_patients?: number;
+  is_off?: boolean;
+  note?: string | null;
+}
+
+export interface UpdateShiftDTO {
+  start_time?: string;
+  end_time?: string;
+  room?: string | null;
+  max_patients?: number;
+  is_off?: boolean;
+  note?: string | null;
+}
+
+export interface CreateShiftResult {
+  created_count: number;
+  skipped_count: number;
+}
+
+export interface ShiftDoctorOption {
+  id: number;
+  full_name: string;
 }
 
 export interface ScheduleSummary {

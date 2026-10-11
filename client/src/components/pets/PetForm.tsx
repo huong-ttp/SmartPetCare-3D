@@ -82,8 +82,9 @@ export const PetForm: React.FC<PetFormProps> = ({ mode, initialData, petId }) =>
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState<string>(initialData?.avatar_url || "");
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
 
-  // Handle avatar file selection & convert to Base64 data URL
+  // Handle avatar file selection
   const handleAvatarChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -98,17 +99,13 @@ export const PetForm: React.FC<PetFormProps> = ({ mode, initialData, petId }) =>
       return;
     }
 
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const result = reader.result as string;
-      setAvatarPreview(result);
-      setFormData((prev) => ({ ...prev, avatar_url: result }));
-      setErrors((prev) => ({ ...prev, general: undefined }));
-    };
-    reader.readAsDataURL(file);
+    setAvatarFile(file);
+    setAvatarPreview(URL.createObjectURL(file));
+    setErrors((prev) => ({ ...prev, general: undefined }));
   };
 
   const handleRemoveAvatar = () => {
+    setAvatarFile(null);
     setAvatarPreview("");
     setFormData((prev) => ({ ...prev, avatar_url: "" }));
     if (fileInputRef.current) fileInputRef.current.value = "";
@@ -174,7 +171,8 @@ export const PetForm: React.FC<PetFormProps> = ({ mode, initialData, petId }) =>
           color: formData.color.trim() || undefined,
           microchip_id: formData.microchip_id.trim() || undefined,
           microchip_number: formData.microchip_id.trim() || undefined,
-          avatar_url: formData.avatar_url?.trim() || undefined,
+          avatar_url: avatarFile ? undefined : formData.avatar_url?.trim() || undefined,
+          avatar: avatarFile || undefined,
           allergies: formData.allergies.trim() || undefined,
           chronic_conditions: formData.chronic_conditions.trim() || undefined,
           special_notes: formData.special_notes.trim() || undefined,
@@ -197,7 +195,8 @@ export const PetForm: React.FC<PetFormProps> = ({ mode, initialData, petId }) =>
           color: formData.color.trim() || undefined,
           microchip_id: formData.microchip_id.trim() || undefined,
           microchip_number: formData.microchip_id.trim() || undefined,
-          avatar_url: formData.avatar_url?.trim() || undefined,
+          avatar_url: avatarFile ? undefined : formData.avatar_url?.trim() || undefined,
+          avatar: avatarFile || undefined,
           allergies: formData.allergies.trim() || undefined,
           chronic_conditions: formData.chronic_conditions.trim() || undefined,
           special_notes: formData.special_notes.trim() || undefined,

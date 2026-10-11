@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Bell,
@@ -24,6 +23,7 @@ import {
   X,
 } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
+import NotificationDetailModal from "@/components/notifications/NotificationDetailModal";
 import { useAuth } from "@/lib/auth-context";
 import { notificationService } from "@/services/notificationService";
 import type { ReminderNotification, NotificationType } from "@/types/notification.type";
@@ -44,10 +44,23 @@ export default function NotificationsPage() {
   const [isMarkingAll, setIsMarkingAll] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Modal xem chi tiết thông báo
+  const [selectedNotification, setSelectedNotification] = useState<ReminderNotification | null>(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState<boolean>(false);
+
   // Filters & Search
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<"all" | "unread" | "read">("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
+
+  // Hỗ trợ deep-link từ trang nhắc lịch cũ: /notifications?type=reminder|appointment|vaccine|checkup|payment|system
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const t = new URLSearchParams(window.location.search).get("type");
+    if (t && ["reminder", "appointment", "vaccine", "checkup", "payment", "system"].includes(t)) {
+      setTypeFilter(t);
+    }
+  }, []);
 
   // Pagination
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -91,11 +104,24 @@ export default function NotificationsPage() {
       )
     );
 
+    // Cập nhật modal nếu đang hiển thị
+    setSelectedNotification((prev) =>
+      prev && String(prev.notification_id ?? prev.id) === String(id)
+        ? { ...prev, is_read: true }
+        : prev
+    );
+
     try {
       await notificationService.markAsRead(id);
     } catch (err) {
       console.error("[NotificationsPage] Failed to mark as read:", err);
     }
+  };
+
+  // Mở bảng nhỏ chi tiết thông báo
+  const handleOpenDetail = (item: ReminderNotification) => {
+    setSelectedNotification(item);
+    setIsDetailModalOpen(true);
   };
 
   // Mark all as read
@@ -116,10 +142,18 @@ export default function NotificationsPage() {
   };
 
   // Navigate to target route
-  const handleNavigate = (item: ReminderNotification) => {
-    handleMarkAsRead(item);
-    const target = getNotificationTargetRoute(item, user?.role);
-    router.push(target);
+  const handleNavigate = (
+    targetOrItem: string | ReminderNotification,
+    item?: ReminderNotification
+  ) => {
+    if (typeof targetOrItem === "string") {
+      if (item) handleMarkAsRead(item);
+      router.push(targetOrItem);
+    } else {
+      handleMarkAsRead(targetOrItem);
+      const target = getNotificationTargetRoute(targetOrItem, user?.role);
+      router.push(target);
+    }
   };
 
   // Filtered list
@@ -131,10 +165,12 @@ export default function NotificationsPage() {
 
       // 2. Type filter
       if (typeFilter !== "all") {
-        if (typeFilter === "appointment") {
+        if (typeFilter === "reminder") {
+          if (!item.type.includes("reminder")) return false;
+        } else if (typeFilter === "appointment") {
           if (!item.type.startsWith("appointment")) return false;
         } else if (typeFilter === "vaccine") {
-          if (!item.type.includes("vaccine")) return false;
+          if (!item.type.includes("vaccin")) return false;
         } else if (typeFilter === "checkup") {
           if (!item.type.includes("checkup")) return false;
         } else if (typeFilter === "payment") {
@@ -161,13 +197,7 @@ export default function NotificationsPage() {
   const totalCount = notifications.length;
   const unreadCount = notifications.filter((n) => !n.is_read).length;
   const readCount = totalCount - unreadCount;
-  const reminderCount = notifications.filter(
-    (n) =>
-      n.type.includes("reminder") ||
-      n.type.includes("appointment") ||
-      n.type.includes("vaccine") ||
-      n.type.includes("checkup")
-  ).length;
+  const reminderCount = notifications.filter((n) => n.type.includes("reminder")).length;
 
   // Pagination calculation
   const totalPages = Math.ceil(filteredList.length / pageSize) || 1;
@@ -216,13 +246,6 @@ export default function NotificationsPage() {
           </div>
 
           <div className="flex items-center gap-2.5 shrink-0">
-            <Link
-              href="/reminders"
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:border-[#0EA5B7] hover:text-[#0EA5B7] transition-all shadow-sm"
-            >
-              <CalendarClock size={15} />
-              <span>Trung tâm nhắc lịch</span>
-            </Link>
 
             <button
               onClick={() => fetchAllNotifications(true)}
@@ -362,6 +385,7 @@ export default function NotificationsPage() {
 
             {[
               { key: "all", label: "Tất cả loại" },
+              { key: "reminder", label: "Nhắc lịch", icon: CalendarClock },
               { key: "appointment", label: "Lịch hẹn khám", icon: Calendar },
               { key: "vaccine", label: "Tiêm phòng", icon: Syringe },
               { key: "checkup", label: "Tái khám", icon: Stethoscope },
@@ -484,8 +508,9 @@ export default function NotificationsPage() {
               return (
                 <div
                   key={item.notification_id ?? item.id}
+                  onClick={() => handleOpenDetail(item)}
                   className={cn(
-                    "group bg-white rounded-2xl p-4 sm:p-5 border transition-all duration-200 relative flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4",
+                    "group bg-white rounded-2xl p-4 sm:p-5 border transition-all duration-200 relative flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 cursor-pointer",
                     isUnread
                       ? "border-sky-200 bg-sky-50/30 hover:border-sky-300 hover:shadow-md"
                       : "border-slate-100 hover:border-slate-200 hover:shadow-sm"
@@ -542,26 +567,29 @@ export default function NotificationsPage() {
                         {item.title}
                       </h3>
 
-                      <p className="text-xs text-slate-500 leading-relaxed max-w-2xl">
+                      <p className="text-xs text-slate-500 leading-relaxed max-w-2xl line-clamp-2">
                         {item.content || item.message}
                       </p>
                     </div>
                   </div>
 
                   {/* Actions */}
-                  <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                  <div
+                    className="flex items-center gap-2 self-end sm:self-center shrink-0"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     {isUnread && (
                       <button
                         onClick={() => handleMarkAsRead(item)}
-                        className="px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-[#0EA5B7] hover:bg-sky-50 rounded-xl transition-colors"
+                        className="px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-[#0EA5B7] hover:bg-sky-50 rounded-xl transition-colors cursor-pointer"
                       >
                         Đánh dấu đã đọc
                       </button>
                     )}
 
                     <button
-                      onClick={() => handleNavigate(item)}
-                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-100 group-hover:bg-[#0EA5B7] text-slate-700 group-hover:text-white text-xs font-semibold rounded-xl transition-all shadow-sm"
+                      onClick={() => handleOpenDetail(item)}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-100 group-hover:bg-[#0EA5B7] text-slate-700 group-hover:text-white text-xs font-semibold rounded-xl transition-all shadow-sm cursor-pointer"
                     >
                       <span>Xem chi tiết</span>
                       <ArrowRight size={14} />
@@ -652,6 +680,19 @@ export default function NotificationsPage() {
             </div>
           </div>
         )}
+
+        {/* Notification Detail Modal */}
+        <NotificationDetailModal
+          notification={selectedNotification}
+          isOpen={isDetailModalOpen}
+          onClose={() => {
+            setIsDetailModalOpen(false);
+            setSelectedNotification(null);
+          }}
+          onMarkAsRead={handleMarkAsRead}
+          onNavigate={(targetRoute, item) => handleNavigate(targetRoute, item)}
+          userRole={user?.role}
+        />
       </div>
     </DashboardLayout>
   );

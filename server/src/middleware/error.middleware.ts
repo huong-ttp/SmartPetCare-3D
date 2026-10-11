@@ -1,5 +1,7 @@
 import { Request, Response, NextFunction } from "express";
+import { MulterError } from "multer";
 import AppError from "../utils/AppError";
+import { translateUploadError } from "./upload.middleware";
 
 const errorHandler = (
   err: any,
@@ -14,11 +16,20 @@ const errorHandler = (
     });
   }
 
+  // Handle Multer errors (file too large, unexpected field, ...)
+  if (err instanceof MulterError) {
+    const uploadError = translateUploadError(err);
+    return res.status(uploadError.statusCode).json({
+      success: false,
+      message: uploadError.message,
+    });
+  }
+
   // Handle express PayloadTooLargeError
   if (err.type === "entity.too.large" || err.status === 413) {
     return res.status(413).json({
       success: false,
-      message: "Dung lượng dữ liệu quá lớn (tối đa 50MB). Vui lòng chọn ảnh nhỏ hơn.",
+      message: "Dung lượng dữ liệu quá lớn (tối đa 10MB). Vui lòng gửi ảnh dưới dạng file tải lên thay vì chuỗi Base64.",
     });
   }
 

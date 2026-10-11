@@ -92,7 +92,7 @@ export const petService = {
     const cleanAllergies = typeof dto.allergies === "string" && dto.allergies.trim() !== "" ? dto.allergies.trim() : undefined;
     const cleanChronic = typeof dto.chronic_conditions === "string" && dto.chronic_conditions.trim() !== "" ? dto.chronic_conditions.trim() : undefined;
 
-    const payload = {
+    const payload: Record<string, unknown> = {
       ...dto,
       name: dto.name.trim(),
       species: dto.species,
@@ -106,7 +106,20 @@ export const petService = {
       chronic_conditions: cleanChronic,
       special_notes: cleanNotes,
     };
-    const res = await axiosClient.post<ApiResponse<Pet> | Pet>("/pets", payload);
+
+    let requestBody: unknown = payload;
+    if (dto.avatar instanceof File) {
+      const formData = new FormData();
+      Object.entries(payload).forEach(([k, v]) => {
+        if (v !== undefined && v !== null && k !== "avatar") {
+          formData.append(k, String(v));
+        }
+      });
+      formData.append("avatar", dto.avatar);
+      requestBody = formData;
+    }
+
+    const res = await axiosClient.post<ApiResponse<Pet> | Pet>("/pets", requestBody);
     const raw = (res.data as ApiResponse<Pet>)?.data !== undefined ? (res.data as ApiResponse<Pet>).data : (res.data as Pet);
     return normalizePet(raw as Partial<Pet> & Record<string, unknown>);
   },
@@ -145,7 +158,7 @@ export const petService = {
     const cleanAllergies = typeof dto.allergies === "string" && dto.allergies.trim() !== "" ? dto.allergies.trim() : (dto.allergies === "" ? null : undefined);
     const cleanChronic = typeof dto.chronic_conditions === "string" && dto.chronic_conditions.trim() !== "" ? dto.chronic_conditions.trim() : (dto.chronic_conditions === "" ? null : undefined);
 
-    const payload = {
+    const payload: Record<string, unknown> = {
       ...dto,
       name: dto.name ? dto.name.trim() : undefined,
       breed: cleanBreed,
@@ -157,15 +170,28 @@ export const petService = {
       chronic_conditions: cleanChronic,
       special_notes: cleanNotes,
     };
+
+    let requestBody: unknown = payload;
+    if (dto.avatar instanceof File) {
+      const formData = new FormData();
+      Object.entries(payload).forEach(([k, v]) => {
+        if (v !== undefined && v !== null && k !== "avatar") {
+          formData.append(k, String(v));
+        }
+      });
+      formData.append("avatar", dto.avatar);
+      requestBody = formData;
+    }
+
     try {
-      const res = await axiosClient.patch<ApiResponse<Pet> | Pet>(`/pets/${cleanId}`, payload);
+      const res = await axiosClient.patch<ApiResponse<Pet> | Pet>(`/pets/${cleanId}`, requestBody);
       const raw = (res.data as ApiResponse<Pet>)?.data !== undefined ? (res.data as ApiResponse<Pet>).data : (res.data as Pet);
       return normalizePet(raw as Partial<Pet> & Record<string, unknown>);
     } catch (err: unknown) {
       const errorObj = err as { response?: { status?: number } };
       // If 403 Forbidden or 404 from /pets/:id (e.g. user is admin editing someone else's pet), try admin route
       if (errorObj?.response?.status === 403 || errorObj?.response?.status === 404) {
-        const adminRes = await axiosClient.put<ApiResponse<Pet> | Pet>(`/admin/pets/${cleanId}`, payload);
+        const adminRes = await axiosClient.put<ApiResponse<Pet> | Pet>(`/admin/pets/${cleanId}`, requestBody);
         const adminRaw = (adminRes.data as ApiResponse<Pet>)?.data !== undefined ? (adminRes.data as ApiResponse<Pet>).data : (adminRes.data as Pet);
         return normalizePet(adminRaw as Partial<Pet> & Record<string, unknown>);
       }

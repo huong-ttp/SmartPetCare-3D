@@ -7,11 +7,14 @@ import {
   createPetSchema,
   updatePetSchema,
 } from "../validations/pet.validation";
+import { uploadSingleImage } from "../middleware/upload.middleware";
+
 const router = Router();
 
 router.post(
   "/",
   authMiddleware,
+  uploadSingleImage("avatar"),
   validate(createPetSchema),
   petController.createPet
 );
@@ -31,6 +34,7 @@ router.get(
 router.put(
   "/:id",
   authMiddleware,
+  uploadSingleImage("avatar"),
   validate(updatePetSchema),
   petController.updatePet
 );
@@ -38,6 +42,7 @@ router.put(
 router.patch(
   "/:id",
   authMiddleware,
+  uploadSingleImage("avatar"),
   validate(updatePetSchema),
   petController.updatePet
 );
