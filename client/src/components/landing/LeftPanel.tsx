@@ -1,8 +1,26 @@
-import React from "react";
+"use client";
+
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { ArrowRight, Heart, Sparkles } from "lucide-react";
+import { ArrowRight, Heart, Sparkles, LayoutDashboard } from "lucide-react";
+import { useAuth } from "@/lib/auth-context";
 
 export const LeftPanel: React.FC = () => {
+  const { user, isAuthenticated } = useAuth();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const getDashboardUrl = (role?: string) => {
+    if (role === "admin") return "/admin/dashboard";
+    if (role === "doctor") return "/doctor/dashboard";
+    return "/dashboard";
+  };
+
+  const dashboardUrl = getDashboardUrl(user?.role);
+
   return (
     <div className="w-full relative z-20 rounded-3xl p-7 sm:p-9 bg-white/80 backdrop-blur-2xl border border-white/70 shadow-2xl shadow-emerald-900/10 hover:shadow-emerald-900/15 transition-all duration-300">
       {/* Badge */}
@@ -32,14 +50,26 @@ export const LeftPanel: React.FC = () => {
 
       {/* CTAs */}
       <div className="flex flex-col sm:flex-row gap-3">
-        <Link
-          href="/register"
-          className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-full text-white text-sm font-semibold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200"
-          style={{ background: "linear-gradient(135deg, #00A86B 0%, #0EA5B7 100%)" }}
-        >
-          Bắt đầu ngay
-          <ArrowRight size={16} />
-        </Link>
+        {mounted && isAuthenticated ? (
+          <Link
+            href={dashboardUrl}
+            className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-full text-white text-sm font-semibold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200"
+            style={{ background: "linear-gradient(135deg, #00A86B 0%, #0EA5B7 100%)" }}
+          >
+            <LayoutDashboard size={17} />
+            Vào Bảng điều khiển
+            <ArrowRight size={16} />
+          </Link>
+        ) : (
+          <Link
+            href="/register"
+            className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-full text-white text-sm font-semibold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200"
+            style={{ background: "linear-gradient(135deg, #00A86B 0%, #0EA5B7 100%)" }}
+          >
+            Bắt đầu ngay
+            <ArrowRight size={16} />
+          </Link>
+        )}
         <Link
           href="#features"
           className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-full bg-white/70 hover:bg-white border border-emerald-200/50 text-slate-700 text-sm font-semibold transition-all duration-200 hover:-translate-y-0.5"
