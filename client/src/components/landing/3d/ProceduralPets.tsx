@@ -3,6 +3,7 @@
 import React, { useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
+import { playPetSound } from "@/utils/petSound";
 
 interface PetProps {
   position: [number, number, number];
@@ -122,6 +123,7 @@ export const CutePuppy: React.FC<PetProps> = ({
     e.stopPropagation();
     setClicked(true);
     jumpTimer.current = 0;
+    playPetSound(0.7);
   };
 
   return (
@@ -346,6 +348,7 @@ export const CuteKitty: React.FC<PetProps> = ({
     e.stopPropagation();
     setClicked(true);
     jumpTimer.current = 0;
+    playPetSound(0.7);
   };
 
   return (

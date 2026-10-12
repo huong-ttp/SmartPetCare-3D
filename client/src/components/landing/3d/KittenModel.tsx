@@ -4,6 +4,7 @@ import React, { useRef, useState, useMemo } from "react";
 import { useFrame } from "@react-three/fiber";
 import { useGLTF } from "@react-three/drei";
 import * as THREE from "three";
+import { playPetSound } from "@/utils/petSound";
 
 interface KittenModelProps {
   position: [number, number, number];
@@ -79,6 +80,7 @@ export const KittenModel: React.FC<KittenModelProps> = ({
     e.stopPropagation();
     setClicked(true);
     jumpTimer.current = 0;
+    playPetSound(0.7);
   };
 
   return (
