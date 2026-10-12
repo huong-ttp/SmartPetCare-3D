@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
 import { Bell, Search, LogOut, User as UserIcon, Menu, X } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
@@ -103,8 +104,14 @@ export const DashboardHeader: React.FC = () => {
 
           {/* Mobile Logo */}
           <Link href="/" className="md:hidden flex items-center gap-2 font-heading font-bold text-base text-slate-800">
-            <div className="w-7 h-7 rounded-lg gradient-primary flex items-center justify-center text-white text-xs font-bold shadow-sm">
-              SPC
+            <div className="w-7 h-7 rounded-lg gradient-primary flex items-center justify-center p-1 shadow-sm">
+              <Image
+                src="/images/whitelogo.png"
+                alt="SmartPetCare Logo"
+                width={18}
+                height={18}
+                className="w-full h-full object-contain"
+              />
             </div>
             <span className="font-semibold text-slate-800 truncate">SmartPetCare</span>
           </Link>
@@ -174,8 +181,14 @@ export const DashboardHeader: React.FC = () => {
                 onClick={() => setIsMobileNavOpen(false)}
                 className="flex items-center gap-2 font-heading font-bold text-base text-slate-800"
               >
-                <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center text-white text-xs font-bold shadow-sm">
-                  SPC
+                <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center p-1.5 shadow-sm">
+                  <Image
+                    src="/images/whitelogo.png"
+                    alt="SmartPetCare Logo"
+                    width={20}
+                    height={20}
+                    className="w-full h-full object-contain"
+                  />
                 </div>
                 <span>SmartPetCare</span>
               </Link>

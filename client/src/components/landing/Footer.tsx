@@ -1,4 +1,5 @@
 import React from "react";
+import Image from "next/image";
 import { MapPin, Phone, Mail, Share2, Code, MessageCircle } from "lucide-react";
 
 export const Footer: React.FC = () => {
@@ -7,7 +8,15 @@ export const Footer: React.FC = () => {
       <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
         <div className="flex flex-col items-center md:items-start gap-2">
           <div className="flex items-center gap-2 text-white font-heading font-bold text-lg">
-            <div className="w-6 h-6 gradient-primary rounded flex items-center justify-center text-[10px]">SPC</div>
+            <div className="w-7 h-7 gradient-primary rounded-lg flex items-center justify-center p-1 shadow-sm">
+              <Image
+                src="/images/whitelogo.png"
+                alt="SmartPetCare Logo"
+                width={18}
+                height={18}
+                className="w-full h-full object-contain"
+              />
+            </div>
             SmartPetCare
           </div>
           <p className="text-sm text-slate-400">© {new Date().getFullYear()} Bản quyền thuộc về SmartPetCare.</p>

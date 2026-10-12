@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { LogIn, UserPlus, LayoutDashboard, User as UserIcon, LogOut, ChevronDown } from "lucide-react";
@@ -68,10 +69,17 @@ export const Header: React.FC = () => {
       <div className="flex items-center gap-6">
         <Link href="/" className="flex items-center gap-2.5 group">
           <div
-            className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-bold text-sm shadow-md group-hover:scale-105 transition-transform"
+            className="w-9 h-9 rounded-xl flex items-center justify-center p-1.5 shadow-md group-hover:scale-105 transition-transform"
             style={{ background: "linear-gradient(135deg, #00A86B, #0EA5B7)" }}
           >
-            SPC
+            <Image
+              src="/images/whitelogo.png"
+              alt="SmartPetCare Logo"
+              width={24}
+              height={24}
+              className="w-full h-full object-contain"
+              priority
+            />
           </div>
           <span className="text-lg font-heading font-extrabold text-slate-800 hidden sm:block tracking-tight group-hover:text-[#00A86B] transition-colors">
             SmartPetCare

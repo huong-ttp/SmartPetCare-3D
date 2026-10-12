@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   User as UserIcon, Mail, Lock, Phone, MapPin, 
@@ -10,6 +11,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { authService } from "@/services/authService";
+import FloatingPawsBackground from "@/components/auth/FloatingPawsBackground";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -151,14 +153,30 @@ export default function RegisterPage() {
         <div className="absolute top-[30%] left-[70%] w-[30%] h-[30%] rounded-full bg-purple-500/10 blur-[100px]"></div>
       </div>
 
+      {/* Floating 3D Paws Background */}
+      <FloatingPawsBackground />
+
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-        className="z-10 w-full max-w-2xl p-8 md:p-10 bg-white/[0.03] backdrop-blur-2xl border border-white/10 rounded-3xl shadow-2xl shadow-black/50"
+        className="z-10 w-full max-w-2xl p-8 md:p-10 bg-slate-900/45 backdrop-blur-md border border-white/15 rounded-3xl shadow-2xl shadow-black/60 ring-1 ring-white/10"
       >
         <div className="text-center mb-8">
-          <Link href="/" className="inline-block mb-4 hover:scale-105 transition-transform">
+          <Link href="/" className="inline-flex items-center gap-3 mb-4 hover:scale-105 transition-transform group">
+            <div
+              className="w-10 h-10 rounded-xl flex items-center justify-center p-2 shadow-lg shadow-blue-500/20 group-hover:shadow-blue-500/35 transition-all bg-gradient-to-r from-blue-400 to-emerald-400"
+              style={{ background: "linear-gradient(135deg, #60A5FA, #34D399)" }}
+            >
+              <Image
+                src="/images/whitelogo.png"
+                alt="SmartPetCare Logo"
+                width={26}
+                height={26}
+                className="w-full h-full object-contain"
+                priority
+              />
+            </div>
             <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400">
               SmartPetCare
             </h1>

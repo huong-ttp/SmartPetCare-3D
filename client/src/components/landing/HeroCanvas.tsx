@@ -2,6 +2,7 @@
 
 import React, { Component, useEffect, useState, useCallback, useRef } from "react";
 import dynamic from "next/dynamic";
+import Image from "next/image";
 import { isWebGLAvailable } from "@/lib/three-helpers";
 
 // Dynamic import MeadowScene với ssr: false
@@ -90,10 +91,16 @@ export const HeroCanvas: React.FC = () => {
       <div className="w-full h-full bg-[#E8FAF4] flex items-center justify-center">
         <div className="text-center px-8">
           <div
-            className="w-20 h-20 mx-auto rounded-2xl flex items-center justify-center text-white font-bold text-2xl shadow-xl mb-5"
+            className="w-20 h-20 mx-auto rounded-2xl flex items-center justify-center p-4 shadow-xl mb-5"
             style={{ background: "linear-gradient(135deg, #00A86B, #0EA5B7)" }}
           >
-            SPC
+            <Image
+              src="/images/whitelogo.png"
+              alt="SmartPetCare Logo"
+              width={48}
+              height={48}
+              className="w-full h-full object-contain"
+            />
           </div>
           <p className="text-emerald-700 text-sm leading-relaxed">
             Thiết bị không hỗ trợ WebGL 3D.
