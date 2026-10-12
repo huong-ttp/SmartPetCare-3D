@@ -143,7 +143,7 @@ export const DashboardHeader: React.FC = () => {
           <Dropdown
             trigger={
               <div className="flex items-center gap-2 sm:gap-3 hover:bg-slate-50 p-1 pr-2 sm:pr-3 rounded-full transition-colors cursor-pointer">
-                <Avatar name={user?.full_name} size="sm" src={user?.avatar_url} />
+                <Avatar name={user?.full_name} size="sm" src={user?.avatar_url || (user as any)?.avatar} />
                 <div className="hidden md:block text-left">
                   <p className="text-sm font-medium text-slate-700 line-clamp-1">{user?.full_name || "User"}</p>
                   <p className="text-xs text-slate-500 capitalize">{user?.role}</p>
@@ -192,7 +192,7 @@ export const DashboardHeader: React.FC = () => {
             {/* User profile quick view */}
             {user && (
               <div className="p-3.5 mx-3 mt-3 bg-slate-50 rounded-2xl flex items-center gap-3 border border-slate-100">
-                <Avatar name={user?.full_name} size="md" src={user?.avatar_url} />
+                <Avatar name={user?.full_name} size="md" src={user?.avatar_url || (user as any)?.avatar} />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-slate-800 truncate">{user?.full_name || "User"}</p>
                   <p className="text-xs text-slate-500 capitalize">{user?.role}</p>
