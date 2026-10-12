@@ -4,14 +4,14 @@ import React, { Component, useEffect, useState, useCallback, useRef } from "reac
 import dynamic from "next/dynamic";
 import { isWebGLAvailable } from "@/lib/three-helpers";
 
-// Dynamic import RightScene với ssr: false
-const RightScene = dynamic(() => import("./RightScene"), {
+// Dynamic import MeadowScene với ssr: false
+const MeadowScene = dynamic(() => import("./3d/MeadowScene"), {
   ssr: false,
   loading: () => (
     <div className="w-full h-full flex items-center justify-center bg-[#E8FAF4]">
       <div className="flex flex-col items-center gap-4">
         <div className="w-12 h-12 border-4 border-emerald-200 border-t-[#00A86B] rounded-full animate-spin" />
-        <p className="text-emerald-700 text-sm font-medium animate-pulse">Đang tải môi trường 3D…</p>
+        <p className="text-emerald-700 text-sm font-medium animate-pulse">Đang tải không gian 3D đồng cỏ…</p>
       </div>
     </div>
   ),
@@ -107,7 +107,7 @@ export const HeroCanvas: React.FC = () => {
   return (
     <div key={resetKey} className="w-full h-full relative">
       <WebGLErrorBoundary onReset={handleErrorReset}>
-        <RightScene onContextLost={handleContextLost} />
+        <MeadowScene onContextLost={handleContextLost} />
       </WebGLErrorBoundary>
     </div>
   );

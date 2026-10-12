@@ -1,54 +1,58 @@
 "use client";
 
 import React from "react";
-import Header from "@/components/landing/Header";
-import Footer from "@/components/landing/Footer";
-import LeftPanel from "@/components/landing/LeftPanel";
-import HeroCanvas from "@/components/landing/HeroCanvas";
-import Features from "@/components/landing/Features";
-import { motion } from "framer-motion";
+import Header from "./Header";
+import LeftPanel from "./LeftPanel";
+import HeroCanvas from "./HeroCanvas";
+import Features from "./Features";
+import FloatingPortalBoard from "./FloatingPortalBoard";
+import Footer from "./Footer";
 
 export const Landing: React.FC = () => {
   return (
-    <div className="relative min-h-screen bg-white overflow-x-hidden flex flex-col">
-      <Header />
+    <div className="relative min-h-screen w-full bg-[#E8FAF4] overflow-x-hidden flex flex-col">
+      {/* ─── 1. FULLSCREEN 3D MEADOW CANVAS (HeroCanvas) ──────────── */}
+      {/* Nền 3D toàn màn hình với cánh đồng cỏ và các bé thú cưng bay lơ lửng */}
+      <div className="fixed inset-0 z-0 w-full h-full pointer-events-auto">
+        <HeroCanvas />
+      </div>
 
-      <main className="relative z-10 flex-1 flex flex-col">
-        {/* ─── Hero Section ─────────────────────────────────────── */}
-        <section className="relative min-h-screen flex flex-col lg:flex-row overflow-hidden bg-[#E8FAF4]">
+      {/* ─── 2. FLOATING 2D UI OVERLAY ────────────────────────────── */}
+      <div className="relative z-10 flex-1 flex flex-col pointer-events-none">
+        {/* Floating Header */}
+        <div className="pointer-events-auto">
+          <Header />
+        </div>
 
-          {/* ── Left Content Panel ─────────────────────────────── */}
-          <div className="relative z-20 w-full lg:w-[35%] flex items-center pt-24 pb-12 lg:pt-20 lg:pb-16 px-6 sm:px-10 lg:pl-16 xl:pl-24 lg:pr-4">
-            <motion.div
-              initial={{ opacity: 0, x: -40 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.75, ease: "easeOut" }}
-              className="w-full max-w-xl"
-            >
+        {/* Main Content Area */}
+        <main className="flex-1 flex flex-col">
+          {/* ── Section 1: Hero Floating Board (LeftPanel) ── */}
+          <section className="min-h-screen flex items-center pt-28 pb-16 px-4 sm:px-8 lg:px-16 max-w-7xl mx-auto w-full">
+            <div className="pointer-events-auto w-full max-w-xl">
               <LeftPanel />
-            </motion.div>
-          </div>
+            </div>
+          </section>
 
-          {/* ── Right 3D Scene ──────────────────────────────────── */}
-          <div className="relative z-20 w-full lg:w-[65%] h-[60vh] lg:h-auto lg:absolute lg:right-0 lg:top-0 lg:bottom-0">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 1.2, delay: 0.3 }}
-              className="absolute inset-0 overflow-hidden"
-            >
-              <HeroCanvas />
-            </motion.div>
-          </div>
-        </section>
+          {/* ── Section 2: Features Floating Board (Features) ── */}
+          <section className="py-10 px-4 sm:px-8 max-w-7xl mx-auto w-full">
+            <div className="pointer-events-auto w-full max-w-5xl mx-auto">
+              <Features />
+            </div>
+          </section>
 
-        {/* ── Features Section ──────────────────────────────────── */}
-        <section className="w-full max-w-7xl mx-auto px-6 relative z-20 pb-20">
-          <Features />
-        </section>
-      </main>
+          {/* ── Section 3: Portal & Login / Register Floating Board ── */}
+          <section className="py-10 px-4 sm:px-8 max-w-7xl mx-auto w-full">
+            <div className="pointer-events-auto w-full max-w-4xl mx-auto">
+              <FloatingPortalBoard />
+            </div>
+          </section>
+        </main>
 
-      <Footer />
+        {/* ── Section 4: Original Footer (Preserved Intact) ── */}
+        <div className="pointer-events-auto mt-auto">
+          <Footer />
+        </div>
+      </div>
     </div>
   );
 };
