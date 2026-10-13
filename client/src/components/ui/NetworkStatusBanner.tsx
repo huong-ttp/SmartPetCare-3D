@@ -11,8 +11,19 @@ export function NetworkStatusBanner() {
   const [isDismissed, setIsDismissed] = useState<boolean>(false);
   const [isRetrying, setIsRetrying] = useState<boolean>(false);
   const lastToastTimeRef = useRef<number>(0);
+  const networkStateRef = useRef<"healthy" | "offline" | "server-down">("healthy");
+  const dismissTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    networkStateRef.current = networkState;
+  }, [networkState]);
 
   const triggerErrorState = useCallback((type: "offline" | "server-down", msg: string) => {
+    if (dismissTimerRef.current) {
+      clearTimeout(dismissTimerRef.current);
+      dismissTimerRef.current = null;
+    }
+    networkStateRef.current = type;
     setNetworkState(type);
     setErrorMessage(msg);
     setIsDismissed(false);
@@ -26,16 +37,18 @@ export function NetworkStatusBanner() {
   }, [showToastError]);
 
   const restoreHealthyState = useCallback(() => {
-    setNetworkState((prev) => {
-      if (prev !== "healthy") {
-        showToastSuccess("Đã kết nối lại hệ thống thành công!", "Đã khôi phục");
-        // Show healthy state momentarily
-        setTimeout(() => {
-          setIsDismissed(true);
-        }, 3000);
+    if (networkStateRef.current !== "healthy") {
+      networkStateRef.current = "healthy";
+      setNetworkState("healthy");
+      showToastSuccess("Đã kết nối lại hệ thống thành công!", "Đã khôi phục");
+      
+      if (dismissTimerRef.current) {
+        clearTimeout(dismissTimerRef.current);
       }
-      return "healthy";
-    });
+      dismissTimerRef.current = setTimeout(() => {
+        setIsDismissed(true);
+      }, 3000);
+    }
   }, [showToastSuccess]);
 
   useEffect(() => {
@@ -66,6 +79,9 @@ export function NetworkStatusBanner() {
       window.removeEventListener("offline", handleOffline);
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("spc-network-error", handleNetworkError);
+      if (dismissTimerRef.current) {
+        clearTimeout(dismissTimerRef.current);
+      }
     };
   }, [triggerErrorState, restoreHealthyState]);
 
