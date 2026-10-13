@@ -41,23 +41,34 @@ const features = [
 
 export const Features: React.FC = () => {
   return (
-    <div id="features" className="w-full mt-16 mb-8">
-      <h2 className="text-2xl font-heading font-bold text-white mb-6 text-center">
-        Tính năng nổi bật
-      </h2>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {features.map((f) => (
-          <div
-            key={f.id}
-            className="glass-dark p-5 rounded-2xl hover:-translate-y-1 hover:shadow-glow transition-all duration-300"
-          >
-            <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center mb-4", f.bg, f.color)}>
-              {f.icon}
-            </div>
-            <h3 className="text-lg font-semibold text-white mb-2">{f.title}</h3>
-            <p className="text-sm text-slate-400 leading-relaxed">{f.description}</p>
+    <div id="features" className="w-full my-12">
+      <div className="rounded-3xl p-7 sm:p-11 bg-white/85 backdrop-blur-2xl border border-white/70 shadow-2xl shadow-emerald-950/10">
+        <div className="text-center max-w-2xl mx-auto mb-10">
+          <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-400/30 text-emerald-800 text-xs font-bold uppercase tracking-wider mb-3">
+            ✨ Tính năng nổi bật
           </div>
-        ))}
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-heading font-extrabold text-slate-900 tracking-tight mb-2">
+            Giải pháp thông minh toàn diện cho bé cưng
+          </h2>
+          <p className="text-sm sm:text-base text-slate-600 leading-relaxed">
+            Mọi công cụ bạn cần để theo dõi sức khỏe và chăm sóc thú cưng toàn diện nhất trong kỷ nguyên số.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          {features.map((f) => (
+            <div
+              key={f.id}
+              className="bg-white/75 hover:bg-white border border-slate-200/80 hover:border-emerald-300 p-6 rounded-2xl hover:-translate-y-1 hover:shadow-xl hover:shadow-emerald-600/10 transition-all duration-300 shadow-sm"
+            >
+              <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center mb-4", f.bg, f.color)}>
+                {f.icon}
+              </div>
+              <h3 className="text-lg font-heading font-bold text-slate-900 mb-2">{f.title}</h3>
+              <p className="text-sm text-slate-600 leading-relaxed">{f.description}</p>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

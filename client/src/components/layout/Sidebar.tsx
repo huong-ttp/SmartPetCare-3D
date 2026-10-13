@@ -2,6 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { cn } from "@/utils/cn";
 import { 
@@ -76,9 +77,15 @@ export const Sidebar: React.FC = () => {
   return (
     <aside className="w-64 bg-white border-r border-slate-100 flex flex-col hidden md:flex h-screen sticky top-0">
       <div className="h-16 flex items-center px-6 border-b border-slate-100">
-        <Link href="/" className="flex items-center gap-2 font-heading font-bold text-lg text-slate-800">
-          <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center text-white text-xs">
-            SPC
+        <Link href="/" className="flex items-center gap-2.5 font-heading font-bold text-lg text-slate-800 group">
+          <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center p-1.5 shadow-sm group-hover:scale-105 transition-transform">
+            <Image
+              src="/images/whitelogo.png"
+              alt="SmartPetCare Logo"
+              width={20}
+              height={20}
+              className="w-full h-full object-contain"
+            />
           </div>
           SmartPetCare
         </Link>

@@ -96,12 +96,18 @@ async refresh(
 }
 async me(
   req: Request,
-  res: Response
+  res: Response,
+  next: NextFunction
 ) {
-  return res.json({
-    success: true,
-    data: (req as any).user,
-  });
+  try {
+    const user = await authService.getProfile(req.user.user_id);
+    return res.json({
+      success: true,
+      data: user,
+    });
+  } catch (error) {
+    next(error);
+  }
 }
 async profile(
   req: Request,

@@ -21,6 +21,11 @@ export const metadata: Metadata = {
   title: "SmartPetCare - Hệ sinh thái chăm sóc thú cưng",
   description: "Nền tảng quản lý hồ sơ sức khỏe, lịch tiêm phòng, đặt lịch khám và kết nối với bác sĩ thú y trực tuyến dễ dàng.",
   keywords: "thú y, thú cưng, chăm sóc chó mèo, đặt lịch khám thú y, hồ sơ sức khỏe thú cưng",
+  icons: {
+    icon: "/images/whitelogo.png",
+    shortcut: "/images/whitelogo.png",
+    apple: "/images/whitelogo.png",
+  },
   openGraph: {
     title: "SmartPetCare - Chăm sóc thú cưng thông minh",
     description: "Nền tảng quản lý hồ sơ sức khỏe và đặt lịch khám thú y.",

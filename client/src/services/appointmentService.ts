@@ -466,8 +466,13 @@ export const appointmentService = {
       );
     }
 
+    const params: Record<string, unknown> = { tab };
+    if (filter.date) {
+      params.date = filter.date;
+    }
+
     const res = await axiosClient.get<ApiResponse<Appointment[]> | Appointment[]>("/appointments/doctor", {
-      params: { tab },
+      params,
     });
     const raw = (res.data as ApiResponse<Appointment[]>)?.data ?? res.data;
     let list: unknown[] = [];
@@ -513,16 +518,13 @@ export const appointmentService = {
     ]);
 
     const distinctPetIds = new Set([
-      ...todayList.map((a) => a.pet_id).filter(Boolean),
+      ...todayList.filter((a) => a.status !== "cancelled").map((a) => a.pet_id).filter(Boolean),
       ...completedList.map((a) => a.pet_id).filter(Boolean),
-      "p1",
-      "p2",
-      "p3",
     ]);
 
     return {
       overview: {
-        todayAppointments: todayList.length,
+        todayAppointments: todayList.filter((a) => a.status !== "cancelled").length,
         upcomingAppointments: upcomingList.length,
         completedAppointments: completedList.length,
         patients: distinctPetIds.size,

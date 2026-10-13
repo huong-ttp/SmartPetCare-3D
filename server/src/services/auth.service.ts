@@ -213,11 +213,13 @@ return {
   access_token: accessToken,
   refresh_token: refreshToken,
   user: {
+    id: String(user.user_id),
     user_id: user.user_id,
     full_name: user.full_name,
     email: user.email,
     phone: user.phone,
     address: user.address,
+    avatar_url: user.avatar_url,
     role: user.role,
   },
 };
@@ -296,9 +298,11 @@ async getProfile(userId: number) {
         email,
         phone,
         address,
+        avatar_url,
         role,
         is_active,
-        created_at
+        created_at,
+        updated_at
       FROM users
       WHERE user_id = $1
     `,

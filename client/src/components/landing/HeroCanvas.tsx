@@ -2,16 +2,17 @@
 
 import React, { Component, useEffect, useState, useCallback, useRef } from "react";
 import dynamic from "next/dynamic";
+import Image from "next/image";
 import { isWebGLAvailable } from "@/lib/three-helpers";
 
-// Dynamic import RightScene với ssr: false
-const RightScene = dynamic(() => import("./RightScene"), {
+// Dynamic import MeadowScene với ssr: false
+const MeadowScene = dynamic(() => import("./3d/MeadowScene"), {
   ssr: false,
   loading: () => (
     <div className="w-full h-full flex items-center justify-center bg-[#E8FAF4]">
       <div className="flex flex-col items-center gap-4">
         <div className="w-12 h-12 border-4 border-emerald-200 border-t-[#00A86B] rounded-full animate-spin" />
-        <p className="text-emerald-700 text-sm font-medium animate-pulse">Đang tải môi trường 3D…</p>
+        <p className="text-emerald-700 text-sm font-medium animate-pulse">Đang tải không gian 3D đồng cỏ…</p>
       </div>
     </div>
   ),
@@ -90,10 +91,16 @@ export const HeroCanvas: React.FC = () => {
       <div className="w-full h-full bg-[#E8FAF4] flex items-center justify-center">
         <div className="text-center px-8">
           <div
-            className="w-20 h-20 mx-auto rounded-2xl flex items-center justify-center text-white font-bold text-2xl shadow-xl mb-5"
+            className="w-20 h-20 mx-auto rounded-2xl flex items-center justify-center p-4 shadow-xl mb-5"
             style={{ background: "linear-gradient(135deg, #00A86B, #0EA5B7)" }}
           >
-            SPC
+            <Image
+              src="/images/whitelogo.png"
+              alt="SmartPetCare Logo"
+              width={48}
+              height={48}
+              className="w-full h-full object-contain"
+            />
           </div>
           <p className="text-emerald-700 text-sm leading-relaxed">
             Thiết bị không hỗ trợ WebGL 3D.
@@ -107,7 +114,7 @@ export const HeroCanvas: React.FC = () => {
   return (
     <div key={resetKey} className="w-full h-full relative">
       <WebGLErrorBoundary onReset={handleErrorReset}>
-        <RightScene onContextLost={handleContextLost} />
+        <MeadowScene onContextLost={handleContextLost} />
       </WebGLErrorBoundary>
     </div>
   );

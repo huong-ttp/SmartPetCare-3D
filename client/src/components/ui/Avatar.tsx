@@ -46,15 +46,21 @@ export const Avatar: React.FC<AvatarProps> = ({
   size = "md",
   className,
 }) => {
+  const [imageError, setImageError] = React.useState(false);
   const initials = getInitials(name);
   const gradient = getColorFromName(name);
 
-  if (src) {
+  React.useEffect(() => {
+    setImageError(false);
+  }, [src]);
+
+  if (src && !imageError) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
       <img
         src={src}
         alt={alt ?? name ?? "Avatar"}
+        onError={() => setImageError(true)}
         className={cn(
           "rounded-full object-cover flex-shrink-0",
           SIZE_CLASSES[size],

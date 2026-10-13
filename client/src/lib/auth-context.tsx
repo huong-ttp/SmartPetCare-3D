@@ -15,6 +15,7 @@ import React, {
 } from "react";
 import { useRouter } from "next/navigation";
 import type { User, UserRole } from "@/types/user.type";
+import { userService } from "@/services/userService";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -65,7 +66,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Hydrate từ localStorage khi mount
+  // Hydrate từ localStorage khi mount và đồng bộ dữ liệu mới nhất từ server
   useEffect(() => {
     const token = localStorage.getItem(TOKEN_KEY);
     const raw   = localStorage.getItem(USER_KEY);
@@ -75,6 +76,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const user: User = JSON.parse(raw);
         setAuthCookie(token);
         setState({ user, token, isLoading: false, isAuthenticated: true });
+
+        // Tự động đồng bộ profile mới nhất từ Server (avatar_url, tên...)
+        userService
+          .getProfile()
+          .then((latestUser) => {
+            if (latestUser) {
+              setState((prev) => {
+                if (!prev.user) return prev;
+                const mergedUser: User = { ...prev.user, ...latestUser };
+                localStorage.setItem(USER_KEY, JSON.stringify(mergedUser));
+                return { ...prev, user: mergedUser };
+              });
+            }
+          })
+          .catch((err) => {
+            // Không chặn ứng dụng nếu mạng chậm hoặc lỗi
+            console.warn("[AuthProvider] Không thể tự động làm mới profile:", err?.message || err);
+          });
       } catch {
         localStorage.removeItem(TOKEN_KEY);
         localStorage.removeItem(USER_KEY);
