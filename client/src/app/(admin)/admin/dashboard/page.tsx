@@ -8,6 +8,7 @@ import {
   AdminDashboardData 
 } from "@/services/adminService";
 import { useAuth } from "@/lib/auth-context";
+import { useSocket } from "@/context/SocketContext";
 import { AdminFloatingOverview } from "@/components/admin/AdminFloatingOverview";
 import { AdminOverviewCards } from "@/components/admin/AdminOverviewCards";
 import { AdminChartsPanel } from "@/components/admin/AdminChartsPanel";
@@ -38,6 +39,7 @@ type ViewMode = "3d" | "analytics";
 
 export default function AdminDashboardPage() {
   const { user } = useAuth();
+  const { socket } = useSocket();
   const [data, setData] = useState<AdminDashboardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
@@ -65,6 +67,19 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     fetchStats();
   }, [fetchStats]);
+
+  // Cập nhật real-time số liệu dashboard qua WebSocket khi có sự kiện
+  useEffect(() => {
+    if (!socket) return;
+    const handleDashboardUpdate = () => {
+      console.log("[AdminDashboard] Real-time dashboard update received");
+      fetchStats();
+    };
+    socket.on("dashboard:updated", handleDashboardUpdate);
+    return () => {
+      socket.off("dashboard:updated", handleDashboardUpdate);
+    };
+  }, [socket, fetchStats]);
 
   const handleRefresh = () => {
     setIsRefreshing(true);

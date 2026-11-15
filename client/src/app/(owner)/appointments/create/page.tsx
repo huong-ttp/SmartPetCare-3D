@@ -26,12 +26,14 @@ import type { Service } from "@/types/service.type";
 import type { AvailableSlot } from "@/types/appointment.type";
 import { formatCurrency } from "@/utils/formatCurrency";
 import { useToast } from "@/components/ui/Toast";
+import { useSocket } from "@/context/SocketContext";
 import { cn } from "@/utils/cn";
 
 export default function CreateAppointmentPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { success: showSuccess, error: showError } = useToast();
+  const { socket, joinSlotRoom, leaveSlotRoom } = useSocket();
 
   // Query params: service_id, from, pet_id
   const initialServiceId = searchParams.get("service_id") || searchParams.get("serviceId") || "";
@@ -177,6 +179,27 @@ export default function CreateAppointmentPage() {
     loadAvailableSlots();
   }, [loadAvailableSlots]);
 
+  // ─── 2.1. Lắng nghe cập nhật slot Real-time qua WebSocket ───────────
+  useEffect(() => {
+    if (!appointmentDate || !socket) return;
+
+    joinSlotRoom(appointmentDate);
+
+    const handleSlotUpdated = (data: { date: string; time?: string; action?: string }) => {
+      if (data?.date === appointmentDate) {
+        console.log("[CreateAppointment] Real-time slot update received:", data);
+        loadAvailableSlots();
+      }
+    };
+
+    socket.on("slot:updated", handleSlotUpdated);
+
+    return () => {
+      leaveSlotRoom(appointmentDate);
+      socket.off("slot:updated", handleSlotUpdated);
+    };
+  }, [appointmentDate, socket, joinSlotRoom, leaveSlotRoom, loadAvailableSlots]);
+
   // Handle choosing a slot
   const handleSelectSlot = (slot: AvailableSlot) => {
     if (!slot.available) {
@@ -250,7 +273,7 @@ export default function CreateAppointmentPage() {
       } else {
         router.push("/appointments");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("[CreateAppointment] Submit failed:", err);
       const msg =
         err?.response?.data?.message ||
@@ -258,6 +281,11 @@ export default function CreateAppointmentPage() {
         "Không thể đặt lịch khám. Vui lòng kiểm tra lại thông tin và thử lại.";
       setSubmitError(msg);
       showError(msg);
+
+      // Nếu lỗi do trùng lịch hoặc khung giờ đã kín chỗ, tự động tải lại danh sách slot mới nhất
+      if (err?.response?.status === 409 || msg.includes("kín lịch") || msg.includes("trùng")) {
+        loadAvailableSlots();
+      }
     } finally {
       setIsSubmitting(false);
     }

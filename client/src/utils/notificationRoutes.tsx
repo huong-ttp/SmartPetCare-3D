@@ -170,14 +170,21 @@ export function getNotificationTargetRoute(
  */
 export function formatRelativeTime(dateString?: string | null): string {
   if (!dateString) return "Vừa xong";
-  const date = new Date(dateString);
+
+  let cleanStr = String(dateString).trim();
+  // Nếu là chuỗi timestamp không có đuôi Z hoặc timezone offset, chuẩn hóa thêm Z để luôn parse chuẩn UTC
+  if (cleanStr && !cleanStr.endsWith("Z") && !cleanStr.includes("+") && !/-\d{2}:\d{2}$/.test(cleanStr)) {
+    cleanStr = cleanStr.replace(" ", "T") + "Z";
+  }
+
+  const date = new Date(cleanStr);
   if (isNaN(date.getTime())) return "Vừa xong";
 
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
 
-  // Tương lai gần hoặc vừa tạo
-  if (diffMs < 60000 && diffMs >= 0) {
+  // Tương lai gần hoặc vừa tạo trong vòng 1 phút (kể cả chênh lệch âm do đồng hồ client/server vài giây)
+  if (diffMs < 60000) {
     return "Vừa xong";
   }
 

@@ -1,5 +1,10 @@
 import pool from "../config/database.config";
 import AppError from "../utils/AppError";
+import {
+  emitNotificationToUser,
+  emitNotificationToRole,
+  getIO,
+} from "../socket";
 
 interface NotificationFilter {
   unread?: boolean;
@@ -519,7 +524,6 @@ async sendSystemNotification(
   }
 
   for (const user of users) {
-
     await pool.query(
       `
       INSERT INTO notifications
@@ -549,7 +553,29 @@ async sendSystemNotification(
         data.content
       ]
     );
+  }
 
+  // Phát WebSocket real-time tới người nhận
+  try {
+    const nowIso = new Date().toISOString();
+    const notificationPayload = {
+      type: "system",
+      title: data.title,
+      content: data.content,
+      sent_at: nowIso,
+      created_at: nowIso,
+    };
+
+    if (data.target === "all") {
+      const io = getIO();
+      io.emit("notification:new", notificationPayload);
+    } else if (data.target === "role" && data.role) {
+      emitNotificationToRole(data.role as any, notificationPayload);
+    } else if (data.target === "user" && data.user_id) {
+      emitNotificationToUser(Number(data.user_id), notificationPayload);
+    }
+  } catch (socketErr) {
+    console.warn("[sendSystemNotification] WebSocket emit failed:", socketErr);
   }
 
   return {
