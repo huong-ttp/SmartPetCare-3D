@@ -2,6 +2,10 @@ import pool from "../config/database.config";
 import bcrypt from "bcryptjs";
 import AppError from "../utils/AppError";
 import { deleteCloudinaryImageByUrl } from "../middleware/upload.middleware";
+import {
+  emitNotificationToUser,
+  emitDashboardUpdate,
+} from "../socket";
 
 interface UserFilter {
   search?: string;
@@ -1752,7 +1756,43 @@ async assignDoctor(
     );
   }
 
-  // Kiểm tra ca trực của bác sĩ vào ngày và khung giờ này (nếu có ca trực)
+  // 1. Kiểm tra bác sĩ có lịch hẹn nào khác bị trùng hoặc giao thoa thời gian không
+  if (current.appointment_date && current.start_time) {
+    const doctorConflict = await pool.query(
+      `
+      SELECT
+        appointment_id,
+        to_char(start_time, 'HH24:MI') AS start_time,
+        to_char(COALESCE(end_time, start_time + interval '30 minutes'), 'HH24:MI') AS end_time
+      FROM appointments
+      WHERE doctor_id = $1
+        AND appointment_date = $2
+        AND status = 'confirmed'
+        AND appointment_id <> $3
+        AND (
+          start_time < COALESCE($5::time, $4::time + interval '30 minutes')
+          AND COALESCE(end_time, start_time + interval '30 minutes') > $4::time
+        );
+      `,
+      [
+        doctorId,
+        current.appointment_date,
+        appointmentId,
+        current.start_time,
+        current.end_time || null,
+      ]
+    );
+
+    if (doctorConflict.rowCount && doctorConflict.rowCount > 0) {
+      const conflict = doctorConflict.rows[0];
+      throw new AppError(
+        `Bác sĩ đã có lịch khám khác (${conflict.start_time} - ${conflict.end_time}) trùng vào khung giờ này`,
+        409
+      );
+    }
+  }
+
+  // 2. Kiểm tra ca trực của bác sĩ vào ngày và khung giờ này (nếu có ca trực)
   if (current.appointment_date && current.start_time) {
     const shiftQuery = await pool.query(
       `
@@ -1828,6 +1868,18 @@ async assignDoctor(
       `Bạn vừa được phân công phụ trách lịch hẹn khám cho thú cưng ${current.pet_name || ""} vào ngày ${current.appointment_date} lúc ${current.start_time}.`,
     ]
   ).catch((err) => console.warn("[assignDoctor] Gửi thông báo cho bác sĩ thất bại:", err));
+
+  // Phát WebSocket thông báo real-time tới bác sĩ
+  emitNotificationToUser(doctorId, {
+    type: "system",
+    title: "Lịch hẹn mới được phân công",
+    content: `Bạn vừa được phân công phụ trách lịch hẹn khám cho thú cưng ${current.pet_name || ""} vào ngày ${current.appointment_date} lúc ${current.start_time}.`,
+    appointment_id: appointmentId,
+  });
+
+  // Cập nhật dashboard bác sĩ và admin real-time
+  emitDashboardUpdate(doctorId, { reason: "doctor_assigned" });
+  emitDashboardUpdate("admin", { reason: "doctor_assigned" });
 
   return result.rows[0];
 }

@@ -1,6 +1,12 @@
 import pool from "../config/database.config";
 import petService from "./pet.service";
 import AppError from "../utils/AppError";
+import {
+  emitSlotUpdate,
+  emitNotificationToRole,
+  emitNotificationToUser,
+  emitDashboardUpdate,
+} from "../socket";
 
 interface CreateAppointmentData {
   pet_id: number;
@@ -84,67 +90,170 @@ class AppointmentService {
     );
     const endTime = data.end_time || start.toTimeString().slice(0, 5);
 
-    const existed = await pool.query(
-      `
-      SELECT *
-      FROM appointments
-      WHERE
-          pet_id = $1
-          AND appointment_date = $2
-          AND start_time = $3
-          AND status <> 'cancelled';
-      `,
-      [
-        data.pet_id,
-        data.appointment_date,
-        data.start_time
-      ]
-    );
+    // Sử dụng transaction và advisory lock để loại bỏ hoàn toàn race condition khi đặt cùng lúc
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN;");
 
-    if (existed.rowCount! > 0) {
-      throw new AppError(
-        "Thú cưng đã có lịch hẹn vào khung giờ này.",
-        409
+      // Khóa lock theo ngày đặt lịch trong phạm vi transaction (tự giải phóng khi commit hoặc rollback)
+      await client.query("SELECT pg_advisory_xact_lock(hashtext($1));", [
+        `appointment_booking_${data.appointment_date}`,
+      ]);
+
+      // 1. Kiểm tra thú cưng có bị trùng hoặc chồng chéo khung giờ với ca hẹn khác không
+      const petConflict = await client.query(
+        `
+        SELECT appointment_id, start_time, COALESCE(end_time, start_time + interval '30 minutes') AS end_time
+        FROM appointments
+        WHERE
+            pet_id = $1
+            AND appointment_date = $2
+            AND status <> 'cancelled'
+            AND (
+              start_time < $4::time
+              AND COALESCE(end_time, start_time + interval '30 minutes') > $3::time
+            );
+        `,
+        [
+          data.pet_id,
+          data.appointment_date,
+          data.start_time,
+          endTime,
+        ]
       );
-    }
 
-    const result = await pool.query(
-      `
-      INSERT INTO appointments(
-          pet_id,
-          doctor_id,
-          service_id,
-          appointment_date,
-          start_time,
-          end_time,
-          status,
-          reason,
-          notes
-      )
-      VALUES(
-          $1,
-          NULL,
-          $2,
-          $3,
-          $4,
-          $5,
-          'confirmed',
-          $6,
-          $7
-      )
-      RETURNING *;
-      `,
-      [
-        data.pet_id,
-        serviceId,
-        data.appointment_date,
-        data.start_time,
-        endTime,
-        data.reason ?? null,
-        data.notes ?? null
-      ]
-    );
-    return result.rows[0];
+      if (petConflict.rowCount && petConflict.rowCount > 0) {
+        const conflict = petConflict.rows[0];
+        const confStart = String(conflict.start_time).slice(0, 5);
+        const confEnd = String(conflict.end_time).slice(0, 5);
+        throw new AppError(
+          `Thú cưng đã có lịch hẹn vào khung giờ giao thoa (${confStart} - ${confEnd}). Vui lòng chọn giờ khác!`,
+          409
+        );
+      }
+
+      // 2. Xác định năng lực phòng khám (capacity) trong khung giờ này
+      // Ưu tiên đếm số bác sĩ có ca trực đang hoạt động và bao phủ khung giờ này
+      const shiftCapacityRes = await client.query(
+        `
+        SELECT COUNT(DISTINCT ds.doctor_id)::int AS count
+        FROM doctor_shifts ds
+        JOIN users u ON ds.doctor_id = u.user_id
+        WHERE ds.shift_date = $1
+          AND ds.is_off = false
+          AND u.is_active = true
+          AND u.is_deleted = false
+          AND ds.start_time <= $2::time
+          AND ds.end_time >= $3::time;
+        `,
+        [data.appointment_date, data.start_time, endTime]
+      );
+
+      let clinicCapacity = Number(shiftCapacityRes.rows[0]?.count) || 0;
+
+      // Nếu ngày này chưa lên lịch ca trực cụ thể, dùng số lượng bác sĩ active trong hệ thống
+      if (clinicCapacity === 0) {
+        const doctorResult = await client.query(
+          `
+          SELECT COUNT(*)::int AS count
+          FROM users
+          WHERE role = 'doctor'
+            AND is_active = true
+            AND is_deleted = false;
+          `
+        );
+        clinicCapacity = Math.max(1, Number(doctorResult.rows[0]?.count) || 1);
+      }
+
+      // 3. Đếm số ca khám hiện tại của phòng khám bị chồng chéo thời gian
+      const bookedOverlapRes = await client.query(
+        `
+        SELECT COUNT(*)::int AS count
+        FROM appointments
+        WHERE appointment_date = $1
+          AND status <> 'cancelled'
+          AND (
+            start_time < $3::time
+            AND COALESCE(end_time, start_time + interval '30 minutes') > $2::time
+          );
+        `,
+        [data.appointment_date, data.start_time, endTime]
+      );
+
+      const bookedCount = Number(bookedOverlapRes.rows[0]?.count) || 0;
+      if (bookedCount >= clinicCapacity) {
+        throw new AppError(
+          `Khung giờ ${data.start_time} - ${endTime} ngày ${data.appointment_date} đã kín lịch nhận khám (${bookedCount}/${clinicCapacity} ca). Vui lòng chọn khung giờ khác!`,
+          409
+        );
+      }
+
+      // 4. Tạo lịch hẹn mới
+      const result = await client.query(
+        `
+        INSERT INTO appointments(
+            pet_id,
+            doctor_id,
+            service_id,
+            appointment_date,
+            start_time,
+            end_time,
+            status,
+            reason,
+            notes
+        )
+        VALUES(
+            $1,
+            NULL,
+            $2,
+            $3,
+            $4,
+            $5,
+            'confirmed',
+            $6,
+            $7
+        )
+        RETURNING *;
+        `,
+        [
+          data.pet_id,
+          serviceId,
+          data.appointment_date,
+          data.start_time,
+          endTime,
+          data.reason ?? null,
+          data.notes ?? null,
+        ]
+      );
+
+      await client.query("COMMIT;");
+
+      const newAppointment = result.rows[0];
+
+      // Gửi realtime cập nhật slot cho các client đang xem ngày này
+      emitSlotUpdate(data.appointment_date, {
+        time: data.start_time,
+        action: "booked",
+      });
+
+      // Báo cho Admin biết có lịch hẹn mới
+      emitNotificationToRole("admin", {
+        type: "appointment",
+        title: "Lịch hẹn mới",
+        content: `Có lịch hẹn khám mới lúc ${data.start_time} ngày ${data.appointment_date}.`,
+        appointment_id: newAppointment.appointment_id,
+      });
+
+      // Cập nhật số liệu dashboard admin
+      emitDashboardUpdate("admin", { reason: "new_appointment" });
+
+      return newAppointment;
+    } catch (err) {
+      await client.query("ROLLBACK;");
+      throw err;
+    } finally {
+      client.release();
+    }
   }
 
   async getAppointmentsByOwner(
@@ -329,7 +438,34 @@ const updateResult = await pool.query(
   ]
 );
 
-return updateResult.rows[0];
+  const cancelledAppointment = updateResult.rows[0];
+
+  // Gửi realtime cập nhật slot trống lại cho ngày này
+  if (appointment.appointment_date) {
+    const appDateStr =
+      typeof appointment.appointment_date === "string"
+        ? appointment.appointment_date.split("T")[0]
+        : new Date(appointment.appointment_date).toISOString().split("T")[0];
+    emitSlotUpdate(appDateStr, {
+      time: appointment.start_time,
+      action: "cancelled",
+    });
+  }
+
+  // Nếu có bác sĩ được gán, báo cho bác sĩ biết ca hẹn đã bị hủy
+  if (appointment.doctor_id) {
+    emitNotificationToUser(appointment.doctor_id, {
+      type: "appointment",
+      title: "Lịch hẹn đã bị hủy",
+      content: `Lịch hẹn khám lúc ${appointment.start_time} ngày ${appointment.appointment_date} đã bị hủy bởi chủ nuôi.`,
+      appointment_id: appointmentId,
+    });
+    emitDashboardUpdate(appointment.doctor_id, { reason: "appointment_cancelled" });
+  }
+
+  emitDashboardUpdate("admin", { reason: "appointment_cancelled" });
+
+  return cancelledAppointment;
 }
 
   async getAvailableSlots(
@@ -342,58 +478,7 @@ return updateResult.rows[0];
       ownerId
     );
 
-    // 2. Xác định năng lực tiếp nhận của phòng khám (dựa trên số bác sĩ đang hoạt động)
-    const doctorResult = await pool.query(
-      `
-      SELECT COUNT(*)::int AS count
-      FROM users
-      WHERE role = 'doctor'
-        AND is_active = true
-        AND is_deleted = false;
-      `
-    );
-    const activeDoctorCount = Number(doctorResult.rows[0]?.count) || 0;
-    // Năng lực tiếp nhận tối đa cho mỗi khung giờ (tối thiểu 1 ca nếu chưa có bác sĩ được kích hoạt)
-    const clinicCapacity = Math.max(1, activeDoctorCount);
-
-    // 3. Lấy tổng số ca khám đã được đặt của TẤT CẢ khách hàng trong ngày theo từng khung giờ
-    const bookedQuery = await pool.query(
-      `
-      SELECT
-        TO_CHAR(start_time, 'HH24:MI') AS slot_time,
-        COUNT(*)::int AS booked_count
-      FROM appointments
-      WHERE
-        appointment_date = $1
-        AND status <> 'cancelled'
-      GROUP BY slot_time;
-      `,
-      [query.date]
-    );
-
-    const bookedMap = new Map<string, number>();
-    for (const row of bookedQuery.rows) {
-      bookedMap.set(row.slot_time, Number(row.booked_count));
-    }
-
-    // 4. Lấy các khung giờ mà chính thú cưng này đã có lịch đặt trong ngày (tránh đặt trùng)
-    const petBookedQuery = await pool.query(
-      `
-      SELECT TO_CHAR(start_time, 'HH24:MI') AS slot_time
-      FROM appointments
-      WHERE
-        pet_id = $1
-        AND appointment_date = $2
-        AND status <> 'cancelled';
-      `,
-      [query.pet_id, query.date]
-    );
-
-    const petBookedSlots = new Set<string>(
-      petBookedQuery.rows.map((row) => row.slot_time)
-    );
-
-    // 5. Danh sách các slot tiêu chuẩn của phòng khám
+    // 2. Danh sách các slot tiêu chuẩn của phòng khám
     const allSlots = [
       "08:00",
       "08:30",
@@ -411,19 +496,102 @@ return updateResult.rows[0];
       "16:30",
     ];
 
-    // 6. Tính toán slot khả dụng: Số ca đã đặt phải nhỏ hơn năng lực phòng khám và thú cưng chưa đặt khung giờ đó
+    // 3. Lấy tất cả ca hẹn trong ngày (không tính đã hủy) kèm khoảng thời gian
+    const bookedAppointmentsRes = await pool.query(
+      `
+      SELECT
+        start_time,
+        COALESCE(end_time, start_time + interval '30 minutes') AS end_time,
+        pet_id
+      FROM appointments
+      WHERE
+        appointment_date = $1
+        AND status <> 'cancelled';
+      `,
+      [query.date]
+    );
+
+    const bookedAppointments = bookedAppointmentsRes.rows;
+
+    // 4. Lấy ca trực của bác sĩ trong ngày (nếu có cấu hình)
+    const shiftsRes = await pool.query(
+      `
+      SELECT ds.doctor_id, ds.start_time, ds.end_time
+      FROM doctor_shifts ds
+      JOIN users u ON ds.doctor_id = u.user_id
+      WHERE ds.shift_date = $1
+        AND ds.is_off = false
+        AND u.is_active = true
+        AND u.is_deleted = false;
+      `,
+      [query.date]
+    );
+
+    // Fallback nếu không có ca trực: đếm tổng bác sĩ đang hoạt động
+    const fallbackDoctorsRes = await pool.query(
+      `
+      SELECT COUNT(*)::int AS count
+      FROM users
+      WHERE role = 'doctor'
+        AND is_active = true
+        AND is_deleted = false;
+      `
+    );
+    const fallbackCapacity = Math.max(1, Number(fallbackDoctorsRes.rows[0]?.count) || 1);
+
+    // 5. Tính toán slot khả dụng
     return allSlots.map((slot) => {
-      const bookedCount = bookedMap.get(slot) || 0;
-      const isPetAlreadyBooked = petBookedSlots.has(slot);
-      const isCapacityFull = bookedCount >= clinicCapacity;
+      // Mỗi slot mặc định 30 phút
+      const [h, m] = slot.split(":").map(Number);
+      const slotStartMin = h * 60 + m;
+      const slotEndMin = slotStartMin + 30;
+
+      // Tính capacity cho slot này
+      let slotCapacity = 0;
+      if (shiftsRes.rows.length > 0) {
+        // Đếm số bác sĩ có ca trực bao phủ slot này
+        const matchingShifts = shiftsRes.rows.filter((shift) => {
+          const [shH, shM] = String(shift.start_time).split(":").map(Number);
+          const [ehH, ehM] = String(shift.end_time).split(":").map(Number);
+          const shiftStartMin = shH * 60 + shM;
+          const shiftEndMin = ehH * 60 + ehM;
+          return shiftStartMin <= slotStartMin && shiftEndMin >= slotEndMin;
+        });
+        slotCapacity = matchingShifts.length;
+      }
+      if (slotCapacity === 0) {
+        slotCapacity = fallbackCapacity;
+      }
+
+      // Đếm số ca khám giao thoa với slot này [slotStartMin, slotEndMin)
+      let bookedCount = 0;
+      let isPetAlreadyBooked = false;
+
+      for (const app of bookedAppointments) {
+        const [aStartH, aStartM] = String(app.start_time).split(":").map(Number);
+        const [aEndH, aEndM] = String(app.end_time).split(":").map(Number);
+        const appStartMin = aStartH * 60 + aStartM;
+        const appEndMin = aEndH * 60 + aEndM;
+
+        // Hai khoảng thời gian giao nhau khi: appStart < slotEnd && appEnd > slotStart
+        const isOverlap = appStartMin < slotEndMin && appEndMin > slotStartMin;
+        if (isOverlap) {
+          bookedCount++;
+          if (app.pet_id === query.pet_id) {
+            isPetAlreadyBooked = true;
+          }
+        }
+      }
+
+      const isCapacityFull = bookedCount >= slotCapacity;
       const isAvailable = !isPetAlreadyBooked && !isCapacityFull;
 
       return {
         time: slot,
         available: isAvailable,
         booked: bookedCount,
-        capacity: clinicCapacity,
-        remaining: Math.max(0, clinicCapacity - bookedCount),
+        capacity: slotCapacity,
+        remaining: Math.max(0, slotCapacity - bookedCount),
       };
     });
   }

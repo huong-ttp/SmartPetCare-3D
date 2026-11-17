@@ -1,8 +1,10 @@
 import dotenv from "dotenv";
 dotenv.config();
 
+import http from "http";
 import app from "./app";
 import pool from "./src/config/database.config";
+import { initSocketIO } from "./src/socket";
 
 async function connectDatabase() {
   try {
@@ -16,10 +18,14 @@ async function connectDatabase() {
 }
 
 const PORT = process.env.PORT || 8000;
+const httpServer = http.createServer(app);
+
+// Khởi tạo Socket.IO
+initSocketIO(httpServer);
 
 connectDatabase().then(() => {
-  app.listen(PORT, () => {
-    console.log(`Server running at http://localhost:${PORT}`);
+  httpServer.listen(PORT, () => {
+    console.log(`Server with WebSocket running at http://localhost:${PORT}`);
   });
 });
 

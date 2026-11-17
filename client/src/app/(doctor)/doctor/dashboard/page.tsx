@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/lib/auth-context";
+import { useSocket } from "@/context/SocketContext";
 import { appointment, appointmentService } from "@/services/appointmentService";
 import scheduleService from "@/services/scheduleService";
 import type { Appointment, AppointmentStatus, DoctorDashboardOverview } from "@/types/appointment.type";
@@ -50,6 +51,7 @@ const DoctorBadge3D = dynamic(
 
 export default function DoctorDashboardPage() {
   const { user } = useAuth();
+  const { socket } = useSocket();
 
   // Overview Stats
   const [overview, setOverview] = useState<DoctorDashboardOverview>({
@@ -154,6 +156,19 @@ export default function DoctorDashboardPage() {
   useEffect(() => {
     fetchDashboardData();
   }, [fetchDashboardData]);
+
+  // Lắng nghe cập nhật real-time qua WebSocket cho dashboard bác sĩ
+  useEffect(() => {
+    if (!socket) return;
+    const handleDashboardUpdate = () => {
+      console.log("[DoctorDashboard] Real-time dashboard update received");
+      fetchDashboardData(true);
+    };
+    socket.on("dashboard:updated", handleDashboardUpdate);
+    return () => {
+      socket.off("dashboard:updated", handleDashboardUpdate);
+    };
+  }, [socket, fetchDashboardData]);
 
   // Filtered Today's Appointments
   const filteredAppointments = useMemo(() => {

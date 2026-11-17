@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
-import { PlusCircle } from "lucide-react";
+import { PlusCircle, Hospital, Monitor } from "lucide-react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { petService } from "@/services/petService";
@@ -11,19 +11,19 @@ import { notificationService } from "@/services/notificationService";
 import { invoiceService } from "@/services/invoiceService";
 import type { Appointment } from "@/types/appointment.type";
 import { useAuth } from "@/lib/auth-context";
+import FloatingPanel from "@/components/dashboard/FloatingPanel";
+import OwnerMobileStationHub from "@/components/dashboard/OwnerMobileStationHub";
 
 // Dynamic import for 3D component to disable SSR
 const Lobby3D = dynamic(() => import("@/components/dashboard/Lobby3D"), {
   ssr: false,
   loading: () => (
-    <div className="w-full h-full flex items-center justify-center bg-slate-900 rounded-2xl">
-      <div className="w-10 h-10 border-4 border-slate-700 border-t-emerald-500 rounded-full animate-spin"></div>
+    <div className="w-full h-full flex flex-col items-center justify-center bg-slate-100 rounded-2xl space-y-3">
+      <div className="w-10 h-10 border-4 border-slate-200 border-t-[#0EA5B7] rounded-full animate-spin"></div>
+      <p className="text-sm font-medium text-slate-500">Đang khởi tạo không gian bệnh viện 3D...</p>
     </div>
   ),
 });
-
-// Dynamic import FloatingPanel if needed, or static is fine since it's 2D
-import FloatingPanel from "@/components/dashboard/FloatingPanel";
 
 export default function OwnerDashboardPage() {
   const { user } = useAuth();
@@ -35,6 +35,20 @@ export default function OwnerDashboardPage() {
   
   const [isLoading, setIsLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
+
+  // Responsive device check: Desktop (>= 1024px) vs Mobile/Tablet (< 1024px)
+  const [isDesktop, setIsDesktop] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+    const checkViewport = () => {
+      setIsDesktop(window.innerWidth >= 1024);
+    };
+    checkViewport();
+    window.addEventListener("resize", checkViewport);
+    return () => window.removeEventListener("resize", checkViewport);
+  }, []);
 
   useEffect(() => {
     async function fetchData() {
@@ -55,7 +69,7 @@ export default function OwnerDashboardPage() {
 
         setTotalPets(Array.isArray(pets) ? pets.length : 0);
 
-        // Normalize appts: API có thể trả về mảng trực tiếp hoặc bọc trong { data: [...] } / { items: [...] }
+        // Normalize appts
         const rawAppts = appts as Appointment[] | { data?: Appointment[]; items?: Appointment[] } | null | undefined;
         const appointmentsList: Appointment[] = Array.isArray(rawAppts)
           ? rawAppts
@@ -65,7 +79,7 @@ export default function OwnerDashboardPage() {
           ? rawAppts.items
           : [];
 
-        // Filter upcoming appts: confirmed + scheduled_at trong tương lai
+        // Filter upcoming appts: confirmed + scheduled_at in future
         const now = new Date();
         const upcoming = appointmentsList.filter((a) =>
           a?.status === "confirmed" && a?.scheduled_at && new Date(a.scheduled_at) >= now
@@ -92,12 +106,41 @@ export default function OwnerDashboardPage() {
   }, [user]);
 
   return (
-    <div className="relative w-full h-[calc(100vh-8rem)] rounded-2xl overflow-hidden shadow-2xl bg-slate-900 border border-slate-800">
-      
-      {/* 3D Scene */}
-      <Lobby3D />
+    <div className="space-y-4">
+      {/* Top Header & Quick Actions */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-1">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-800 tracking-tight flex items-center gap-2">
+            <Hospital className="text-[#2563eb]" size={26} />
+            {isMounted && isDesktop ? "Không gian Bệnh viện Thú y 3D" : "Tổng Quan Dịch Vụ Bệnh Viện"}
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+            Chào mừng {user?.full_name ? <span className="font-medium text-slate-700">{user.full_name}</span> : "bạn"} • Khám phá và điều hướng nhanh các khu vực dịch vụ
+          </p>
+        </div>
 
-      {/* Floating Panel overlay */}
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          {/* Desktop 3D Availability Hint on Mobile */}
+          {isMounted && !isDesktop && (
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 bg-white px-3 py-1.5 rounded-xl border border-slate-200/80 shadow-sm">
+              <Monitor size={14} className="text-[#2563eb]" />
+              <span>3D trên máy tính</span>
+            </span>
+          )}
+
+          {totalPets === 0 && !isLoading && (
+            <Link
+              href="/pets/create"
+              className="inline-flex items-center gap-1.5 bg-[#2563eb] hover:bg-[#1d4ed8] text-white px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold shadow-sm hover:shadow transition-all"
+            >
+              <PlusCircle size={16} />
+              <span>Thêm thú cưng ngay</span>
+            </Link>
+          )}
+        </div>
+      </div>
+
+      {/* Horizontal Overview HUD (4 Stats Cards) */}
       <FloatingPanel 
         isLoading={isLoading}
         totalPets={totalPets}
@@ -106,45 +149,51 @@ export default function OwnerDashboardPage() {
         unpaidInvoicesCount={unpaidInvoices}
       />
 
-      {/* Error Toast */}
-      <AnimatePresence>
-        {errorMsg && (
-          <motion.div 
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="absolute top-6 right-6 z-20 bg-red-500/90 text-white px-4 py-3 rounded-xl shadow-lg backdrop-blur-md"
-          >
-            <p className="text-sm font-medium">{errorMsg}</p>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* CONDITIONAL RENDERING: 3D ON DESKTOP (>= 1024px), MOBILE STATION HUB ON MOBILE/TABLET (< 1024px) */}
+      {isMounted && isDesktop ? (
+        /* ================= DESKTOP 3D VIEWPORT (>= 1024px) ================= */
+        <div className="relative w-full h-[calc(100vh-16rem)] min-h-[500px] rounded-2xl overflow-hidden shadow-sm border border-blue-200/80 bg-blue-50/50">
+          <Lobby3D totalPets={totalPets} />
 
-      {/* Empty State Overlay */}
-      <AnimatePresence>
-        {!isLoading && totalPets === 0 && !errorMsg && (
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-            className="absolute bottom-10 right-10 z-20"
-          >
-            <Link 
-              href="/pets/create"
-              className="flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-400 text-white px-6 py-4 rounded-2xl shadow-xl shadow-emerald-500/20 hover:scale-105 transition-transform"
-            >
-              <div className="bg-white/20 p-2 rounded-xl">
-                <PlusCircle size={24} />
-              </div>
-              <div>
-                <p className="font-bold text-lg leading-tight">Thêm thú cưng</p>
-                <p className="text-xs text-white/80">Bắt đầu quản lý ngay</p>
-              </div>
-            </Link>
-          </motion.div>
-        )}
-      </AnimatePresence>
-      
+          {/* Error Toast */}
+          <AnimatePresence>
+            {errorMsg && (
+              <motion.div 
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="absolute top-4 right-4 z-20 bg-rose-500 text-white px-4 py-2.5 rounded-xl shadow-lg text-xs sm:text-sm font-medium"
+              >
+                {errorMsg}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      ) : (
+        /* ================= MOBILE / TABLET 2D STATION HUB (< 1024px) ================= */
+        <div className="space-y-4">
+          <OwnerMobileStationHub 
+            totalPets={totalPets}
+            upcomingAppts={upcomingAppts}
+            unpaidInvoices={unpaidInvoices}
+            isLoading={isLoading}
+          />
+
+          {/* Error Toast */}
+          <AnimatePresence>
+            {errorMsg && (
+              <motion.div 
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs sm:text-sm font-medium"
+              >
+                {errorMsg}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      )}
     </div>
   );
 }
